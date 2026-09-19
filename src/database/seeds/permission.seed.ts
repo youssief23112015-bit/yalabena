@@ -1,0 +1,87 @@
+import { DataSource } from 'typeorm';
+import { Permission } from '../../shared/entities/permission.entity';
+
+export async function seedPermissions(dataSource: DataSource) {
+  const repo = dataSource.getRepository(Permission);
+  const permissions = [
+    { module: 'crm', action: 'view', description: 'View leads and students' },
+    { module: 'crm', action: 'create', description: 'Create leads and students' },
+    { module: 'crm', action: 'edit', description: 'Edit leads and students' },
+    { module: 'crm', action: 'delete', description: 'Delete/archive leads' },
+    { module: 'crm', action: 'assign', description: 'Assign leads to agents' },
+    { module: 'users', action: 'read', description: 'Read users' },
+    { module: 'users', action: 'create', description: 'Create users' },
+    { module: 'users', action: 'edit', description: 'Edit users' },
+    { module: 'users', action: 'delete', description: 'Deactivate users' },
+    { module: 'users', action: 'assign_role', description: 'Assign roles to users' },
+    { module: 'sales', action: 'view', description: 'View sales dashboards' },
+    { module: 'sales', action: 'create', description: 'Create promotions and targets' },
+    { module: 'sales', action: 'edit', description: 'Edit sales data' },
+    { module: 'sales', action: 'approve', description: 'Approve discounts' },
+    { module: 'placement', action: 'view', description: 'View test results' },
+    { module: 'placement', action: 'create', description: 'Schedule tests' },
+    { module: 'placement', action: 'edit', description: 'Score and override levels' },
+    { module: 'placement', action: 'delete', description: 'Cancel test appointments' },
+    { module: 'groups', action: 'view', description: 'View groups and schedules' },
+    { module: 'groups', action: 'create', description: 'Create groups' },
+    { module: 'groups', action: 'edit', description: 'Edit groups and schedules' },
+    { module: 'groups', action: 'delete', description: 'Cancel groups' },
+    { module: 'attendance', action: 'view', description: 'View attendance reports' },
+    { module: 'attendance', action: 'create', description: 'Record attendance' },
+    { module: 'attendance', action: 'edit', description: 'Edit attendance records' },
+    { module: 'attendance', action: 'lock', description: 'Lock attendance after deadline' },
+    { module: 'lms', action: 'view', description: 'View content and grades' },
+    { module: 'lms', action: 'create', description: 'Create modules, lessons, assignments' },
+    { module: 'lms', action: 'edit', description: 'Edit LMS content' },
+    { module: 'lms', action: 'delete', description: 'Delete LMS content' },
+    { module: 'lms', action: 'grade', description: 'Grade submissions and quizzes' },
+    { module: 'chat', action: 'view', description: 'View chat messages' },
+    { module: 'chat', action: 'send', description: 'Send messages' },
+    { module: 'chat', action: 'moderate', description: 'Moderate and review violations' },
+    { module: 'chat', action: 'ban', description: 'Ban users from chat' },
+    { module: 'finance', action: 'view', description: 'View invoices and payments' },
+    { module: 'finance', action: 'create', description: 'Create invoices and record payments' },
+    { module: 'finance', action: 'edit', description: 'Edit financial records' },
+    { module: 'finance', action: 'approve', description: 'Approve refunds' },
+    { module: 'finance', action: 'export', description: 'Export financial reports' },
+    { module: 'certificates', action: 'view', description: 'View certificates' },
+    { module: 'certificates', action: 'create', description: 'Issue certificates' },
+    { module: 'certificates', action: 'edit', description: 'Edit certificate templates' },
+    { module: 'certificates', action: 'revoke', description: 'Revoke certificates' },
+    { module: 'hr', action: 'view', description: 'View employee records' },
+    { module: 'hr', action: 'create', description: 'Create employee records' },
+    { module: 'hr', action: 'edit', description: 'Edit employee records' },
+    { module: 'hr', action: 'approve', description: 'Approve leave requests' },
+    { module: 'hr', action: 'process_payroll', description: 'Process payroll' },
+    { module: 'activities', action: 'view', description: 'View activities' },
+    { module: 'activities', action: 'create', description: 'Create activities' },
+    { module: 'activities', action: 'edit', description: 'Edit activities' },
+    { module: 'activities', action: 'delete', description: 'Cancel activities' },
+    { module: 'inventory', action: 'view', description: 'View stock levels' },
+    { module: 'inventory', action: 'create', description: 'Add inventory items' },
+    { module: 'inventory', action: 'edit', description: 'Adjust stock' },
+    { module: 'inventory', action: 'issue', description: 'Issue items to students' },
+    { module: 'kb', action: 'view', description: 'View articles' },
+    { module: 'kb', action: 'create', description: 'Create articles' },
+    { module: 'kb', action: 'edit', description: 'Edit articles' },
+    { module: 'kb', action: 'delete', description: 'Delete articles' },
+    { module: 'reports', action: 'view', description: 'View reports and analytics' },
+    { module: 'reports', action: 'export', description: 'Export reports' },
+    { module: 'branches', action: 'view', description: 'View branch data' },
+    { module: 'branches', action: 'create', description: 'Create branches' },
+    { module: 'branches', action: 'edit', description: 'Edit branches' },
+    { module: 'branches', action: 'delete', description: 'Close branches' },
+    { module: 'system', action: 'view', description: 'View system settings' },
+    { module: 'system', action: 'edit', description: 'Edit system settings' },
+    { module: 'system', action: 'manage_roles', description: 'Manage roles and permissions' },
+    { module: 'system', action: 'audit', description: 'View audit logs' },
+  ];
+
+  for (const perm of permissions) {
+    const exists = await repo.findOne({ where: { module: perm.module, action: perm.action } });
+    if (!exists) {
+      await repo.save(repo.create(perm));
+      console.log(`Permission seeded: ${perm.module}:${perm.action}`);
+    }
+  }
+}

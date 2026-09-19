@@ -1,0 +1,3976 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+The content has been processed where comments have been removed, content has been compressed (code blocks are separated by ⋮---- delimiter).
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src/**/*.ts, package.json, tsconfig.json, README.md
+- Files matching these patterns are excluded: **/*.spec.ts, **/*.test.ts, **/migrations/**, **/seeds/**, front/**
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Code comments have been removed from supported file types
+- Content has been compressed - code blocks are separated by ⋮---- delimiter
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  common/
+    decorators/
+      current-user.decorator.ts
+      public.decorator.ts
+      roles.decorator.ts
+    enums/
+      activity-event-type.enum.ts
+      activity-status.enum.ts
+      activity-type.enum.ts
+      actor-type.enum.ts
+      assignment-type.enum.ts
+      attempt-status.enum.ts
+      attendance-status.enum.ts
+      cert-status.enum.ts
+      chat-message-type.enum.ts
+      chat-room-type.enum.ts
+      check-in-method.enum.ts
+      course-status.enum.ts
+      document-type.enum.ts
+      employee-status.enum.ts
+      employee-type.enum.ts
+      enrollment-status.enum.ts
+      financial-transaction-type.enum.ts
+      follow-up-status.enum.ts
+      group-mode.enum.ts
+      group-status.enum.ts
+      installment-status.enum.ts
+      inventory-category.enum.ts
+      inventory-status.enum.ts
+      invoice-item-type.enum.ts
+      invoice-status.enum.ts
+      item-condition.enum.ts
+      kb-visibility.enum.ts
+      lead-source.enum.ts
+      lead-status.enum.ts
+      leave-status.enum.ts
+      leave-type.enum.ts
+      lesson-type.enum.ts
+      notification-channel.enum.ts
+      payment-method.enum.ts
+      payment-status.enum.ts
+      payroll-entry-status.enum.ts
+      payroll-status.enum.ts
+      post-status.enum.ts
+      promo-type.enum.ts
+      question-type.enum.ts
+      refund-reason.enum.ts
+      refund-status.enum.ts
+      registration-status.enum.ts
+      release-type.enum.ts
+      resource-access.enum.ts
+      resource-type.enum.ts
+      slot-status.enum.ts
+      stock-move-type.enum.ts
+      strike-action.enum.ts
+      student-status.enum.ts
+      submission-status.enum.ts
+      test-status.enum.ts
+      testimonial-status.enum.ts
+      transaction-direction.enum.ts
+      user-status.enum.ts
+      violation-action.enum.ts
+    filters/
+      http-exception.filter.ts
+    guards/
+      jwt-auth.guard.ts
+      roles.guard.ts
+    interceptors/
+      transform.interceptor.ts
+    pipes/
+      uuid-validation.pipe.ts
+  database/
+    data-source.ts
+    database.module.ts
+  modules/
+    activities/
+      activities.controller.ts
+      activities.module.ts
+      activities.service.ts
+    attendance/
+      attendance.controller.ts
+      attendance.module.ts
+      attendance.service.ts
+    auth/
+      dto/
+        login.dto.ts
+        refresh-token.dto.ts
+        register.dto.ts
+      strategies/
+        jwt.strategy.ts
+      auth.controller.ts
+      auth.module.ts
+      auth.service.ts
+    branches/
+      branches.controller.ts
+      branches.module.ts
+      branches.service.ts
+    certificates/
+      dto/
+        create-certificate.dto.ts
+        create-template.dto.ts
+      certificates.controller.ts
+      certificates.module.ts
+      certificates.service.ts
+    chat/
+      dto/
+        create-room.dto.ts
+        join-room.dto.ts
+        moderate-user.dto.ts
+        send-message.dto.ts
+        violation-query.dto.ts
+      guards/
+        ws-jwt.guard.ts
+      chat.controller.ts
+      chat.gateway.ts
+      chat.module.ts
+      chat.service.ts
+    classrooms/
+      classrooms.controller.ts
+      classrooms.module.ts
+      classrooms.service.ts
+    courses/
+      courses.controller.ts
+      courses.module.ts
+      courses.service.ts
+    enrollments/
+      dto/
+        create-enrollment.dto.ts
+        update-enrollment-status.dto.ts
+      enrollments.controller.ts
+      enrollments.module.ts
+      enrollments.service.ts
+    finance/
+      dto/
+        approve-refund.dto.ts
+        create-invoice.dto.ts
+        create-payment.dto.ts
+        create-promo-code.dto.ts
+        create-refund.dto.ts
+        query-invoice.dto.ts
+      finance.controller.ts
+      finance.module.ts
+      finance.service.ts
+    groups/
+      dto/
+        create-group.dto.ts
+        update-group.dto.ts
+      groups.controller.ts
+      groups.module.ts
+      groups.service.ts
+    health/
+      health.controller.ts
+      health.module.ts
+    hr/
+      hr.controller.ts
+      hr.module.ts
+      hr.service.ts
+    inventory/
+      inventory.controller.ts
+      inventory.module.ts
+      inventory.service.ts
+    kb/
+      kb.controller.ts
+      kb.module.ts
+      kb.service.ts
+    leads/
+      leads.controller.ts
+      leads.module.ts
+      leads.service.ts
+    lms/
+      dto/
+        create-lesson.dto.ts
+        create-module.dto.ts
+      lms.controller.ts
+      lms.module.ts
+      lms.service.ts
+    notifications/
+      notifications.controller.ts
+      notifications.module.ts
+      notifications.service.ts
+    placement-tests/
+      placement-tests.controller.ts
+      placement-tests.module.ts
+      placement-tests.service.ts
+    public/
+      public.controller.ts
+      public.module.ts
+      public.service.ts
+    reports/
+      reports.controller.ts
+      reports.module.ts
+      reports.service.ts
+    roles/
+      roles.controller.ts
+      roles.module.ts
+      roles.service.ts
+    sessions/
+      sessions.controller.ts
+      sessions.module.ts
+      sessions.service.ts
+    students/
+      students.controller.ts
+      students.module.ts
+      students.service.ts
+    users/
+      users.controller.ts
+      users.module.ts
+      users.service.ts
+    waitlists/
+      waitlists.controller.ts
+      waitlists.module.ts
+      waitlists.service.ts
+  shared/
+    entities/
+      activity-photo.entity.ts
+      activity-registration.entity.ts
+      activity.entity.ts
+      assignment.entity.ts
+      attendance.entity.ts
+      audit-log.entity.ts
+      blog-post.entity.ts
+      branch.entity.ts
+      certificate-template.entity.ts
+      certificate.entity.ts
+      chat-message.entity.ts
+      chat-room-member.entity.ts
+      chat-room.entity.ts
+      chat-strike.entity.ts
+      chat-violation.entity.ts
+      classroom.entity.ts
+      course-material.entity.ts
+      course-prerequisite.entity.ts
+      course.entity.ts
+      employee-document.entity.ts
+      employee.entity.ts
+      enrollment.entity.ts
+      financial-transaction.entity.ts
+      follow-up.entity.ts
+      gradebook-category.entity.ts
+      gradebook-entry.entity.ts
+      group-schedule.entity.ts
+      group-student.entity.ts
+      group.entity.ts
+      index.ts
+      installment.entity.ts
+      inventory-item.entity.ts
+      invoice-item.entity.ts
+      invoice.entity.ts
+      kb-article-version.entity.ts
+      kb-article.entity.ts
+      kb-category.entity.ts
+      lead-activity.entity.ts
+      lead-tag-pivot.entity.ts
+      lead-tag.entity.ts
+      lead.entity.ts
+      leave-request.entity.ts
+      lms-lesson.entity.ts
+      lms-module.entity.ts
+      lms-resource.entity.ts
+      notification-preference.entity.ts
+      notification.entity.ts
+      page-view.entity.ts
+      payment.entity.ts
+      payroll-entry.entity.ts
+      payroll-period.entity.ts
+      permission.entity.ts
+      placement-test-answer.entity.ts
+      placement-test.entity.ts
+      promo-code.entity.ts
+      quiz-attempt.entity.ts
+      quiz-question.entity.ts
+      quiz.entity.ts
+      referral.entity.ts
+      refund.entity.ts
+      role.entity.ts
+      sales-target.entity.ts
+      session.entity.ts
+      setting.entity.ts
+      stock-level.entity.ts
+      stock-move.entity.ts
+      student-item-issue.entity.ts
+      student-level-history.entity.ts
+      student-profile.entity.ts
+      student-survey.entity.ts
+      student.entity.ts
+      submission.entity.ts
+      teacher-availability.entity.ts
+      teacher-evaluation.entity.ts
+      test-question.entity.ts
+      test-slot.entity.ts
+      testimonial.entity.ts
+      user-role.entity.ts
+      user.entity.ts
+      waitlist.entity.ts
+  app.module.ts
+  main.ts
+package.json
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/common/decorators/current-user.decorator.ts">
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+</file>
+
+<file path="src/common/decorators/public.decorator.ts">
+import { SetMetadata } from '@nestjs/common';
+⋮----
+export const Public = ()
+</file>
+
+<file path="src/common/decorators/roles.decorator.ts">
+import { SetMetadata } from '@nestjs/common';
+⋮----
+export const Roles = (...roles: string[])
+⋮----
+export const Permissions = (...permissions: string[])
+</file>
+
+<file path="src/common/enums/activity-event-type.enum.ts">
+export enum ActivityEventType {
+  MOVIE_NIGHT = 'movie_night',
+  CONVERSATION_CLUB = 'conversation_club',
+  TRIP = 'trip',
+  CONTEST = 'contest',
+  WORKSHOP = 'workshop',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/activity-status.enum.ts">
+export enum ActivityStatus {
+  UPCOMING = 'upcoming',
+  OPEN = 'open',
+  FULL = 'full',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+</file>
+
+<file path="src/common/enums/activity-type.enum.ts">
+export enum ActivityType {
+  CALL = 'call',
+  NOTE = 'note',
+  FOLLOW_UP = 'follow_up',
+  STATUS_CHANGE = 'status_change',
+  EMAIL = 'email',
+  VISIT = 'visit',
+}
+</file>
+
+<file path="src/common/enums/actor-type.enum.ts">
+export enum ActorType {
+  USER = 'user',
+  SYSTEM = 'system',
+  API = 'api',
+}
+</file>
+
+<file path="src/common/enums/assignment-type.enum.ts">
+export enum AssignmentType {
+  TEXT = 'text',
+  FILE_UPLOAD = 'file_upload',
+  MIXED = 'mixed',
+}
+</file>
+
+<file path="src/common/enums/attempt-status.enum.ts">
+export enum AttemptStatus {
+  IN_PROGRESS = 'in_progress',
+  SUBMITTED = 'submitted',
+  GRADED = 'graded',
+  ABANDONED = 'abandoned',
+}
+</file>
+
+<file path="src/common/enums/attendance-status.enum.ts">
+export enum AttendanceStatus {
+  PRESENT = 'present',
+  ABSENT = 'absent',
+  LATE = 'late',
+  EXCUSED = 'excused',
+}
+</file>
+
+<file path="src/common/enums/cert-status.enum.ts">
+export enum CertStatus {
+  ACTIVE = 'active',
+  REVOKED = 'revoked',
+  EXPIRED = 'expired',
+}
+</file>
+
+<file path="src/common/enums/chat-message-type.enum.ts">
+export enum ChatMessageType {
+  TEXT = 'text',
+  EMOJI = 'emoji',
+  IMAGE = 'image',
+  FILE = 'file',
+  SYSTEM = 'system',
+}
+</file>
+
+<file path="src/common/enums/chat-room-type.enum.ts">
+export enum ChatRoomType {
+  ONE_ON_ONE = 'one_on_one',
+  GROUP = 'group',
+  ANNOUNCEMENT = 'announcement',
+}
+</file>
+
+<file path="src/common/enums/check-in-method.enum.ts">
+export enum CheckInMethod {
+  MANUAL = 'manual',
+  QR_CODE = 'qr_code',
+  SELF_PORTAL = 'self_portal',
+  AUTO = 'auto',
+}
+</file>
+
+<file path="src/common/enums/course-status.enum.ts">
+export enum CourseStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  ARCHIVED = 'archived',
+}
+</file>
+
+<file path="src/common/enums/document-type.enum.ts">
+export enum DocumentType {
+  CONTRACT = 'contract',
+  ID = 'id',
+  CERTIFICATE = 'certificate',
+  VISA = 'visa',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/employee-status.enum.ts">
+export enum EmployeeStatus {
+  ACTIVE = 'active',
+  ON_LEAVE = 'on_leave',
+  TERMINATED = 'terminated',
+  SUSPENDED = 'suspended',
+}
+</file>
+
+<file path="src/common/enums/employee-type.enum.ts">
+export enum EmployeeType {
+  FULL_TIME = 'full_time',
+  PART_TIME = 'part_time',
+  CONTRACT = 'contract',
+  HOURLY = 'hourly',
+}
+</file>
+
+<file path="src/common/enums/enrollment-status.enum.ts">
+export enum EnrollmentStatus {
+  PENDING = 'pending',
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+  DROPPED = 'dropped',
+  TRANSFERRED = 'transferred',
+}
+</file>
+
+<file path="src/common/enums/financial-transaction-type.enum.ts">
+export enum FinancialTransactionType {
+  PAYMENT = 'payment',
+  REFUND = 'refund',
+  EXPENSE = 'expense',
+  ADJUSTMENT = 'adjustment',
+}
+</file>
+
+<file path="src/common/enums/follow-up-status.enum.ts">
+export enum FollowUpStatus {
+  PENDING = 'pending',
+  COMPLETED = 'completed',
+  OVERDUE = 'overdue',
+  CANCELLED = 'cancelled',
+}
+</file>
+
+<file path="src/common/enums/group-mode.enum.ts">
+export enum GroupMode {
+  IN_PERSON = 'in_person',
+  ONLINE = 'online',
+  HYBRID = 'hybrid',
+}
+</file>
+
+<file path="src/common/enums/group-status.enum.ts">
+export enum GroupStatus {
+  UPCOMING = 'upcoming',
+  ACTIVE = 'active',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+</file>
+
+<file path="src/common/enums/installment-status.enum.ts">
+export enum InstallmentStatus {
+  PENDING = 'pending',
+  PAID = 'paid',
+  OVERDUE = 'overdue',
+  PARTIAL = 'partial',
+}
+</file>
+
+<file path="src/common/enums/inventory-category.enum.ts">
+export enum InventoryCategory {
+  BOOK = 'book',
+  WORKBOOK = 'workbook',
+  MERCHANDISE = 'merchandise',
+  STATIONERY = 'stationery',
+  EQUIPMENT = 'equipment',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/inventory-status.enum.ts">
+export enum InventoryStatus {
+  ACTIVE = 'active',
+  DISCONTINUED = 'discontinued',
+  ARCHIVED = 'archived',
+}
+</file>
+
+<file path="src/common/enums/invoice-item-type.enum.ts">
+export enum InvoiceItemType {
+  COURSE = 'course',
+  REGISTRATION_FEE = 'registration_fee',
+  BOOK = 'book',
+  EXAM = 'exam',
+  CERTIFICATE = 'certificate',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/invoice-status.enum.ts">
+export enum InvoiceStatus {
+  UNPAID = 'unpaid',
+  PARTIAL = 'partial',
+  PAID = 'paid',
+  OVERDUE = 'overdue',
+  CANCELLED = 'cancelled',
+  REFUNDED = 'refunded',
+}
+</file>
+
+<file path="src/common/enums/item-condition.enum.ts">
+export enum ItemCondition {
+  GOOD = 'good',
+  DAMAGED = 'damaged',
+  LOST = 'lost',
+}
+</file>
+
+<file path="src/common/enums/kb-visibility.enum.ts">
+export enum KbVisibility {
+  STAFF = 'staff',
+  MANAGER = 'manager',
+  ADMIN = 'admin',
+  TEACHER = 'teacher',
+  PUBLIC = 'public',
+}
+</file>
+
+<file path="src/common/enums/lead-source.enum.ts">
+export enum LeadSource {
+  WALK_IN = 'walk_in',
+  WEBSITE = 'website',
+  REFERRAL = 'referral',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/lead-status.enum.ts">
+export enum LeadStatus {
+  NEW = 'new',
+  CONTACTED = 'contacted',
+  INTERESTED = 'interested',
+  TEST_SCHEDULED = 'test_scheduled',
+  ENROLLED = 'enrolled',
+  LOST = 'lost',
+}
+</file>
+
+<file path="src/common/enums/leave-status.enum.ts">
+export enum LeaveStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  CANCELLED = 'cancelled',
+}
+</file>
+
+<file path="src/common/enums/leave-type.enum.ts">
+export enum LeaveType {
+  ANNUAL = 'annual',
+  SICK = 'sick',
+  EMERGENCY = 'emergency',
+  UNPAID = 'unpaid',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/lesson-type.enum.ts">
+export enum LessonType {
+  CONTENT = 'content',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  INTERACTIVE = 'interactive',
+}
+</file>
+
+<file path="src/common/enums/notification-channel.enum.ts">
+export enum NotificationChannel {
+  IN_APP = 'in_app',
+  EMAIL = 'email',
+}
+</file>
+
+<file path="src/common/enums/payment-method.enum.ts">
+export enum PaymentMethod {
+  CASH = 'cash',
+  BANK_TRANSFER = 'bank_transfer',
+  EASykASH = 'easykash',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/payment-status.enum.ts">
+export enum PaymentStatus {
+  PENDING = 'pending',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  REFUNDED = 'refunded',
+}
+</file>
+
+<file path="src/common/enums/payroll-entry-status.enum.ts">
+export enum PayrollEntryStatus {
+  DRAFT = 'draft',
+  APPROVED = 'approved',
+  PAID = 'paid',
+  DISPUTED = 'disputed',
+}
+</file>
+
+<file path="src/common/enums/payroll-status.enum.ts">
+export enum PayrollStatus {
+  OPEN = 'open',
+  PROCESSING = 'processing',
+  CLOSED = 'closed',
+  EXPORTED = 'exported',
+}
+</file>
+
+<file path="src/common/enums/post-status.enum.ts">
+export enum PostStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+  ARCHIVED = 'archived',
+}
+</file>
+
+<file path="src/common/enums/promo-type.enum.ts">
+export enum PromoType {
+  PERCENTAGE = 'percentage',
+  FIXED_AMOUNT = 'fixed_amount',
+}
+</file>
+
+<file path="src/common/enums/question-type.enum.ts">
+export enum QuestionType {
+  MCQ = 'mcq',
+  FILL_BLANK = 'fill_blank',
+  MATCHING = 'matching',
+  TRUE_FALSE = 'true_false',
+  ORDERING = 'ordering',
+  SHORT_ANSWER = 'short_answer',
+}
+</file>
+
+<file path="src/common/enums/refund-reason.enum.ts">
+export enum RefundReason {
+  COURSE_CANCELLATION = 'course_cancellation',
+  STUDENT_WITHDRAWAL = 'student_withdrawal',
+  DUPLICATE_PAYMENT = 'duplicate_payment',
+  ERROR = 'error',
+  OTHER = 'other',
+}
+</file>
+
+<file path="src/common/enums/refund-status.enum.ts">
+export enum RefundStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  PROCESSED = 'processed',
+  REJECTED = 'rejected',
+}
+</file>
+
+<file path="src/common/enums/registration-status.enum.ts">
+export enum RegistrationStatus {
+  REGISTERED = 'registered',
+  ATTENDED = 'attended',
+  NO_SHOW = 'no_show',
+  CANCELLED = 'cancelled',
+}
+</file>
+
+<file path="src/common/enums/release-type.enum.ts">
+export enum ReleaseType {
+  INSTANT = 'instant',
+  AFTER_REVIEW = 'after_review',
+  SCHEDULED = 'scheduled',
+}
+</file>
+
+<file path="src/common/enums/resource-access.enum.ts">
+export enum ResourceAccess {
+  ENROLLED = 'enrolled',
+  PUBLIC = 'public',
+  RESTRICTED = 'restricted',
+}
+</file>
+
+<file path="src/common/enums/resource-type.enum.ts">
+export enum ResourceType {
+  FILE = 'file',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  LINK = 'link',
+  PDF = 'pdf',
+}
+</file>
+
+<file path="src/common/enums/slot-status.enum.ts">
+export enum SlotStatus {
+  OPEN = 'open',
+  FULL = 'full',
+  CANCELLED = 'cancelled',
+  COMPLETED = 'completed',
+}
+</file>
+
+<file path="src/common/enums/stock-move-type.enum.ts">
+export enum StockMoveType {
+  IN = 'in',
+  OUT = 'out',
+  ADJUSTMENT = 'adjustment',
+  RETURN = 'return',
+  TRANSFER_IN = 'transfer_in',
+  TRANSFER_OUT = 'transfer_out',
+}
+</file>
+
+<file path="src/common/enums/strike-action.enum.ts">
+export enum StrikeAction {
+  WARNING = 'warning',
+  MUTE_24H = 'mute_24h',
+  BAN_PERMANENT = 'ban_permanent',
+}
+</file>
+
+<file path="src/common/enums/student-status.enum.ts">
+export enum StudentStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  GRADUATED = 'graduated',
+  DROPPED = 'dropped',
+  SUSPENDED = 'suspended',
+}
+</file>
+
+<file path="src/common/enums/submission-status.enum.ts">
+export enum SubmissionStatus {
+  SUBMITTED = 'submitted',
+  GRADED = 'graded',
+  RETURNED = 'returned',
+  RESUBMITTED = 'resubmitted',
+}
+</file>
+
+<file path="src/common/enums/test-status.enum.ts">
+export enum TestStatus {
+  SCHEDULED = 'scheduled',
+  IN_PROGRESS = 'in_progress',
+  COMPLETED = 'completed',
+  NO_SHOW = 'no_show',
+  CANCELLED = 'cancelled',
+}
+</file>
+
+<file path="src/common/enums/testimonial-status.enum.ts">
+export enum TestimonialStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+</file>
+
+<file path="src/common/enums/transaction-direction.enum.ts">
+export enum TransactionDirection {
+  IN = 'in',
+  OUT = 'out',
+}
+</file>
+
+<file path="src/common/enums/user-status.enum.ts">
+export enum UserStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  SUSPENDED = 'suspended',
+  PENDING = 'pending',
+}
+</file>
+
+<file path="src/common/enums/violation-action.enum.ts">
+export enum ViolationAction {
+  BLOCKED = 'blocked',
+  WARNED = 'warned',
+  FLAGGED_ONLY = 'flagged_only',
+}
+</file>
+
+<file path="src/common/filters/http-exception.filter.ts">
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
+import { Response } from 'express';
+⋮----
+export class HttpExceptionFilter implements ExceptionFilter
+⋮----
+catch(exception: HttpException, host: ArgumentsHost)
+</file>
+
+<file path="src/common/guards/jwt-auth.guard.ts">
+import { ExecutionContext, Injectable } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { AuthGuard } from '@nestjs/passport';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+⋮----
+export class JwtAuthGuard extends AuthGuard('jwt')
+⋮----
+constructor(private reflector: Reflector)
+⋮----
+canActivate(context: ExecutionContext)
+</file>
+
+<file path="src/common/guards/roles.guard.ts">
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { ROLES_KEY, PERMISSIONS_KEY } from '../decorators/roles.decorator';
+⋮----
+export class RolesGuard implements CanActivate
+⋮----
+constructor(private reflector: Reflector)
+⋮----
+canActivate(context: ExecutionContext): boolean
+</file>
+
+<file path="src/common/interceptors/transform.interceptor.ts">
+import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+⋮----
+export interface Response<T> {
+  success: boolean;
+  data: T;
+  timestamp: string;
+  path: string;
+}
+⋮----
+export class TransformInterceptor<T> implements NestInterceptor<T, Response<T>>
+⋮----
+intercept(context: ExecutionContext, next: CallHandler): Observable<Response<T>>
+</file>
+
+<file path="src/common/pipes/uuid-validation.pipe.ts">
+import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+import { isUUID } from 'class-validator';
+⋮----
+export class UUIDValidationPipe implements PipeTransform
+⋮----
+transform(value: string)
+</file>
+
+<file path="src/database/data-source.ts">
+import { DataSource, DataSourceOptions } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
+import { config } from 'dotenv';
+</file>
+
+<file path="src/database/database.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource, DataSourceOptions } from 'typeorm';
+⋮----
+export class DatabaseModule
+</file>
+
+<file path="src/modules/activities/activities.controller.ts">
+import { Controller, Get, Post, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ActivitiesService } from './activities.service';
+⋮----
+export class ActivitiesController
+⋮----
+constructor(private readonly service: ActivitiesService)
+⋮----
+create(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+findAll(@Query() query: any, @CurrentUser() user: any)
+⋮----
+findOne(@Param('id', ParseUUIDPipe) id: string)
+⋮----
+register(@Body() dto: any)
+⋮----
+addPhoto(@Body() dto: any, @CurrentUser() user: any)
+</file>
+
+<file path="src/modules/activities/activities.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Activity } from '../../shared/entities/activity.entity';
+import { ActivityRegistration } from '../../shared/entities/activity-registration.entity';
+import { ActivityPhoto } from '../../shared/entities/activity-photo.entity';
+import { ActivitiesController } from './activities.controller';
+import { ActivitiesService } from './activities.service';
+⋮----
+export class ActivitiesModule
+</file>
+
+<file path="src/modules/activities/activities.service.ts">
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Activity } from '../../shared/entities/activity.entity';
+import { ActivityRegistration } from '../../shared/entities/activity-registration.entity';
+import { ActivityPhoto } from '../../shared/entities/activity-photo.entity';
+import { RegistrationStatus } from '../../common/enums/registration-status.enum';
+⋮----
+export class ActivitiesService
+⋮----
+constructor(
+⋮----
+async create(dto: any, userId: string)
+⋮----
+async findAll(query: any, user: any)
+⋮----
+async findOne(id: string)
+⋮----
+async register(dto: any)
+⋮----
+async addPhoto(dto: any, userId: string)
+</file>
+
+<file path="src/modules/attendance/attendance.controller.ts">
+import { Controller } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { AttendancesService } from './attendance.service';
+⋮----
+export class AttendancesController
+⋮----
+constructor(private readonly service: AttendancesService)
+</file>
+
+<file path="src/modules/attendance/attendance.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Attendance } from '../../shared/entities/attendance.entity';
+import { AttendancesController } from './attendance.controller';
+import { AttendancesService } from './attendance.service';
+⋮----
+export class AttendancesModule
+</file>
+
+<file path="src/modules/attendance/attendance.service.ts">
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Attendance } from '../../shared/entities/attendance.entity';
+⋮----
+export class AttendancesService
+⋮----
+constructor(
+</file>
+
+<file path="src/modules/auth/dto/login.dto.ts">
+import { IsEmail, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+⋮----
+export class LoginDto
+</file>
+
+<file path="src/modules/auth/dto/refresh-token.dto.ts">
+import { IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+⋮----
+export class RefreshTokenDto
+</file>
+
+<file path="src/modules/auth/dto/register.dto.ts">
+import { IsEmail, IsString, MinLength, IsOptional, IsUUID, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class RegisterDto
+</file>
+
+<file path="src/modules/auth/strategies/jwt.strategy.ts">
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../../../shared/entities/user.entity';
+import { UserRole } from '../../../shared/entities/user-role.entity';
+import { Role } from '../../../shared/entities/role.entity';
+⋮----
+export class JwtStrategy extends PassportStrategy(Strategy)
+⋮----
+constructor(
+    private configService: ConfigService,
+    @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(UserRole) private userRoleRepo: Repository<UserRole>,
+    @InjectRepository(Role) private roleRepo: Repository<Role>,
+)
+⋮----
+async validate(payload: any)
+</file>
+
+<file path="src/modules/auth/auth.controller.ts">
+import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator';
+import { AuthService } from './auth.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+⋮----
+export class AuthController
+⋮----
+constructor(private authService: AuthService)
+⋮----
+register(@Body() dto: RegisterDto)
+⋮----
+login(@Body() dto: LoginDto)
+⋮----
+refresh(@Body() dto: RefreshTokenDto)
+</file>
+
+<file path="src/modules/auth/auth.module.ts">
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { User } from '../../shared/entities/user.entity';
+import { UserRole } from '../../shared/entities/user-role.entity';
+import { Role } from '../../shared/entities/role.entity';
+import { Permission } from '../../shared/entities/permission.entity';
+⋮----
+export class AuthModule
+</file>
+
+<file path="src/modules/auth/auth.service.ts">
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+⋮----
+import { User } from '../../shared/entities/user.entity';
+import { UserRole } from '../../shared/entities/user-role.entity';
+import { Role } from '../../shared/entities/role.entity';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
+⋮----
+export class AuthService
+⋮----
+constructor(
+⋮----
+async register(dto: RegisterDto)
+⋮----
+async login(dto: LoginDto)
+⋮----
+async refresh(dto: RefreshTokenDto)
+⋮----
+private buildAuthResponse(user: User)
+</file>
+
+<file path="src/modules/branches/branches.controller.ts">
+import { Controller, Get, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { BranchsService } from './branches.service';
+⋮----
+export class BranchsController
+⋮----
+constructor(private readonly service: BranchsService)
+⋮----
+async findAll()
+⋮----
+async findOne(@Param('id') id: string)
+</file>
+
+<file path="src/modules/branches/branches.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Branch } from '../../shared/entities/branch.entity';
+import { BranchsController } from './branches.controller';
+import { BranchsService } from './branches.service';
+⋮----
+export class BranchesModule
+</file>
+
+<file path="src/modules/branches/branches.service.ts">
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Branch } from '../../shared/entities/branch.entity';
+⋮----
+export class BranchsService
+⋮----
+constructor(
+⋮----
+async findAll(): Promise<Branch[]>
+⋮----
+async findOne(id: string): Promise<Branch>
+</file>
+
+<file path="src/modules/certificates/dto/create-certificate.dto.ts">
+import { IsUUID, IsOptional, IsString, IsDateString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class CreateCertificateDto
+</file>
+
+<file path="src/modules/certificates/dto/create-template.dto.ts">
+import { IsString, IsOptional, IsUUID, IsJSON } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class CreateTemplateDto
+</file>
+
+<file path="src/modules/certificates/certificates.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { Public } from '../../common/decorators/public.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CertificatesService } from './certificates.service';
+import { CreateCertificateDto } from './dto/create-certificate.dto';
+import { CreateTemplateDto } from './dto/create-template.dto';
+⋮----
+export class CertificatesController
+⋮----
+constructor(private readonly service: CertificatesService)
+⋮----
+createTemplate(@Body() dto: CreateTemplateDto, @CurrentUser() user: any)
+⋮----
+findTemplates(@Query() query: any)
+⋮----
+issue(@Body() dto: CreateCertificateDto, @CurrentUser() user: any)
+⋮----
+bulkIssue(
+    @Body('group_id', ParseUUIDPipe) groupId: string,
+    @Body('template_id', ParseUUIDPipe) templateId: string,
+    @CurrentUser() user: any,
+)
+⋮----
+findAll(@Query() query: any, @CurrentUser() user: any)
+⋮----
+findOne(@Param('id', ParseUUIDPipe) id: string)
+⋮----
+verify(@Param('code') code: string)
+⋮----
+revoke(@Param('id', ParseUUIDPipe) id: string, @Body('reason') reason: string)
+</file>
+
+<file path="src/modules/certificates/certificates.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Certificate } from '../../shared/entities/certificate.entity';
+import { CertificateTemplate } from '../../shared/entities/certificate-template.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { CertificatesController } from './certificates.controller';
+import { CertificatesService } from './certificates.service';
+⋮----
+export class CertificatesModule
+</file>
+
+<file path="src/modules/certificates/certificates.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Certificate } from '../../shared/entities/certificate.entity';
+import { CertificateTemplate } from '../../shared/entities/certificate-template.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { CertStatus } from '../../common/enums/cert-status.enum';
+import { CreateCertificateDto } from './dto/create-certificate.dto';
+import { CreateTemplateDto } from './dto/create-template.dto';
+⋮----
+export class CertificatesService
+⋮----
+constructor(
+⋮----
+async createTemplate(dto: CreateTemplateDto, userId: string)
+⋮----
+async findTemplates(query: any)
+⋮----
+async issue(dto: CreateCertificateDto, userId: string)
+⋮----
+async bulkIssue(groupId: string, templateId: string, userId: string)
+⋮----
+async findAll(query: any, user: any)
+⋮----
+async findOne(id: string)
+⋮----
+async verify(code: string)
+⋮----
+async revoke(id: string, reason: string)
+</file>
+
+<file path="src/modules/chat/dto/create-room.dto.ts">
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ChatRoomType } from '../../../common/enums/chat-room-type.enum';
+⋮----
+export class CreateRoomDto
+</file>
+
+<file path="src/modules/chat/dto/join-room.dto.ts">
+import { IsUUID } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+⋮----
+export class JoinRoomDto
+</file>
+
+<file path="src/modules/chat/dto/moderate-user.dto.ts">
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class ModerateUserDto
+</file>
+
+<file path="src/modules/chat/dto/send-message.dto.ts">
+import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ChatMessageType } from '../../../common/enums/chat-message-type.enum';
+⋮----
+export class SendMessageDto
+</file>
+
+<file path="src/modules/chat/dto/violation-query.dto.ts">
+import { IsOptional, IsString, IsUUID, IsBoolean } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class ViolationQueryDto
+</file>
+
+<file path="src/modules/chat/guards/ws-jwt.guard.ts">
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+⋮----
+export class WsJwtGuard implements CanActivate
+⋮----
+constructor(private readonly jwtService: JwtService)
+⋮----
+canActivate(context: ExecutionContext): boolean
+</file>
+
+<file path="src/modules/chat/chat.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ChatService } from './chat.service';
+import { CreateRoomDto } from './dto/create-room.dto';
+import { SendMessageDto } from './dto/send-message.dto';
+import { ModerateUserDto } from './dto/moderate-user.dto';
+import { ViolationQueryDto } from './dto/violation-query.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Roles } from '../../common/decorators/roles.decorator';
+⋮----
+export class ChatController
+⋮----
+constructor(private readonly chatService: ChatService)
+⋮----
+createRoom(@Body() dto: CreateRoomDto, @CurrentUser() user: any)
+⋮----
+findRooms(@CurrentUser() user: any)
+⋮----
+getRoom(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any)
+⋮----
+getMessages(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('offset') offset?: number,
+    @Query('limit') limit?: number,
+    @CurrentUser() user?: any,
+)
+⋮----
+sendMessage(@Body() dto: SendMessageDto, @CurrentUser() user: any)
+⋮----
+editMessage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('body') body: string,
+    @CurrentUser() user: any,
+)
+⋮----
+deleteMessage(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any)
+⋮----
+moderateUser(@Body() dto: ModerateUserDto, @CurrentUser() user: any)
+⋮----
+getViolations(@Query() query: ViolationQueryDto)
+⋮----
+resolveViolation(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('note') note: string,
+    @Body('is_false_positive') isFalsePositive: boolean,
+    @CurrentUser() user: any,
+)
+⋮----
+getStrikes(@CurrentUser() user: any)
+</file>
+
+<file path="src/modules/chat/chat.gateway.ts">
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  MessageBody,
+  ConnectedSocket,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { UseGuards } from '@nestjs/common';
+import { ChatService } from './chat.service';
+import { SendMessageDto } from './dto/send-message.dto';
+import { JoinRoomDto } from './dto/join-room.dto';
+import { WsJwtGuard } from './guards/ws-jwt.guard';
+⋮----
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect
+⋮----
+constructor(private readonly chatService: ChatService)
+⋮----
+handleConnection(client: Socket)
+⋮----
+handleDisconnect(client: Socket)
+⋮----
+async handleJoinRoom(
+    @MessageBody() dto: JoinRoomDto,
+    @ConnectedSocket() client: Socket,
+)
+⋮----
+async handleLeaveRoom(
+    @MessageBody() dto: JoinRoomDto,
+    @ConnectedSocket() client: Socket,
+)
+⋮----
+async handleSendMessage(
+    @MessageBody() dto: SendMessageDto,
+    @ConnectedSocket() client: Socket,
+)
+⋮----
+// Log violation but don't save the message
+⋮----
+async handleTyping(
+    @MessageBody() data: { room_id: string; is_typing: boolean },
+    @ConnectedSocket() client: Socket,
+)
+⋮----
+async handleMarkRead(
+    @MessageBody() data: { room_id: string },
+    @ConnectedSocket() client: Socket,
+)
+</file>
+
+<file path="src/modules/chat/chat.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
+import { ChatGateway } from './chat.gateway';
+import { ChatService } from './chat.service';
+import { ChatController } from './chat.controller';
+import { ChatRoom } from '../../shared/entities/chat-room.entity';
+import { ChatRoomMember } from '../../shared/entities/chat-room-member.entity';
+import { ChatMessage } from '../../shared/entities/chat-message.entity';
+import { ChatViolation } from '../../shared/entities/chat-violation.entity';
+import { ChatStrike } from '../../shared/entities/chat-strike.entity';
+import { User } from '../../shared/entities/user.entity';
+import { WsJwtGuard } from './guards/ws-jwt.guard';
+⋮----
+export class ChatModule
+</file>
+
+<file path="src/modules/chat/chat.service.ts">
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, LessThan } from 'typeorm';
+import { ChatRoom } from '../../shared/entities/chat-room.entity';
+import { ChatRoomMember } from '../../shared/entities/chat-room-member.entity';
+import { ChatMessage } from '../../shared/entities/chat-message.entity';
+import { ChatViolation } from '../../shared/entities/chat-violation.entity';
+import { ChatStrike } from '../../shared/entities/chat-strike.entity';
+import { User } from '../../shared/entities/user.entity';
+import { CreateRoomDto } from './dto/create-room.dto';
+import { SendMessageDto } from './dto/send-message.dto';
+import { ModerateUserDto } from './dto/moderate-user.dto';
+import { ViolationQueryDto } from './dto/violation-query.dto';
+import { ChatMessageType } from '../../common/enums/chat-message-type.enum';
+import { ViolationAction } from '../../common/enums/violation-action.enum';
+import { StrikeAction } from '../../common/enums/strike-action.enum';
+⋮----
+export class ChatService
+⋮----
+constructor(
+⋮----
+async createRoom(dto: CreateRoomDto, userId: string)
+⋮----
+async findRooms(userId: string)
+⋮----
+async getRoom(roomId: string, userId: string)
+⋮----
+async saveMessage(dto: SendMessageDto, senderId: string)
+⋮----
+async getMessages(roomId: string, userId: string, offset = 0, limit = 50)
+⋮----
+async editMessage(messageId: string, userId: string, body: string)
+⋮----
+async deleteMessage(messageId: string, userId: string)
+⋮----
+async moderateUser(dto: ModerateUserDto, moderatorId: string)
+⋮----
+async logViolation(
+    messageId: string,
+    roomId: string,
+    senderId: string,
+    ruleMatched: string,
+    originalMessage: string,
+    actionTaken: ViolationAction,
+    detectionMethod = 'text_regex',
+)
+⋮----
+private async applyStrike(userId: string, violationId: string)
+⋮----
+async getViolations(query: ViolationQueryDto)
+⋮----
+async resolveViolation(violationId: string, moderatorId: string, note?: string, isFalsePositive = false)
+⋮----
+async getUserStrikes(userId: string)
+⋮----
+scanMessage(body: string):
+⋮----
+async joinRoom(roomId: string, userId: string)
+⋮----
+async leaveRoom(roomId: string, userId: string)
+</file>
+
+<file path="src/modules/classrooms/classrooms.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { ClassroomsService } from './classrooms.service';
+import { Classroom } from '../../shared/entities/classroom.entity';
+⋮----
+export class ClassroomsController
+⋮----
+constructor(private readonly service: ClassroomsService)
+⋮----
+async create(@Body() createData: Partial<Classroom>)
+⋮----
+async findAll(@Query('branchId') branchId?: string)
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async update(@Param('id') id: string, @Body() updateData: Partial<Classroom>)
+⋮----
+async remove(@Param('id') id: string)
+</file>
+
+<file path="src/modules/classrooms/classrooms.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Classroom } from '../../shared/entities/classroom.entity';
+import { ClassroomsController } from './classrooms.controller';
+import { ClassroomsService } from './classrooms.service';
+⋮----
+export class ClassroomsModule
+</file>
+
+<file path="src/modules/classrooms/classrooms.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Classroom } from '../../shared/entities/classroom.entity';
+⋮----
+export class ClassroomsService
+⋮----
+constructor(
+⋮----
+async create(data: Partial<Classroom>): Promise<Classroom>
+⋮----
+async findAll(branchId?: string): Promise<Classroom[]>
+⋮----
+async findOne(id: string): Promise<Classroom>
+⋮----
+async update(id: string, data: Partial<Classroom>): Promise<Classroom>
+⋮----
+async remove(id: string): Promise<void>
+</file>
+
+<file path="src/modules/courses/courses.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
+import { CoursesService } from './courses.service';
+import { Course } from '../../shared/entities/course.entity';
+⋮----
+export class CoursesController
+⋮----
+constructor(private readonly service: CoursesService)
+⋮----
+async create(@Body() createData: Partial<Course>)
+⋮----
+async findAll()
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async update(@Param('id') id: string, @Body() updateData: Partial<Course>)
+⋮----
+async remove(@Param('id') id: string)
+⋮----
+async addPrerequisite(
+    @Param('id') id: string,
+    @Body('prerequisiteId') prerequisiteId: string,
+): Promise<Course>
+⋮----
+async removePrerequisite(
+    @Param('id') id: string,
+    @Param('prerequisiteId') prerequisiteId: string,
+): Promise<Course>
+</file>
+
+<file path="src/modules/courses/courses.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Course } from '../../shared/entities/course.entity';
+import { CourseMaterial } from '../../shared/entities/course-material.entity';
+import { CoursePrerequisite } from '../../shared/entities/course-prerequisite.entity';
+import { CoursesController } from './courses.controller';
+import { CoursesService } from './courses.service';
+⋮----
+export class CoursesModule
+</file>
+
+<file path="src/modules/courses/courses.service.ts">
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Course } from '../../shared/entities/course.entity';
+import { CoursePrerequisite } from '../../shared/entities/course-prerequisite.entity';
+⋮----
+export class CoursesService
+⋮----
+constructor(
+⋮----
+async create(data: Partial<Course>): Promise<Course>
+⋮----
+async findAll(): Promise<Course[]>
+⋮----
+async findOne(id: string): Promise<any>
+⋮----
+async update(id: string, data: Partial<Course>): Promise<Course>
+⋮----
+async remove(id: string): Promise<void>
+⋮----
+async addPrerequisite(courseId: string, prerequisiteCourseId: string, isStrict: boolean = true): Promise<any>
+⋮----
+async removePrerequisite(courseId: string, prerequisiteCourseId: string): Promise<any>
+</file>
+
+<file path="src/modules/enrollments/dto/create-enrollment.dto.ts">
+import { IsUUID, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { EnrollmentStatus } from '../../../common/enums/enrollment-status.enum';
+⋮----
+export class CreateEnrollmentDto
+</file>
+
+<file path="src/modules/enrollments/dto/update-enrollment-status.dto.ts">
+import { IsString, IsEnum, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { EnrollmentStatus } from '../../../common/enums/enrollment-status.enum';
+⋮----
+export class UpdateEnrollmentStatusDto
+</file>
+
+<file path="src/modules/enrollments/enrollments.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { EnrollmentsService } from './enrollments.service';
+import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
+import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
+⋮----
+export class EnrollmentsController
+⋮----
+constructor(private readonly service: EnrollmentsService)
+⋮----
+create(@Body() dto: CreateEnrollmentDto, @CurrentUser() user: any)
+⋮----
+findAll(@Query() query: any, @CurrentUser() user: any)
+⋮----
+findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any)
+⋮----
+updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateEnrollmentStatusDto,
+    @CurrentUser() user: any,
+)
+⋮----
+transfer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('group_id', ParseUUIDPipe) groupId: string,
+    @CurrentUser() user: any,
+)
+</file>
+
+<file path="src/modules/enrollments/enrollments.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupStudent } from '../../shared/entities/group-student.entity';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { PromoCode } from '../../shared/entities/promo-code.entity';
+import { EnrollmentsController } from './enrollments.controller';
+import { EnrollmentsService } from './enrollments.service';
+⋮----
+export class EnrollmentsModule
+</file>
+
+<file path="src/modules/enrollments/enrollments.service.ts">
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupStudent } from '../../shared/entities/group-student.entity';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { PromoCode } from '../../shared/entities/promo-code.entity';
+import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
+import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
+import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
+⋮----
+export class EnrollmentsService
+⋮----
+constructor(
+⋮----
+async create(dto: CreateEnrollmentDto, userId: string, branchId: string)
+⋮----
+async findAll(query: any, user: any)
+⋮----
+async findOne(id: string, user: any)
+⋮----
+async updateStatus(id: string, dto: UpdateEnrollmentStatusDto, userId: string)
+⋮----
+async transfer(id: string, newGroupId: string, userId: string)
+</file>
+
+<file path="src/modules/finance/dto/approve-refund.dto.ts">
+import { IsUUID, IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class ApproveRefundDto
+</file>
+
+<file path="src/modules/finance/dto/create-invoice.dto.ts">
+import { IsUUID, IsNumber, IsOptional, IsString, IsDateString, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+class InvoiceItemDto
+⋮----
+export class CreateInvoiceDto
+</file>
+
+<file path="src/modules/finance/dto/create-payment.dto.ts">
+import { IsUUID, IsNumber, IsString, IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PaymentMethod } from '../../../common/enums/payment-method.enum';
+⋮----
+export class CreatePaymentDto
+</file>
+
+<file path="src/modules/finance/dto/create-promo-code.dto.ts">
+import { IsString, IsNumber, IsOptional, IsEnum, IsDateString, IsJSON } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { PromoType } from '../../../common/enums/promo-type.enum';
+⋮----
+export class CreatePromoCodeDto
+</file>
+
+<file path="src/modules/finance/dto/create-refund.dto.ts">
+import { IsUUID, IsNumber, IsString, IsOptional, IsEnum } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { RefundReason } from '../../../common/enums/refund-reason.enum';
+⋮----
+export class CreateRefundDto
+</file>
+
+<file path="src/modules/finance/dto/query-invoice.dto.ts">
+import { IsOptional, IsString, IsUUID, IsDateString, IsNumber } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+⋮----
+export class QueryInvoiceDto
+</file>
+
+<file path="src/modules/finance/finance.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { FinanceService } from './finance.service';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreateRefundDto } from './dto/create-refund.dto';
+import { CreatePromoCodeDto } from './dto/create-promo-code.dto';
+import { QueryInvoiceDto } from './dto/query-invoice.dto';
+import { ApproveRefundDto } from './dto/approve-refund.dto';
+⋮----
+export class FinanceController
+⋮----
+constructor(private readonly service: FinanceService)
+⋮----
+createInvoice(@Body() dto: CreateInvoiceDto, @CurrentUser() user: any)
+⋮----
+findInvoices(@Query() query: QueryInvoiceDto, @CurrentUser() user: any)
+⋮----
+getInvoice(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any)
+⋮----
+recordPayment(@Body() dto: CreatePaymentDto, @CurrentUser() user: any)
+⋮----
+requestRefund(@Body() dto: CreateRefundDto, @CurrentUser() user: any)
+⋮----
+approveRefund(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any)
+⋮----
+processRefund(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any)
+⋮----
+createPromoCode(@Body() dto: CreatePromoCodeDto, @CurrentUser() user: any)
+⋮----
+validatePromoCode(@Query('code') code: string, @Query('courseId') courseId?: string)
+⋮----
+getRevenueReport(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: any,
+)
+⋮----
+getOutstanding(@CurrentUser() user: any)
+</file>
+
+<file path="src/modules/finance/finance.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { Payment } from '../../shared/entities/payment.entity';
+import { Installment } from '../../shared/entities/installment.entity';
+import { Refund } from '../../shared/entities/refund.entity';
+import { PromoCode } from '../../shared/entities/promo-code.entity';
+import { FinancialTransaction } from '../../shared/entities/financial-transaction.entity';
+import { InvoiceItem } from '../../shared/entities/invoice-item.entity';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+import { FinanceController } from './finance.controller';
+import { FinanceService } from './finance.service';
+⋮----
+export class FinanceModule
+</file>
+
+<file path="src/modules/finance/finance.service.ts">
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { Payment } from '../../shared/entities/payment.entity';
+import { Installment } from '../../shared/entities/installment.entity';
+import { Refund } from '../../shared/entities/refund.entity';
+import { PromoCode } from '../../shared/entities/promo-code.entity';
+import { FinancialTransaction } from '../../shared/entities/financial-transaction.entity';
+import { InvoiceItem } from '../../shared/entities/invoice-item.entity';
+import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
+import { PaymentStatus } from '../../common/enums/payment-status.enum';
+import { RefundStatus } from '../../common/enums/refund-status.enum';
+import { InstallmentStatus } from '../../common/enums/installment-status.enum';
+import { TransactionDirection } from '../../common/enums/transaction-direction.enum';
+import { FinancialTransactionType } from '../../common/enums/financial-transaction-type.enum';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreateRefundDto } from './dto/create-refund.dto';
+import { CreatePromoCodeDto } from './dto/create-promo-code.dto';
+import { QueryInvoiceDto } from './dto/query-invoice.dto';
+⋮----
+export class FinanceService
+⋮----
+constructor(
+⋮----
+async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string)
+async findInvoices(query: QueryInvoiceDto, user: any)
+⋮----
+async getInvoice(id: string, user: any)
+⋮----
+async recordPayment(dto: CreatePaymentDto, userId: string)
+⋮----
+async requestRefund(dto: CreateRefundDto, userId: string)
+⋮----
+async processRefund(id: string, userId: string)
+⋮----
+async createPromoCode(dto: CreatePromoCodeDto, userId: string)
+⋮----
+async validatePromoCode(code: string, courseId?: string, branchId?: string)
+⋮----
+async getRevenueReport(branchId: string | null, from: Date, to: Date)
+⋮----
+async getOutstandingPayments(branchId: string | null)
+⋮----
+private async syncInvoice(invoiceId: string)
+⋮----
+private async generateInvoiceNumber(): Promise<string>
+⋮----
+private async generateReceiptNumber(): Promise<string>
+</file>
+
+<file path="src/modules/groups/dto/create-group.dto.ts">
+import { IsString, IsUUID, IsOptional, IsInt, Min, IsEnum, IsDateString } from 'class-validator';
+import { GroupMode } from '../../../common/enums/group-mode.enum';
+import { GroupStatus } from '../../../common/enums/group-status.enum';
+⋮----
+export class CreateGroupDto
+</file>
+
+<file path="src/modules/groups/dto/update-group.dto.ts">
+import { PartialType } from '@nestjs/swagger';
+import { CreateGroupDto } from './create-group.dto';
+⋮----
+export class UpdateGroupDto extends PartialType(CreateGroupDto)
+</file>
+
+<file path="src/modules/groups/groups.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { GroupsService } from './groups.service';
+import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
+⋮----
+export class GroupsController
+⋮----
+constructor(private readonly service: GroupsService)
+⋮----
+async create(@Body() dto: CreateGroupDto)
+⋮----
+async findAll(
+    @Query('branchId') branchId?: string,
+    @Query('courseId') courseId?: string,
+)
+⋮----
+async checkConflicts(
+    @Query('teacherId') teacherId?: string,
+    @Query('classroomId') classroomId?: string,
+    @Query('start_time') startTime?: string,
+    @Query('end_time') endTime?: string,
+    @Query('excludeGroupId') excludeGroupId?: string,
+)
+⋮----
+async getCalendar(
+    @Query('view') view: 'day' | 'week' | 'month',
+    @Query('date') date: string,
+    @Query('teacherId') teacherId?: string,
+    @Query('classroomId') classroomId?: string,
+    @Query('branchId') branchId?: string,
+)
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async update(@Param('id') id: string, @Body() dto: UpdateGroupDto)
+⋮----
+async remove(@Param('id') id: string)
+⋮----
+async addSchedule(@Param('id') id: string, @Body() schedule: any)
+⋮----
+async removeSchedule(@Param('id') id: string, @Param('scheduleId') scheduleId: string)
+⋮----
+async assignStudent(@Param('id') id: string, @Body() body:
+⋮----
+async removeStudent(@Param('id') id: string, @Param('studentId') studentId: string)
+</file>
+
+<file path="src/modules/groups/groups.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupSchedule } from '../../shared/entities/group-schedule.entity';
+import { GroupsController } from './groups.controller';
+import { GroupsService } from './groups.service';
+⋮----
+export class GroupsModule
+</file>
+
+<file path="src/modules/groups/groups.service.ts">
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupSchedule } from '../../shared/entities/group-schedule.entity';
+import { GroupMode } from '../../common/enums/group-mode.enum';
+import { GroupStatus } from '../../common/enums/group-status.enum';
+import { CreateGroupDto } from './dto/create-group.dto';
+import { UpdateGroupDto } from './dto/update-group.dto';
+⋮----
+export class GroupsService
+⋮----
+constructor(
+⋮----
+async create(dto: CreateGroupDto): Promise<Group>
+⋮----
+async findAll(filters:
+⋮----
+async findOne(id: string): Promise<Group>
+⋮----
+async update(id: string, dto: UpdateGroupDto): Promise<Group>
+⋮----
+async remove(id: string): Promise<void>
+⋮----
+async checkConflicts(filters: {
+    teacherId?: string;
+    classroomId?: string;
+    startTime?: string;
+    endTime?: string;
+    excludeGroupId?: string;
+}): Promise<
+⋮----
+async getCalendar(filters: {
+    view: 'day' | 'week' | 'month';
+    date: string;
+    teacherId?: string;
+    classroomId?: string;
+    branchId?: string;
+}): Promise<Group[]>
+⋮----
+async addSchedule(groupId: string, schedule: any): Promise<GroupSchedule>
+⋮----
+async removeSchedule(groupId: string, scheduleId: string): Promise<void>
+⋮----
+async assignStudent(groupId: string, studentId: string): Promise<any>
+⋮----
+async removeStudent(groupId: string, studentId: string): Promise<void>
+</file>
+
+<file path="src/modules/health/health.controller.ts">
+import { Controller, Get } from '@nestjs/common';
+import { Public } from '../../common/decorators/public.decorator';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+⋮----
+export class HealthController
+⋮----
+health()
+</file>
+
+<file path="src/modules/health/health.module.ts">
+import { Module } from '@nestjs/common';
+import { HealthController } from './health.controller';
+⋮----
+export class HealthModule
+</file>
+
+<file path="src/modules/hr/hr.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { HrService } from './hr.service';
+⋮----
+export class HrController
+⋮----
+constructor(private readonly service: HrService)
+⋮----
+createEmployee(@Body() dto: any)
+⋮----
+findEmployees(@Query() query: any)
+⋮----
+findOneEmployee(@Param('id', ParseUUIDPipe) id: string)
+⋮----
+addDocument(@Body() dto: any)
+⋮----
+findDocuments(@Param('id', ParseUUIDPipe) id: string)
+⋮----
+setAvailability(@Body() dto: any)
+⋮----
+findAvailability(@Param('id', ParseUUIDPipe) id: string)
+⋮----
+requestLeave(@Body() dto: any)
+⋮----
+findLeaves(@Query() query: any)
+⋮----
+approveLeave(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('note') note: string,
+    @CurrentUser() user: any,
+)
+⋮----
+createPeriod(@Body() dto: any)
+⋮----
+createPayrollEntry(@Body() dto: any)
+⋮----
+findPayrollEntries(@Param('id', ParseUUIDPipe) id: string)
+</file>
+
+<file path="src/modules/hr/hr.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Employee } from '../../shared/entities/employee.entity';
+import { EmployeeDocument } from '../../shared/entities/employee-document.entity';
+import { TeacherAvailability } from '../../shared/entities/teacher-availability.entity';
+import { LeaveRequest } from '../../shared/entities/leave-request.entity';
+import { PayrollPeriod } from '../../shared/entities/payroll-period.entity';
+import { PayrollEntry } from '../../shared/entities/payroll-entry.entity';
+import { User } from '../../shared/entities/user.entity';
+import { HrController } from './hr.controller';
+import { HrService } from './hr.service';
+⋮----
+export class HrModule
+</file>
+
+<file path="src/modules/hr/hr.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Employee } from '../../shared/entities/employee.entity';
+import { EmployeeDocument } from '../../shared/entities/employee-document.entity';
+import { TeacherAvailability } from '../../shared/entities/teacher-availability.entity';
+import { LeaveRequest } from '../../shared/entities/leave-request.entity';
+import { PayrollPeriod } from '../../shared/entities/payroll-period.entity';
+import { PayrollEntry } from '../../shared/entities/payroll-entry.entity';
+import { LeaveStatus } from '../../common/enums/leave-status.enum';
+import { PayrollEntryStatus } from '../../common/enums/payroll-entry-status.enum';
+⋮----
+export class HrService
+⋮----
+constructor(
+⋮----
+async createEmployee(dto: any)
+⋮----
+async findEmployees(query: any)
+⋮----
+async findOneEmployee(id: string)
+⋮----
+async addDocument(dto: any)
+⋮----
+async findDocuments(employeeId: string)
+⋮----
+async setAvailability(dto: any)
+⋮----
+async findAvailability(employeeId: string)
+⋮----
+async requestLeave(dto: any)
+⋮----
+async findLeaves(query: any)
+⋮----
+async approveLeave(id: string, approverId: string, note?: string)
+⋮----
+async createPeriod(dto: any)
+⋮----
+async createPayrollEntry(dto: any)
+⋮----
+async findPayrollEntries(periodId: string)
+</file>
+
+<file path="src/modules/inventory/inventory.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { InventoryItemsService } from './inventory.service';
+import { InventoryItem } from '../../shared/entities/inventory-item.entity';
+⋮----
+export class InventoryItemsController
+⋮----
+constructor(private readonly service: InventoryItemsService)
+⋮----
+async create(@Body() createData: Partial<InventoryItem>)
+⋮----
+async findAll(@Query('branchId') branchId?: string)
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async update(@Param('id') id: string, @Body() updateData: Partial<InventoryItem>)
+⋮----
+async remove(@Param('id') id: string)
+</file>
+
+<file path="src/modules/inventory/inventory.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { InventoryItemsController } from './inventory.controller';
+import { InventoryItemsService } from './inventory.service';
+import { InventoryItem } from '../../shared/entities/inventory-item.entity';
+import { StockLevel } from '../../shared/entities/stock-level.entity';
+import { StockMove } from '../../shared/entities/stock-move.entity';
+import { StudentItemIssue } from '../../shared/entities/student-item-issue.entity';
+⋮----
+export class InventoryModule
+</file>
+
+<file path="src/modules/inventory/inventory.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { InventoryItem } from '../../shared/entities/inventory-item.entity';
+⋮----
+export class InventoryItemsService
+⋮----
+constructor(
+⋮----
+async create(data: Partial<InventoryItem>): Promise<InventoryItem>
+⋮----
+async findAll(branchId?: string): Promise<InventoryItem[]>
+⋮----
+async findOne(id: string): Promise<InventoryItem>
+⋮----
+async update(id: string, data: Partial<InventoryItem>): Promise<InventoryItem>
+⋮----
+async remove(id: string): Promise<void>
+</file>
+
+<file path="src/modules/kb/kb.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { KbService } from './kb.service';
+⋮----
+export class KbController
+⋮----
+constructor(private readonly service: KbService)
+⋮----
+createCategory(@Body() dto: any)
+⋮----
+findCategories(@Query() query: any)
+⋮----
+createArticle(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+findArticles(@Query() query: any)
+⋮----
+findOneArticle(@Param('id', ParseUUIDPipe) id: string)
+⋮----
+updateArticle(@Param('id', ParseUUIDPipe) id: string, @Body() dto: any, @CurrentUser() user: any)
+</file>
+
+<file path="src/modules/kb/kb.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { KbCategory } from '../../shared/entities/kb-category.entity';
+import { KbArticle } from '../../shared/entities/kb-article.entity';
+import { KbArticleVersion } from '../../shared/entities/kb-article-version.entity';
+import { KbController } from './kb.controller';
+import { KbService } from './kb.service';
+⋮----
+export class KbModule
+</file>
+
+<file path="src/modules/kb/kb.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { KbCategory } from '../../shared/entities/kb-category.entity';
+import { KbArticle } from '../../shared/entities/kb-article.entity';
+import { KbArticleVersion } from '../../shared/entities/kb-article-version.entity';
+⋮----
+export class KbService
+⋮----
+constructor(
+⋮----
+async createCategory(dto: any)
+⋮----
+async findCategories(query: any)
+⋮----
+async createArticle(dto: any, userId: string)
+⋮----
+async findArticles(query: any)
+⋮----
+async findOneArticle(id: string)
+⋮----
+async updateArticle(id: string, dto: any, userId: string)
+</file>
+
+<file path="src/modules/leads/leads.controller.ts">
+import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { LeadsService } from './leads.service';
+⋮----
+export class LeadsController
+⋮----
+constructor(private readonly service: LeadsService)
+⋮----
+async findAll()
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async create(@Body() createDto: any)
+⋮----
+async update(@Param('id') id: string, @Body() updateDto: any)
+</file>
+
+<file path="src/modules/leads/leads.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Lead } from '../../shared/entities/lead.entity';
+import { LeadTag } from '../../shared/entities/lead-tag.entity';
+import { LeadTagPivot } from '../../shared/entities/lead-tag-pivot.entity';
+import { LeadsController } from './leads.controller';
+import { LeadsService } from './leads.service';
+⋮----
+export class LeadsModule
+</file>
+
+<file path="src/modules/leads/leads.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Lead } from '../../shared/entities/lead.entity';
+⋮----
+export class LeadsService
+⋮----
+constructor(
+⋮----
+async findAll()
+⋮----
+async findOne(id: string)
+⋮----
+async create(createDto: any)
+⋮----
+async update(id: string, updateDto: any)
+</file>
+
+<file path="src/modules/lms/dto/create-lesson.dto.ts">
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsNumber, IsBoolean, IsOptional } from 'class-validator';
+⋮----
+export class CreateLessonDto
+</file>
+
+<file path="src/modules/lms/dto/create-module.dto.ts">
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
+⋮----
+export class CreateModuleDto
+</file>
+
+<file path="src/modules/lms/lms.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { LmsService } from './lms.service';
+import { CreateModuleDto } from './dto/create-module.dto';
+import { CreateLessonDto } from './dto/create-lesson.dto';
+⋮----
+export class LmsController
+⋮----
+constructor(private readonly service: LmsService)
+⋮----
+createModule(@Body() dto: CreateModuleDto, @CurrentUser() user: any)
+⋮----
+findModules(@Query('group_id', ParseUUIDPipe) groupId: string)
+⋮----
+createLesson(@Body() dto: CreateLessonDto)
+⋮----
+findLessons(@Query('module_id', ParseUUIDPipe) moduleId: string)
+⋮----
+createResource(@Body() dto: any)
+⋮----
+createAssignment(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+findAssignments(@Query('group_id', ParseUUIDPipe) groupId: string)
+⋮----
+submitAssignment(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+gradeSubmission(@Param('id', ParseUUIDPipe) id: string, @Body() dto: any, @CurrentUser() user: any)
+⋮----
+createQuiz(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+findQuizzes(@Query('group_id', ParseUUIDPipe) groupId: string)
+⋮----
+startAttempt(@Param('id', ParseUUIDPipe) quizId: string, @CurrentUser() user: any)
+⋮----
+submitAttempt(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { answers: any; time_spent_seconds: number },
+)
+⋮----
+createCategory(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+addEntry(@Body() dto: any, @CurrentUser() user: any)
+⋮----
+getGradebook(@Query('group_id', ParseUUIDPipe) groupId: string)
+⋮----
+createEvaluation(@Body() dto: any)
+⋮----
+createSurvey(@Body() dto: any)
+</file>
+
+<file path="src/modules/lms/lms.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { LmsModule as LmsModuleEntity } from '../../shared/entities/lms-module.entity';
+import { LmsLesson } from '../../shared/entities/lms-lesson.entity';
+import { LmsResource } from '../../shared/entities/lms-resource.entity';
+import { Assignment } from '../../shared/entities/assignment.entity';
+import { Submission } from '../../shared/entities/submission.entity';
+import { Quiz } from '../../shared/entities/quiz.entity';
+import { QuizQuestion } from '../../shared/entities/quiz-question.entity';
+import { QuizAttempt } from '../../shared/entities/quiz-attempt.entity';
+import { GradebookCategory } from '../../shared/entities/gradebook-category.entity';
+import { GradebookEntry } from '../../shared/entities/gradebook-entry.entity';
+import { TeacherEvaluation } from '../../shared/entities/teacher-evaluation.entity';
+import { StudentSurvey } from '../../shared/entities/student-survey.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { LmsController } from './lms.controller';
+import { LmsService } from './lms.service';
+⋮----
+export class LmsModule
+</file>
+
+<file path="src/modules/lms/lms.service.ts">
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { LmsModule as ModuleEntity } from '../../shared/entities/lms-module.entity';
+import { LmsLesson } from '../../shared/entities/lms-lesson.entity';
+import { LmsResource } from '../../shared/entities/lms-resource.entity';
+import { Assignment } from '../../shared/entities/assignment.entity';
+import { Submission } from '../../shared/entities/submission.entity';
+import { Quiz } from '../../shared/entities/quiz.entity';
+import { QuizQuestion } from '../../shared/entities/quiz-question.entity';
+import { QuizAttempt } from '../../shared/entities/quiz-attempt.entity';
+import { GradebookCategory } from '../../shared/entities/gradebook-category.entity';
+import { GradebookEntry } from '../../shared/entities/gradebook-entry.entity';
+import { TeacherEvaluation } from '../../shared/entities/teacher-evaluation.entity';
+import { StudentSurvey } from '../../shared/entities/student-survey.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { AttemptStatus } from '../../common/enums/attempt-status.enum';
+import { SubmissionStatus } from '../../common/enums/submission-status.enum';
+⋮----
+export class LmsService
+⋮----
+constructor(
+⋮----
+async createModule(dto: any, userId: string)
+⋮----
+async findModules(groupId: string)
+⋮----
+async createLesson(dto: any)
+⋮----
+async findLessons(moduleId: string)
+⋮----
+async createResource(dto: any)
+⋮----
+async createAssignment(dto: any, userId: string)
+⋮----
+async findAssignments(groupId: string)
+⋮----
+async submitAssignment(dto: any, studentId: string)
+⋮----
+async gradeSubmission(id: string, dto: any, userId: string)
+⋮----
+async createQuiz(dto: any, userId: string)
+⋮----
+async findQuizzes(groupId: string)
+⋮----
+async startAttempt(quizId: string, studentId: string)
+⋮----
+async submitAttempt(id: string, answers: any, timeSpent: number)
+⋮----
+async createCategory(dto: any, userId: string)
+⋮----
+async addEntry(dto: any, userId: string)
+⋮----
+async getGradebook(groupId: string)
+⋮----
+async createEvaluation(dto: any)
+⋮----
+async createSurvey(dto: any)
+</file>
+
+<file path="src/modules/notifications/notifications.controller.ts">
+import { Controller } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { NotificationService } from './notifications.service';
+⋮----
+export class NotificationController
+⋮----
+constructor(private readonly service: NotificationService)
+</file>
+
+<file path="src/modules/notifications/notifications.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { NotificationController } from './notifications.controller';
+import { NotificationService } from './notifications.service';
+import { Notification } from '../../shared/entities/notification.entity';
+import { NotificationPreference } from '../../shared/entities/notification-preference.entity';
+import { User } from '../../shared/entities/user.entity';
+⋮----
+export class NotificationsModule
+</file>
+
+<file path="src/modules/notifications/notifications.service.ts">
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../../shared/entities/user.entity';
+⋮----
+export class NotificationService
+⋮----
+constructor(
+</file>
+
+<file path="src/modules/placement-tests/placement-tests.controller.ts">
+import { Controller, Get, Post, Put, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { PlacementTestsService } from './placement-tests.service';
+import { PlacementTest } from '../../shared/entities/placement-test.entity';
+⋮----
+export class PlacementTestsController
+⋮----
+constructor(private readonly service: PlacementTestsService)
+⋮----
+async create(@Body() createData: Partial<PlacementTest>)
+⋮----
+async findAll(@Query('leadId') leadId?: string)
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async update(@Param('id') id: string, @Body() updateData: Partial<PlacementTest>)
+</file>
+
+<file path="src/modules/placement-tests/placement-tests.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PlacementTest } from '../../shared/entities/placement-test.entity';
+import { PlacementTestsController } from './placement-tests.controller';
+import { PlacementTestsService } from './placement-tests.service';
+⋮----
+export class PlacementTestsModule
+</file>
+
+<file path="src/modules/placement-tests/placement-tests.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PlacementTest } from '../../shared/entities/placement-test.entity';
+⋮----
+export class PlacementTestsService
+⋮----
+constructor(
+⋮----
+async create(data: Partial<PlacementTest>): Promise<PlacementTest>
+⋮----
+async findAll(leadId?: string): Promise<PlacementTest[]>
+⋮----
+async findOne(id: string): Promise<PlacementTest>
+⋮----
+async update(id: string, data: Partial<PlacementTest>): Promise<PlacementTest>
+</file>
+
+<file path="src/modules/public/public.controller.ts">
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { PublicService } from './public.service';
+⋮----
+export class PublicController
+⋮----
+constructor(private readonly service: PublicService)
+⋮----
+async findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('search') search?: string,
+)
+⋮----
+async findOne(@Param('slug') slug: string)
+</file>
+
+<file path="src/modules/public/public.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { BlogPost } from '../../shared/entities/blog-post.entity';
+import { Testimonial } from '../../shared/entities/testimonial.entity';
+import { PageView } from '../../shared/entities/page-view.entity';
+import { PublicController } from './public.controller';
+import { PublicService } from './public.service';
+⋮----
+export class PublicModule
+</file>
+
+<file path="src/modules/public/public.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, ILike } from 'typeorm';
+import { BlogPost } from '../../shared/entities/blog-post.entity';
+⋮----
+export class PublicService
+⋮----
+constructor(
+⋮----
+async findAllPublished(page: number, limit: number, search?: string)
+⋮----
+async findOneBySlug(slug: string): Promise<BlogPost>
+</file>
+
+<file path="src/modules/reports/reports.controller.ts">
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ReportsService } from './reports.service';
+⋮----
+export class ReportsController
+⋮----
+constructor(private readonly service: ReportsService)
+⋮----
+salesFunnel(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: any,
+)
+⋮----
+leadSourceRoi(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: any,
+)
+⋮----
+groupFillRate(@CurrentUser() user: any)
+⋮----
+teacherUtilization(
+    @Query('month') month: string,
+    @CurrentUser() user: any,
+)
+⋮----
+studentProgress(@Query('student_id') studentId: string)
+⋮----
+revenue(
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: any,
+)
+⋮----
+outstandingPayments(@CurrentUser() user: any)
+⋮----
+attendanceReport(
+    @Query('group_id') groupId: string,
+    @Query('from') from: string,
+    @Query('to') to: string,
+)
+</file>
+
+<file path="src/modules/reports/reports.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Lead } from '../../shared/entities/lead.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupStudent } from '../../shared/entities/group-student.entity';
+import { Session } from '../../shared/entities/session.entity';
+import { Attendance } from '../../shared/entities/attendance.entity';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { Payment } from '../../shared/entities/payment.entity';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+import { ReportsController } from './reports.controller';
+import { ReportsService } from './reports.service';
+⋮----
+export class ReportsModule
+</file>
+
+<file path="src/modules/reports/reports.service.ts">
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Lead } from '../../shared/entities/lead.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupStudent } from '../../shared/entities/group-student.entity';
+import { Session } from '../../shared/entities/session.entity';
+import { Attendance } from '../../shared/entities/attendance.entity';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { Payment } from '../../shared/entities/payment.entity';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+⋮----
+export class ReportsService
+⋮----
+constructor(
+⋮----
+async salesFunnel(branchId: string | null, from: Date, to: Date)
+⋮----
+async leadSourceRoi(branchId: string | null, from: Date, to: Date)
+⋮----
+async groupFillRate(branchId: string | null)
+⋮----
+async teacherUtilization(branchId: string | null, month: string)
+⋮----
+async studentProgress(studentId: string)
+⋮----
+async revenueByPeriod(branchId: string | null, from: Date, to: Date)
+⋮----
+async outstandingPayments(branchId: string | null)
+⋮----
+async attendanceReport(groupId: string, from: Date, to: Date)
+</file>
+
+<file path="src/modules/roles/roles.controller.ts">
+import { Controller, Get, Param } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { RolesService } from './roles.service';
+⋮----
+export class RolesController
+⋮----
+constructor(private readonly service: RolesService)
+⋮----
+async findAll()
+⋮----
+async findOne(@Param('id') id: string)
+</file>
+
+<file path="src/modules/roles/roles.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Role } from '../../shared/entities/role.entity';
+import { RolesController } from './roles.controller';
+import { RolesService } from './roles.service';
+⋮----
+export class RolesModule
+</file>
+
+<file path="src/modules/roles/roles.service.ts">
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Role } from '../../shared/entities/role.entity';
+⋮----
+export class RolesService
+⋮----
+constructor(
+⋮----
+async findAll(): Promise<Role[]>
+⋮----
+async findOne(id: string): Promise<Role>
+</file>
+
+<file path="src/modules/sessions/sessions.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { SessionsService } from './sessions.service';
+import { Session } from '../../shared/entities/session.entity';
+⋮----
+export class SessionsController
+⋮----
+constructor(private readonly service: SessionsService)
+⋮----
+async create(@Body() createData: Partial<Session>)
+⋮----
+async findAll(@Query('groupId') groupId?: string)
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async update(@Param('id') id: string, @Body() updateData: Partial<Session>)
+⋮----
+async remove(@Param('id') id: string)
+</file>
+
+<file path="src/modules/sessions/sessions.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Session } from '../../shared/entities/session.entity';
+import { SessionsController } from './sessions.controller';
+import { SessionsService } from './sessions.service';
+⋮----
+export class SessionsModule
+</file>
+
+<file path="src/modules/sessions/sessions.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Session } from '../../shared/entities/session.entity';
+⋮----
+export class SessionsService
+⋮----
+constructor(
+⋮----
+async create(data: Partial<Session>): Promise<Session>
+⋮----
+async findAll(groupId?: string): Promise<Session[]>
+⋮----
+async findOne(id: string): Promise<Session>
+⋮----
+async update(id: string, data: Partial<Session>): Promise<Session>
+⋮----
+async remove(id: string): Promise<void>
+</file>
+
+<file path="src/modules/students/students.controller.ts">
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { StudentsService } from './students.service';
+⋮----
+export class StudentsController
+⋮----
+constructor(private readonly service: StudentsService)
+⋮----
+async findAll(
+    @Query('search') search?: string,
+    @Query('branchId') branchId?: string,
+)
+⋮----
+async findOne(@Param('id') id: string)
+</file>
+
+<file path="src/modules/students/students.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Student } from '../../shared/entities/student.entity';
+import { StudentProfile } from '../../shared/entities/student-profile.entity';
+import { StudentLevelHistory } from '../../shared/entities/student-level-history.entity';
+import { Referral } from '../../shared/entities/referral.entity';
+import { StudentsController } from './students.controller';
+import { StudentsService } from './students.service';
+⋮----
+export class StudentsModule
+</file>
+
+<file path="src/modules/students/students.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Student } from '../../shared/entities/student.entity';
+⋮----
+export class StudentsService
+⋮----
+constructor(
+⋮----
+async findAll(filters:
+⋮----
+async findOne(id: string): Promise<Student>
+</file>
+
+<file path="src/modules/users/users.controller.ts">
+import { Controller, Get, Patch, Param, Body, NotFoundException } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { UsersService } from './users.service';
+⋮----
+export class UsersController
+⋮----
+constructor(private readonly service: UsersService)
+⋮----
+async findAll()
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async updateRole(
+    @Param('id') id: string,
+    @Body('role') role: string,
+)
+</file>
+
+<file path="src/modules/users/users.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from '../../shared/entities/user.entity';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
+⋮----
+export class UsersModule
+</file>
+
+<file path="src/modules/users/users.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../../shared/entities/user.entity';
+⋮----
+export class UsersService
+⋮----
+constructor(
+⋮----
+async findAll(): Promise<User[]>
+⋮----
+async findOne(id: string): Promise<User>
+⋮----
+async updateRole(id: string, roleName: string): Promise<any>
+</file>
+
+<file path="src/modules/waitlists/waitlists.controller.ts">
+import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { WaitlistsService } from './waitlists.service';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+⋮----
+export class WaitlistsController
+⋮----
+constructor(private readonly service: WaitlistsService)
+⋮----
+async create(@Body() createData: Partial<Waitlist>)
+⋮----
+async findAll(
+    @Query('branchId') branchId?: string,
+    @Query('level') level?: string,
+)
+⋮----
+async findOne(@Param('id') id: string)
+⋮----
+async remove(@Param('id') id: string)
+</file>
+
+<file path="src/modules/waitlists/waitlists.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+import { WaitlistsController } from './waitlists.controller';
+import { WaitlistsService } from './waitlists.service';
+⋮----
+export class WaitlistsModule
+</file>
+
+<file path="src/modules/waitlists/waitlists.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+⋮----
+export class WaitlistsService
+⋮----
+constructor(
+⋮----
+async create(data: Partial<Waitlist>): Promise<Waitlist>
+⋮----
+async findAll(filters:
+⋮----
+async findOne(id: string): Promise<Waitlist>
+⋮----
+async remove(id: string): Promise<void>
+</file>
+
+<file path="src/shared/entities/activity-photo.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Activity } from './activity.entity';
+import { User } from './user.entity';
+⋮----
+export class ActivityPhoto
+</file>
+
+<file path="src/shared/entities/activity-registration.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Activity } from './activity.entity';
+import { Student } from './student.entity';
+import { RegistrationStatus } from '../../common/enums/registration-status.enum';
+⋮----
+export class ActivityRegistration
+</file>
+
+<file path="src/shared/entities/activity.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Branch } from './branch.entity';
+import { User } from './user.entity';
+import { ActivityEventType } from '../../common/enums/activity-event-type.enum';
+import { ActivityStatus } from '../../common/enums/activity-status.enum';
+⋮----
+export class Activity
+</file>
+
+<file path="src/shared/entities/assignment.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Group } from './group.entity';
+import { User } from './user.entity';
+import { AssignmentType } from '../../common/enums/assignment-type.enum';
+import { Submission } from './submission.entity';
+⋮----
+export class Assignment
+</file>
+
+<file path="src/shared/entities/attendance.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Session } from './session.entity';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+import { AttendanceStatus } from '../../common/enums/attendance-status.enum';
+import { CheckInMethod } from '../../common/enums/check-in-method.enum';
+⋮----
+export class Attendance
+</file>
+
+<file path="src/shared/entities/audit-log.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+import { ActorType } from '../../common/enums/actor-type.enum';
+⋮----
+export class AuditLog
+</file>
+
+<file path="src/shared/entities/blog-post.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+import { PostStatus } from '../../common/enums/post-status.enum';
+⋮----
+export class BlogPost
+</file>
+
+<file path="src/shared/entities/branch.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { User } from './user.entity';
+import { Classroom } from './classroom.entity';
+import { InventoryItem } from './inventory-item.entity';
+import { UserStatus } from '../../common/enums/user-status.enum';
+⋮----
+export class Branch
+</file>
+
+<file path="src/shared/entities/certificate-template.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Course } from './course.entity';
+import { User } from './user.entity';
+⋮----
+export class CertificateTemplate
+</file>
+
+<file path="src/shared/entities/certificate.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { Course } from './course.entity';
+import { Group } from './group.entity';
+import { CertificateTemplate } from './certificate-template.entity';
+import { User } from './user.entity';
+import { CertStatus } from '../../common/enums/cert-status.enum';
+⋮----
+export class Certificate
+</file>
+
+<file path="src/shared/entities/chat-message.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { ChatMessageType } from '../../common/enums/chat-message-type.enum';
+import { ChatRoom } from './chat-room.entity';
+import { User } from './user.entity';
+⋮----
+export class ChatMessage
+</file>
+
+<file path="src/shared/entities/chat-room-member.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { ChatRoom } from './chat-room.entity';
+import { User } from './user.entity';
+⋮----
+export class ChatRoomMember
+</file>
+
+<file path="src/shared/entities/chat-room.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { ChatRoomType } from '../../common/enums/chat-room-type.enum';
+import { Group } from './group.entity';
+import { User } from './user.entity';
+import { ChatRoomMember } from './chat-room-member.entity';
+import { ChatMessage } from './chat-message.entity';
+⋮----
+export class ChatRoom
+</file>
+
+<file path="src/shared/entities/chat-strike.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { StrikeAction } from '../../common/enums/strike-action.enum';
+import { User } from './user.entity';
+import { ChatViolation } from './chat-violation.entity';
+⋮----
+export class ChatStrike
+</file>
+
+<file path="src/shared/entities/chat-violation.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { ViolationAction } from '../../common/enums/violation-action.enum';
+import { ChatMessage } from './chat-message.entity';
+import { ChatRoom } from './chat-room.entity';
+import { User } from './user.entity';
+⋮----
+export class ChatViolation
+</file>
+
+<file path="src/shared/entities/classroom.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Branch } from './branch.entity';
+import { UserStatus } from '../../common/enums/user-status.enum';
+⋮----
+export class Classroom
+</file>
+
+<file path="src/shared/entities/course-material.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Course } from './course.entity';
+import { InventoryItem } from './inventory-item.entity';
+⋮----
+export class CourseMaterial
+</file>
+
+<file path="src/shared/entities/course-prerequisite.entity.ts">
+import { Entity, PrimaryColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Course } from './course.entity';
+⋮----
+export class CoursePrerequisite
+</file>
+
+<file path="src/shared/entities/course.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { CourseStatus } from '../../common/enums/course-status.enum';
+import { Group } from './group.entity';
+import { CourseMaterial } from './course-material.entity';
+import { CoursePrerequisite } from './course-prerequisite.entity';
+⋮----
+export class Course
+</file>
+
+<file path="src/shared/entities/employee-document.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Employee } from './employee.entity';
+import { DocumentType } from '../../common/enums/document-type.enum';
+⋮----
+export class EmployeeDocument
+</file>
+
+<file path="src/shared/entities/employee.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+import { EmployeeType } from '../../common/enums/employee-type.enum';
+import { EmployeeStatus } from '../../common/enums/employee-status.enum';
+⋮----
+export class Employee
+</file>
+
+<file path="src/shared/entities/enrollment.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { Group } from './group.entity';
+import { User } from './user.entity';
+import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
+⋮----
+export class Enrollment
+</file>
+
+<file path="src/shared/entities/financial-transaction.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Branch } from './branch.entity';
+import { Invoice } from './invoice.entity';
+import { Payment } from './payment.entity';
+import { Refund } from './refund.entity';
+import { User } from './user.entity';
+import { FinancialTransactionType } from '../../common/enums/financial-transaction-type.enum';
+import { TransactionDirection } from '../../common/enums/transaction-direction.enum';
+⋮----
+export class FinancialTransaction
+</file>
+
+<file path="src/shared/entities/follow-up.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Lead } from './lead.entity';
+import { User } from './user.entity';
+import { FollowUpStatus } from '../../common/enums/follow-up-status.enum';
+⋮----
+export class FollowUp
+</file>
+
+<file path="src/shared/entities/gradebook-category.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Group } from './group.entity';
+import { User } from './user.entity';
+⋮----
+export class GradebookCategory
+</file>
+
+<file path="src/shared/entities/gradebook-entry.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Group } from './group.entity';
+import { Student } from './student.entity';
+import { GradebookCategory } from './gradebook-category.entity';
+import { User } from './user.entity';
+⋮----
+export class GradebookEntry
+</file>
+
+<file path="src/shared/entities/group-schedule.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Group } from './group.entity';
+import { Classroom } from './classroom.entity';
+⋮----
+export class GroupSchedule
+</file>
+
+<file path="src/shared/entities/group-student.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Group } from './group.entity';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+⋮----
+export class GroupStudent
+</file>
+
+<file path="src/shared/entities/group.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Course } from './course.entity';
+import { User } from './user.entity';
+import { Branch } from './branch.entity';
+import { GroupMode } from '../../common/enums/group-mode.enum';
+import { GroupStatus } from '../../common/enums/group-status.enum';
+import { GroupSchedule } from './group-schedule.entity';
+import { GroupStudent } from './group-student.entity';
+import { Session } from './session.entity';
+import { ChatRoom } from './chat-room.entity';
+⋮----
+export class Group
+</file>
+
+<file path="src/shared/entities/index.ts">
+
+</file>
+
+<file path="src/shared/entities/installment.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Invoice } from './invoice.entity';
+import { InstallmentStatus } from '../../common/enums/installment-status.enum';
+⋮----
+export class Installment
+</file>
+
+<file path="src/shared/entities/inventory-item.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { InventoryCategory } from '../../common/enums/inventory-category.enum';
+import { InventoryStatus } from '../../common/enums/inventory-status.enum';
+import { Branch } from './branch.entity';
+⋮----
+export class InventoryItem
+</file>
+
+<file path="src/shared/entities/invoice-item.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Invoice } from './invoice.entity';
+import { Course } from './course.entity';
+import { InvoiceItemType } from '../../common/enums/invoice-item-type.enum';
+⋮----
+export class InvoiceItem
+</file>
+
+<file path="src/shared/entities/invoice.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Enrollment } from './enrollment.entity';
+import { Student } from './student.entity';
+import { Branch } from './branch.entity';
+import { User } from './user.entity';
+import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
+import { Payment } from './payment.entity';
+import { Installment } from './installment.entity';
+import { InvoiceItem } from './invoice-item.entity';
+⋮----
+export class Invoice
+</file>
+
+<file path="src/shared/entities/kb-article-version.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { KbArticle } from './kb-article.entity';
+import { User } from './user.entity';
+⋮----
+export class KbArticleVersion
+</file>
+
+<file path="src/shared/entities/kb-article.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { User } from './user.entity';
+import { KbCategory } from './kb-category.entity';
+import { KbVisibility } from '../../common/enums/kb-visibility.enum';
+import { KbArticleVersion } from './kb-article-version.entity';
+⋮----
+export class KbArticle
+</file>
+
+<file path="src/shared/entities/kb-category.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { KbVisibility } from '../../common/enums/kb-visibility.enum';
+import { KbArticle } from './kb-article.entity';
+⋮----
+export class KbCategory
+</file>
+
+<file path="src/shared/entities/lead-activity.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Lead } from './lead.entity';
+import { User } from './user.entity';
+import { ActivityType } from '../../common/enums/activity-type.enum';
+⋮----
+export class LeadActivity
+</file>
+
+<file path="src/shared/entities/lead-tag-pivot.entity.ts">
+import { Entity, PrimaryColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Lead } from './lead.entity';
+import { LeadTag } from './lead-tag.entity';
+⋮----
+export class LeadTagPivot
+</file>
+
+<file path="src/shared/entities/lead-tag.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Branch } from './branch.entity';
+import { LeadTagPivot } from './lead-tag-pivot.entity';
+import { OneToMany } from 'typeorm';
+⋮----
+export class LeadTag
+</file>
+
+<file path="src/shared/entities/lead.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { User } from './user.entity';
+import { Branch } from './branch.entity';
+import { LeadStatus } from '../../common/enums/lead-status.enum';
+import { LeadSource } from '../../common/enums/lead-source.enum';
+import { LeadActivity } from './lead-activity.entity';
+import { LeadTagPivot } from './lead-tag-pivot.entity';
+import { FollowUp } from './follow-up.entity';
+⋮----
+export class Lead
+</file>
+
+<file path="src/shared/entities/leave-request.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Employee } from './employee.entity';
+import { User } from './user.entity';
+import { LeaveType } from '../../common/enums/leave-type.enum';
+import { LeaveStatus } from '../../common/enums/leave-status.enum';
+⋮----
+export class LeaveRequest
+</file>
+
+<file path="src/shared/entities/lms-lesson.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { LmsModule } from './lms-module.entity';
+import { LessonType } from '../../common/enums/lesson-type.enum';
+import { LmsResource } from './lms-resource.entity';
+⋮----
+export class LmsLesson
+</file>
+
+<file path="src/shared/entities/lms-module.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Group } from './group.entity';
+import { User } from './user.entity';
+import { LmsLesson } from './lms-lesson.entity';
+⋮----
+export class LmsModule
+</file>
+
+<file path="src/shared/entities/lms-resource.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { LmsLesson } from './lms-lesson.entity';
+import { ResourceType } from '../../common/enums/resource-type.enum';
+import { ResourceAccess } from '../../common/enums/resource-access.enum';
+⋮----
+export class LmsResource
+</file>
+
+<file path="src/shared/entities/notification-preference.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { User } from './user.entity';
+import { NotificationChannel } from '../../common/enums/notification-channel.enum';
+⋮----
+export class NotificationPreference
+</file>
+
+<file path="src/shared/entities/notification.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+⋮----
+export class Notification
+</file>
+
+<file path="src/shared/entities/page-view.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+⋮----
+export class PageView
+</file>
+
+<file path="src/shared/entities/payment.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Invoice } from './invoice.entity';
+import { User } from './user.entity';
+import { PaymentMethod } from '../../common/enums/payment-method.enum';
+import { PaymentStatus } from '../../common/enums/payment-status.enum';
+⋮----
+export class Payment
+</file>
+
+<file path="src/shared/entities/payroll-entry.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { PayrollPeriod } from './payroll-period.entity';
+import { Employee } from './employee.entity';
+import { PayrollEntryStatus } from '../../common/enums/payroll-entry-status.enum';
+⋮----
+export class PayrollEntry
+</file>
+
+<file path="src/shared/entities/payroll-period.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+import { PayrollStatus } from '../../common/enums/payroll-status.enum';
+⋮----
+export class PayrollPeriod
+</file>
+
+<file path="src/shared/entities/permission.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToMany } from 'typeorm';
+import { Role } from './role.entity';
+⋮----
+export class Permission
+</file>
+
+<file path="src/shared/entities/placement-test-answer.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { PlacementTest } from './placement-test.entity';
+import { TestQuestion } from './test-question.entity';
+⋮----
+export class PlacementTestAnswer
+</file>
+
+<file path="src/shared/entities/placement-test.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Lead } from './lead.entity';
+import { Student } from './student.entity';
+import { TestSlot } from './test-slot.entity';
+import { User } from './user.entity';
+import { TestStatus } from '../../common/enums/test-status.enum';
+⋮----
+export class PlacementTest
+</file>
+
+<file path="src/shared/entities/promo-code.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+import { PromoType } from '../../common/enums/promo-type.enum';
+⋮----
+export class PromoCode
+</file>
+
+<file path="src/shared/entities/quiz-attempt.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Quiz } from './quiz.entity';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+import { AttemptStatus } from '../../common/enums/attempt-status.enum';
+⋮----
+export class QuizAttempt
+</file>
+
+<file path="src/shared/entities/quiz-question.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Quiz } from './quiz.entity';
+import { TestQuestion } from './test-question.entity';
+import { QuestionType } from '../../common/enums/question-type.enum';
+⋮----
+export class QuizQuestion
+</file>
+
+<file path="src/shared/entities/quiz.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Group } from './group.entity';
+import { User } from './user.entity';
+import { ReleaseType } from '../../common/enums/release-type.enum';
+import { QuizQuestion } from './quiz-question.entity';
+⋮----
+export class Quiz
+</file>
+
+<file path="src/shared/entities/referral.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { Lead } from './lead.entity';
+⋮----
+export class Referral
+</file>
+
+<file path="src/shared/entities/refund.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Payment } from './payment.entity';
+import { Invoice } from './invoice.entity';
+import { User } from './user.entity';
+import { RefundReason } from '../../common/enums/refund-reason.enum';
+import { RefundStatus } from '../../common/enums/refund-status.enum';
+⋮----
+export class Refund
+</file>
+
+<file path="src/shared/entities/role.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Permission } from './permission.entity';
+⋮----
+export class Role
+</file>
+
+<file path="src/shared/entities/sales-target.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { User } from './user.entity';
+⋮----
+export class SalesTarget
+</file>
+
+<file path="src/shared/entities/session.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Group } from './group.entity';
+import { Classroom } from './classroom.entity';
+import { GroupMode } from '../../common/enums/group-mode.enum';
+⋮----
+export class Session
+</file>
+
+<file path="src/shared/entities/setting.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+⋮----
+export class Setting
+</file>
+
+<file path="src/shared/entities/stock-level.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { InventoryItem } from './inventory-item.entity';
+import { Branch } from './branch.entity';
+⋮----
+export class StockLevel
+</file>
+
+<file path="src/shared/entities/stock-move.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { InventoryItem } from './inventory-item.entity';
+import { Branch } from './branch.entity';
+import { User } from './user.entity';
+import { StockMoveType } from '../../common/enums/stock-move-type.enum';
+⋮----
+export class StockMove
+</file>
+
+<file path="src/shared/entities/student-item-issue.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { InventoryItem } from './inventory-item.entity';
+import { Branch } from './branch.entity';
+import { User } from './user.entity';
+import { ItemCondition } from '../../common/enums/item-condition.enum';
+⋮----
+export class StudentItemIssue
+</file>
+
+<file path="src/shared/entities/student-level-history.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+⋮----
+export class StudentLevelHistory
+</file>
+
+<file path="src/shared/entities/student-profile.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+⋮----
+export class StudentProfile
+</file>
+
+<file path="src/shared/entities/student-survey.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Group } from './group.entity';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+⋮----
+export class StudentSurvey
+</file>
+
+<file path="src/shared/entities/student.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToOne, OneToMany } from 'typeorm';
+import { User } from './user.entity';
+import { Branch } from './branch.entity';
+import { StudentStatus } from '../../common/enums/student-status.enum';
+import { StudentProfile } from './student-profile.entity';
+import { StudentLevelHistory } from './student-level-history.entity';
+import { Referral } from './referral.entity';
+⋮----
+export class Student
+</file>
+
+<file path="src/shared/entities/submission.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Assignment } from './assignment.entity';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+import { SubmissionStatus } from '../../common/enums/submission-status.enum';
+⋮----
+export class Submission
+</file>
+
+<file path="src/shared/entities/teacher-availability.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Employee } from './employee.entity';
+⋮----
+export class TeacherAvailability
+</file>
+
+<file path="src/shared/entities/teacher-evaluation.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Group } from './group.entity';
+import { Student } from './student.entity';
+import { User } from './user.entity';
+⋮----
+export class TeacherEvaluation
+</file>
+
+<file path="src/shared/entities/test-question.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { User } from './user.entity';
+import { QuestionType } from '../../common/enums/question-type.enum';
+⋮----
+export class TestQuestion
+</file>
+
+<file path="src/shared/entities/test-slot.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Branch } from './branch.entity';
+import { User } from './user.entity';
+import { SlotStatus } from '../../common/enums/slot-status.enum';
+import { GroupMode } from '../../common/enums/group-mode.enum';
+⋮----
+export class TestSlot
+</file>
+
+<file path="src/shared/entities/testimonial.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { TestimonialStatus } from '../../common/enums/testimonial-status.enum';
+⋮----
+export class Testimonial
+</file>
+
+<file path="src/shared/entities/user-role.entity.ts">
+import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import { User } from './user.entity';
+import { Role } from './role.entity';
+⋮----
+export class UserRole
+</file>
+
+<file path="src/shared/entities/user.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Branch } from './branch.entity';
+import { UserStatus } from '../../common/enums/user-status.enum';
+⋮----
+export class User
+</file>
+
+<file path="src/shared/entities/waitlist.entity.ts">
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Student } from './student.entity';
+import { Course } from './course.entity';
+import { Branch } from './branch.entity';
+⋮----
+export class Waitlist
+</file>
+
+<file path="src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { BranchesModule } from './modules/branches/branches.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { StudentsModule } from './modules/students/students.module';
+import { CoursesModule } from './modules/courses/courses.module';
+import { ClassroomsModule } from './modules/classrooms/classrooms.module';
+import { GroupsModule } from './modules/groups/groups.module';
+import { SessionsModule } from './modules/sessions/sessions.module';
+import { PlacementTestsModule } from './modules/placement-tests/placement-tests.module';
+import { WaitlistsModule } from './modules/waitlists/waitlists.module';
+import { AttendancesModule } from './modules/attendance/attendance.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { PublicModule } from './modules/public/public.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { HealthModule } from './modules/health/health.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
+import { LmsModule } from './modules/lms/lms.module';
+import { HrModule } from './modules/hr/hr.module';
+import { ActivitiesModule } from './modules/activities/activities.module';
+import { KbModule } from './modules/kb/kb.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+⋮----
+export class AppModule
+</file>
+
+<file path="src/main.ts">
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
+import { AppModule } from './app.module';
+⋮----
+async function bootstrap()
+</file>
+
+<file path="package.json">
+{
+  "name": "speakup-tms-backend",
+  "version": "1.0.0",
+  "description": "Speak Up English Academy - Training Management System Backend",
+  "author": "Hassan Youssif",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/*\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
+    "migration:generate": "npm run typeorm -- migration:generate -d ./src/database/data-source.ts",
+    "migration:run": "npm run typeorm -- migration:run -d ./src/database/data-source.ts",
+    "migration:revert": "npm run typeorm -- migration:revert -d ./src/database/data-source.ts",
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/main.seed.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.0",
+    "@nestjs/config": "^3.1.1",
+    "@nestjs/core": "^10.3.0",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.3.0",
+    "@nestjs/platform-socket.io": "^10.3.0",
+    "@nestjs/swagger": "^7.2.0",
+    "@nestjs/typeorm": "^10.0.1",
+    "@nestjs/websockets": "^10.3.0",
+    "bcrypt": "^5.1.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.11.3",
+    "reflect-metadata": "^0.2.1",
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.19",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.3.0",
+    "@nestjs/schematics": "^10.1.0",
+    "@nestjs/testing": "^10.3.0",
+    "@types/bcrypt": "^5.0.2",
+    "@types/compression": "^1.7.5",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.6",
+    "@types/passport-jwt": "^4.0.0",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.1.1",
+    "source-map-support": "^0.5.21",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^6.0.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
+</file>
+
+<file path="README.md">
+A production-ready NestJS backend for the Academy Training Management System.
+
+## Architecture
+
+- **Framework**: NestJS 10 (Node.js)
+- **Database**: PostgreSQL 15+ (TypeORM)
+- **Auth**: JWT + bcrypt
+- **API Docs**: Swagger/OpenAPI at `/docs`
+- **Architecture Pattern**: Modular monolith with clean separation
+
+## Project Structure
+
+```
+speakup-tms-backend/
+├── src/
+│   ├── main.ts                    # Application bootstrap
+│   ├── app.module.ts              # Root module
+│   ├── config/                    # Configuration files
+│   ├── common/                    # Guards, decorators, pipes, filters, interceptors
+│   │   ├── decorators/
+│   │   ├── enums/                 # All TypeScript enums matching PostgreSQL enums
+│   │   ├── filters/
+│   │   ├── guards/
+│   │   ├── interceptors/
+│   │   └── pipes/
+│   ├── database/                  # TypeORM config, migrations, seeds
+│   ├── shared/entities/           # All TypeORM entities (30+ tables)
+│   └── modules/                   # Feature modules
+│       ├── auth/                  # JWT auth, login, register, refresh
+│       ├── users/                 # User CRUD
+│       ├── branches/              # Branch management
+│       ├── roles/                 # RBAC roles & permissions
+│       ├── leads/                 # CRM lead management
+│       ├── students/              # Student profiles & history
+│       ├── courses/               # Course catalog
+│       ├── classrooms/            # Classroom management
+│       ├── groups/                # Group scheduling
+│       ├── sessions/              # Session instances
+│       ├── attendance/            # Attendance tracking
+│       ├── placement-tests/       # Placement test system
+│       ├── waitlists/             # Waitlist queue
+│       ├── inventory/             # Training materials
+│       ├── public/                # Public website APIs
+│       └── notifications/         # In-app notifications
+├── test/                          # E2E tests
+├── scripts/                       # Deployment scripts
+├── package.json
+├── tsconfig.json
+├── .env.example
+└── docker-compose.yml
+```
+
+## Quick Start
+
+### 1. Install dependencies
+```bash
+npm install
+```
+
+### 2. Configure environment
+```bash
+cp .env.example .env
+# Edit .env with your PostgreSQL credentials
+```
+
+### 3. Run PostgreSQL (or use Docker)
+```bash
+docker-compose up -d postgres
+```
+
+### 4. Run migrations & seeds
+```bash
+npm run migration:run
+npm run seed
+```
+
+### 5. Start development server
+```bash
+npm run start:dev
+```
+
+### 6. Access API docs
+Open http://localhost:3000/docs
+
+## Database
+
+The database schema is based on the provided `new128.sql` PostgreSQL DDL script. All 30+ tables are mapped to TypeORM entities with proper relations, indexes, and constraints.
+
+### Key Tables
+- `users`, `roles`, `permissions`, `user_roles` — Auth & RBAC
+- `branches`, `classrooms` — Branch management
+- `leads`, `lead_activities`, `follow_ups`, `sales_targets` — CRM
+- `students`, `student_profiles`, `student_level_history` — Students
+- `courses`, `groups`, `group_schedules`, `group_students` — Scheduling
+- `sessions`, `attendances` — Sessions & attendance
+- `test_slots`, `placement_tests`, `test_questions` — Placement tests
+- `enrollments`, `invoices`, `payments`, `installments`, `refunds` — Finance (Stage 3+)
+- `inventory_items`, `stock_levels`, `stock_moves` — Inventory
+- `blog_posts`, `testimonials` — Public website
+
+## Stages
+
+| Stage | Scope | Status |
+|-------|-------|--------|
+| **Stage 1** | Foundation, Auth, RBAC, CRM, Users, Branches, Public API | ✅ DONE |
+| **Stage 2** | Students, Courses, Classrooms, Groups, Sessions, Attendance, Placement Tests, Waitlists | ✅ DONE |
+| **Stage 3** | Finance (Invoices, Payments, Installments, Refunds), Enrollments, Promo Codes, Certificates | ⏳ TODO |
+| **Stage 4** | LMS (Modules, Lessons, Resources, Assignments, Quizzes, Gradebook), HR, Activities, Knowledge Base | ⏳ TODO |
+| **Stage 5** | Live Chat (WebSocket, Monitoring, Compliance Engine), Reports, Notifications, Integrations (Zoom, OnMeet, EasyKash) | ⏳ TODO |
+
+## API Endpoints
+
+All endpoints are prefixed with `/api/v1`.
+
+### Auth (Public)
+- `POST /api/v1/auth/register` — Register new user
+- `POST /api/v1/auth/login` — Login
+- `POST /api/v1/auth/refresh` — Refresh token
+
+### Protected Endpoints (require Bearer token)
+All other endpoints require JWT authentication.
+
+## Roles & Permissions
+
+Pre-seeded roles:
+- `super_admin` — Full system control
+- `branch_manager` — Branch oversight
+- `sales` — CRM, leads, payments
+- `finance` — Invoicing, reconciliation
+- `academic` — Course & group management
+- `teacher` — LMS, attendance, grading, chat
+- `student` — Self-service portal
+- `moderator` — Chat oversight
+- `hr` — Employee records & payroll
+- `auditor` — Read-only access
+
+## Development
+
+### Run tests
+```bash
+npm test
+npm run test:e2e
+```
+
+### Generate migration
+```bash
+npm run migration:generate -- src/database/migrations/AddNewTable
+```
+
+### Run migration
+```bash
+npm run migration:run
+```
+
+## License
+
+Proprietary — Speak Up English Academy. All rights reserved.
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "incremental": true,
+    "skipLibCheck": true,
+    "types": ["node", "jest"],
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}
+</file>
+
+</files>

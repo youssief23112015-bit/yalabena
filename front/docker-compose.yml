@@ -1,0 +1,16 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: speakup-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    networks:
+      - speakup-network
+
+networks:
+  speakup-network:
+    external: true

@@ -1,0 +1,1528 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files and files not matching ignore patterns, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: src/modules/students/**/*.ts, src/modules/placement-tests/**/*.ts, src/modules/leads/**/*.ts, src/modules/sessions/**/*.ts, src/modules/inventory/**/*.ts, src/modules/hr/**/*.ts, src/modules/waitlists/**/*.ts, src/modules/notifications/**/*.ts, src/modules/integrations/**/*.ts, src/modules/email/**/*.ts, src/app.module.ts, package.json, tsconfig.json
+- Files matching these patterns are excluded: **/*.spec.ts, **/*.test.ts
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+src/
+  modules/
+    hr/
+      hr.controller.ts
+      hr.module.ts
+      hr.service.ts
+    inventory/
+      inventory.controller.ts
+      inventory.module.ts
+      inventory.service.ts
+    leads/
+      leads.controller.ts
+      leads.module.ts
+      leads.service.ts
+    notifications/
+      notifications.controller.ts
+      notifications.module.ts
+      notifications.service.ts
+    placement-tests/
+      placement-tests.controller.ts
+      placement-tests.module.ts
+      placement-tests.service.ts
+    sessions/
+      sessions.controller.ts
+      sessions.module.ts
+      sessions.service.ts
+    students/
+      students.controller.ts
+      students.module.ts
+      students.service.ts
+    waitlists/
+      waitlists.controller.ts
+      waitlists.module.ts
+      waitlists.service.ts
+  app.module.ts
+package.json
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/modules/hr/hr.controller.ts">
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { HrService } from './hr.service';
+
+@ApiTags('HR')
+@ApiBearerAuth('JWT')
+@Controller('hr')
+export class HrController {
+  constructor(private readonly service: HrService) {}
+
+  @Post('employees')
+  @Roles('super_admin', 'hr')
+  @ApiOperation({ summary: 'Create employee record' })
+  @ApiBody({ 
+    description: 'Employee creation payload',
+    schema: {
+      type: 'object',
+      properties: {
+        first_name: { type: 'string', example: 'Ahmed' },
+        last_name: { type: 'string', example: 'Mohamed' },
+        email: { type: 'string', example: 'ahmed.mohamed@example.com' },
+        phone: { type: 'string', example: '+201234567890' },
+        role: { type: 'string', example: 'teacher' },
+        branchId: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+      },
+      required: ['first_name', 'last_name', 'email', 'role']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Employee created successfully.' })
+  createEmployee(@Body() dto: any) {
+    return this.service.createEmployee(dto);
+  }
+
+  @Get('employees')
+  @Roles('super_admin', 'hr', 'branch_manager')
+  @ApiOperation({ summary: 'List employees' })
+  @ApiResponse({ status: 200, description: 'Returns all employees.' })
+  findEmployees(@Query() query: any) {
+    return this.service.findEmployees(query);
+  }
+
+  @Get('employees/:id')
+  @Roles('super_admin', 'hr', 'branch_manager')
+  @ApiOperation({ summary: 'Get employee' })
+  @ApiParam({ name: 'id', description: 'Employee UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns employee details.' })
+  @ApiResponse({ status: 404, description: 'Employee not found.' })
+  findOneEmployee(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findOneEmployee(id);
+  }
+
+  @Post('documents')
+  @Roles('super_admin', 'hr')
+  @ApiOperation({ summary: 'Add employee document' })
+  @ApiBody({ 
+    description: 'Employee document payload',
+    schema: {
+      type: 'object',
+      properties: {
+        employeeId: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+        title: { type: 'string', example: 'National ID' },
+        file_url: { type: 'string', example: 'https://storage.example.com/docs/id.pdf' },
+      },
+      required: ['employeeId', 'title', 'file_url']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Document added successfully.' })
+  addDocument(@Body() dto: any) {
+    return this.service.addDocument(dto);
+  }
+
+  @Get('employees/:id/documents')
+  @Roles('super_admin', 'hr', 'branch_manager')
+  @ApiOperation({ summary: 'List employee documents' })
+  @ApiParam({ name: 'id', description: 'Employee UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns employee documents list.' })
+  findDocuments(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findDocuments(id);
+  }
+
+  @Post('availabilities')
+  @Roles('super_admin', 'hr', 'teacher')
+  @ApiOperation({ summary: 'Set teacher availability' })
+  @ApiBody({ 
+    description: 'Teacher availability payload',
+    schema: {
+      type: 'object',
+      properties: {
+        teacherId: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+        day_of_week: { type: 'string', example: 'Monday' },
+        start_time: { type: 'string', example: '09:00' },
+        end_time: { type: 'string', example: '17:00' },
+      },
+      required: ['teacherId', 'day_of_week', 'start_time', 'end_time']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Availability set successfully.' })
+  setAvailability(@Body() dto: any) {
+    return this.service.setAvailability(dto);
+  }
+
+  @Get('employees/:id/availabilities')
+  @Roles('super_admin', 'hr', 'teacher', 'academic')
+  @ApiOperation({ summary: 'Get teacher availability' })
+  @ApiParam({ name: 'id', description: 'Teacher/Employee UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns teacher availabilities.' })
+  findAvailability(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findAvailability(id);
+  }
+
+  @Post('leaves')
+  @Roles('super_admin', 'hr', 'teacher', 'employee')
+  @ApiOperation({ summary: 'Request leave' })
+  @ApiBody({ 
+    description: 'Leave request payload',
+    schema: {
+      type: 'object',
+      properties: {
+        employeeId: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+        start_date: { type: 'string', format: 'date', example: '2026-09-10' },
+        end_date: { type: 'string', format: 'date', example: '2026-09-12' },
+        reason: { type: 'string', example: 'Annual leave' },
+      },
+      required: ['employeeId', 'start_date', 'end_date']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Leave requested successfully.' })
+  requestLeave(@Body() dto: any) {
+    return this.service.requestLeave(dto);
+  }
+
+  @Get('leaves')
+  @Roles('super_admin', 'hr', 'branch_manager')
+  @ApiOperation({ summary: 'List leave requests' })
+  @ApiResponse({ status: 200, description: 'Returns all leave requests.' })
+  findLeaves(@Query() query: any) {
+    return this.service.findLeaves(query);
+  }
+
+  @Put('leaves/:id/approve')
+  @Roles('super_admin', 'hr', 'branch_manager')
+  @ApiOperation({ summary: 'Approve leave' })
+  @ApiParam({ name: 'id', description: 'Leave Request UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiBody({ 
+    description: 'Approve leave payload',
+    schema: {
+      type: 'object',
+      properties: {
+        note: { type: 'string', example: 'Approved, enjoy your vacation.' },
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Leave approved successfully.' })
+  approveLeave(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('note') note: string,
+    @CurrentUser() user: any,
+  ) {
+    return this.service.approveLeave(id, user.userId, note);
+  }
+
+  @Post('payroll-periods')
+  @Roles('super_admin', 'hr', 'finance')
+  @ApiOperation({ summary: 'Create payroll period' })
+  @ApiBody({ 
+    description: 'Payroll period payload',
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'September 2026 Payroll' },
+        start_date: { type: 'string', format: 'date', example: '2026-09-01' },
+        end_date: { type: 'string', format: 'date', example: '2026-09-30' },
+      },
+      required: ['name', 'start_date', 'end_date']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Payroll period created successfully.' })
+  createPeriod(@Body() dto: any) {
+    return this.service.createPeriod(dto);
+  }
+
+  @Post('payroll-entries')
+  @Roles('super_admin', 'hr', 'finance')
+  @ApiOperation({ summary: 'Create payroll entry' })
+  @ApiBody({ 
+    description: 'Payroll entry payload',
+    schema: {
+      type: 'object',
+      properties: {
+        payrollPeriodId: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+        employeeId: { type: 'string', format: 'uuid', example: '123e4567-e89b-12d3-a456-426614174000' },
+        base_salary: { type: 'number', example: 8000 },
+        deductions: { type: 'number', example: 200 },
+        bonuses: { type: 'number', example: 500 },
+      },
+      required: ['payrollPeriodId', 'employeeId', 'base_salary']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Payroll entry created successfully.' })
+  createPayrollEntry(@Body() dto: any) {
+    return this.service.createPayrollEntry(dto);
+  }
+
+  @Get('payroll-periods/:id/entries')
+  @Roles('super_admin', 'hr', 'finance')
+  @ApiOperation({ summary: 'List payroll entries' })
+  @ApiParam({ name: 'id', description: 'Payroll Period UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns payroll entries list.' })
+  findPayrollEntries(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findPayrollEntries(id);
+  }
+}
+</file>
+
+<file path="src/modules/hr/hr.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Employee } from '../../shared/entities/employee.entity';
+import { EmployeeDocument } from '../../shared/entities/employee-document.entity';
+import { TeacherAvailability } from '../../shared/entities/teacher-availability.entity';
+import { LeaveRequest } from '../../shared/entities/leave-request.entity';
+import { PayrollPeriod } from '../../shared/entities/payroll-period.entity';
+import { PayrollEntry } from '../../shared/entities/payroll-entry.entity';
+import { User } from '../../shared/entities/user.entity';
+import { HrController } from './hr.controller';
+import { HrService } from './hr.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([
+    Employee, EmployeeDocument, TeacherAvailability, LeaveRequest, PayrollPeriod, PayrollEntry, User,
+  ])],
+  controllers: [HrController],
+  providers: [HrService],
+  exports: [HrService],
+})
+export class HrModule {}
+</file>
+
+<file path="src/modules/hr/hr.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Employee } from '../../shared/entities/employee.entity';
+import { EmployeeDocument } from '../../shared/entities/employee-document.entity';
+import { TeacherAvailability } from '../../shared/entities/teacher-availability.entity';
+import { LeaveRequest } from '../../shared/entities/leave-request.entity';
+import { PayrollPeriod } from '../../shared/entities/payroll-period.entity';
+import { PayrollEntry } from '../../shared/entities/payroll-entry.entity';
+import { LeaveStatus } from '../../common/enums/leave-status.enum';
+import { PayrollEntryStatus } from '../../common/enums/payroll-entry-status.enum';
+
+@Injectable()
+export class HrService {
+  constructor(
+    @InjectRepository(Employee) private empRepo: Repository<Employee>,
+    @InjectRepository(EmployeeDocument) private docRepo: Repository<EmployeeDocument>,
+    @InjectRepository(TeacherAvailability) private availRepo: Repository<TeacherAvailability>,
+    @InjectRepository(LeaveRequest) private leaveRepo: Repository<LeaveRequest>,
+    @InjectRepository(PayrollPeriod) private periodRepo: Repository<PayrollPeriod>,
+    @InjectRepository(PayrollEntry) private entryRepo: Repository<PayrollEntry>,
+  ) {}
+
+  // Employees
+  async createEmployee(dto: any) {
+    return this.empRepo.save(this.empRepo.create(dto));
+  }
+
+  async findEmployees(query: any) {
+    const qb = this.empRepo.createQueryBuilder('e')
+      .leftJoinAndSelect('e.user', 'user');
+    if (query.status) qb.andWhere('e.status = :status', { status: query.status });
+    if (query.department) qb.andWhere('e.department = :dept', { dept: query.department });
+    return qb.getMany();
+  }
+
+  async findOneEmployee(id: string) {
+    const emp = await this.empRepo.findOne({ where: { id }, relations: ['user'] });
+    if (!emp) throw new NotFoundException('Employee not found');
+    return emp;
+  }
+
+  // Documents
+  async addDocument(dto: any) {
+    return this.docRepo.save(this.docRepo.create(dto));
+  }
+
+  async findDocuments(employeeId: string) {
+    return this.docRepo.find({ where: { employee_id: employeeId } });
+  }
+
+  // Availability
+  async setAvailability(dto: any) {
+    return this.availRepo.save(this.availRepo.create(dto));
+  }
+
+  async findAvailability(employeeId: string) {
+    return this.availRepo.find({
+      where: { employee_id: employeeId },
+      order: { day_of_week: 'ASC' },
+    });
+  }
+
+  // Leave Requests
+  async requestLeave(dto: any) {
+    return this.leaveRepo.save(this.leaveRepo.create(dto));
+  }
+
+  async findLeaves(query: any) {
+    const qb = this.leaveRepo.createQueryBuilder('l')
+      .leftJoinAndSelect('l.employee', 'employee')
+      .leftJoinAndSelect('employee.user', 'user');
+    if (query.status) qb.andWhere('l.status = :status', { status: query.status });
+    if (query.employee_id) qb.andWhere('l.employee_id = :eid', { eid: query.employee_id });
+    return qb.getMany();
+  }
+
+  async approveLeave(id: string, approverId: string, note?: string) {
+    const leave = await this.leaveRepo.findOne({ where: { id } });
+    if (!leave) throw new NotFoundException('Leave request not found');
+    leave.status = LeaveStatus.APPROVED;
+    leave.approved_by = approverId;
+    leave.approved_at = new Date();
+    leave.approval_note = note;
+    return this.leaveRepo.save(leave);
+  }
+
+  // Payroll
+  async createPeriod(dto: any) {
+    return this.periodRepo.save(this.periodRepo.create(dto));
+  }
+
+  async createPayrollEntry(dto: any) {
+    const emp = await this.empRepo.findOne({ where: { id: dto.employee_id } });
+    if (!emp) throw new NotFoundException('Employee not found');
+
+    let total = 0;
+    if (emp.salary && emp.salary > 0) {
+      total = emp.salary + (dto.bonus || 0) - (dto.deductions || 0);
+    } else if (emp.hourly_rate && emp.hourly_rate > 0) {
+      total = (dto.hours_worked || 0) * emp.hourly_rate + (dto.bonus || 0) - (dto.deductions || 0);
+    }
+
+    const entry = this.entryRepo.create({
+      ...dto,
+      base_amount: emp.salary || 0,
+      hourly_rate: emp.hourly_rate,
+      total_amount: total,
+      status: PayrollEntryStatus.DRAFT,
+    });
+    return this.entryRepo.save(entry);
+  }
+
+  async findPayrollEntries(periodId: string) {
+    return this.entryRepo.find({
+      where: { payroll_period_id: periodId },
+      relations: ['employee', 'employee.user'],
+    });
+  }
+}
+</file>
+
+<file path="src/modules/inventory/inventory.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { InventoryItemsService } from './inventory.service';
+import { InventoryItem } from '../../shared/entities/inventory-item.entity';
+
+@ApiTags('Inventory')
+@ApiBearerAuth('JWT')
+@Controller('inventory')
+export class InventoryItemsController {
+  constructor(private readonly service: InventoryItemsService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new inventory item (books, workbooks, merchandise)' })
+  @ApiBody({ 
+    description: 'Inventory item creation payload',
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'English Level 1 Workbook' },
+        sku: { type: 'string', example: 'ENG-WB-01' },
+        quantity: { type: 'number', example: 50 },
+        unit_price: { type: 'number', example: 250 },
+        branchId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        category: { type: 'string', example: 'Books' },
+      },
+      required: ['name', 'quantity', 'unit_price', 'branchId']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Inventory item created successfully.' })
+  async create(@Body() createData: Partial<InventoryItem>) {
+    return this.service.create(createData);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all inventory items with optional branch filter' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'Filter inventory by branch' })
+  async findAll(@Query('branchId') branchId?: string) {
+    return this.service.findAll(branchId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get inventory item details by id' })
+  @ApiParam({ name: 'id', description: 'Inventory Item UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns inventory item details.' })
+  @ApiResponse({ status: 404, description: 'Inventory item not found.' })
+  async findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update inventory stock, item details, or stock adjustments' })
+  @ApiParam({ name: 'id', description: 'Inventory Item UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiBody({ 
+    description: 'Inventory item update payload',
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'English Level 1 Workbook - Updated' },
+        quantity: { type: 'number', example: 45 },
+        unit_price: { type: 'number', example: 260 },
+      },
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Inventory item updated successfully.' })
+  @ApiResponse({ status: 404, description: 'Inventory item not found.' })
+  async update(@Param('id') id: string, @Body() updateData: Partial<InventoryItem>) {
+    return this.service.update(id, updateData);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an inventory item' })
+  @ApiParam({ name: 'id', description: 'Inventory Item UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Inventory item deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'Inventory item not found.' })
+  async remove(@Param('id') id: string) {
+    return this.service.remove(id);
+  }
+}
+</file>
+
+<file path="src/modules/inventory/inventory.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { InventoryItemsController } from './inventory.controller';
+import { InventoryItemsService } from './inventory.service';
+import { InventoryItem } from '../../shared/entities/inventory-item.entity';
+import { StockLevel } from '../../shared/entities/stock-level.entity';
+import { StockMove } from '../../shared/entities/stock-move.entity';
+import { StudentItemIssue } from '../../shared/entities/student-item-issue.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      InventoryItem,
+      StockLevel,
+      StockMove,
+      StudentItemIssue,
+    ]),
+  ],
+  controllers: [InventoryItemsController],
+  providers: [InventoryItemsService],
+  exports: [InventoryItemsService],
+})
+export class InventoryModule {}
+</file>
+
+<file path="src/modules/inventory/inventory.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { InventoryItem } from '../../shared/entities/inventory-item.entity';
+
+@Injectable()
+export class InventoryItemsService {
+  constructor(
+    @InjectRepository(InventoryItem)
+    private readonly repo: Repository<InventoryItem>,
+  ) {}
+
+  async create(data: Partial<InventoryItem>): Promise<InventoryItem> {
+    const item = this.repo.create(data);
+    return this.repo.save(item);
+  }
+
+  async findAll(branchId?: string): Promise<InventoryItem[]> {
+    const query = this.repo.createQueryBuilder('item')
+      .leftJoinAndSelect('item.branch', 'branch');
+
+    if (branchId) {
+      query.andWhere('branch.id = :branchId', { branchId });
+    }
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<InventoryItem> {
+    const item = await this.repo.findOne({
+      where: { id },
+      relations: ['branch'],
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Inventory item with ID ${id} not found`);
+    }
+
+    return item;
+  }
+
+  async update(id: string, data: Partial<InventoryItem>): Promise<InventoryItem> {
+    const item = await this.findOne(id);
+    Object.assign(item, data);
+    return this.repo.save(item);
+  }
+
+  async remove(id: string): Promise<void> {
+    const item = await this.findOne(id);
+    await this.repo.remove(item);
+  }
+}
+</file>
+
+<file path="src/modules/leads/leads.controller.ts">
+import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import { LeadsService } from './leads.service';
+
+@ApiTags('Leads')
+@ApiBearerAuth('JWT')
+@Controller('leads')
+export class LeadsController {
+  constructor(private readonly service: LeadsService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Get all CRM leads with details' })
+  @ApiResponse({ status: 200, description: 'Return all leads successfully.' })
+  async findAll() {
+    return this.service.findAll();
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a specific lead by id' })
+  @ApiResponse({ status: 200, description: 'Return lead details.' })
+  @ApiResponse({ status: 404, description: 'Lead not found.' })
+  async findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new lead' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        first_name: { type: 'string', example: 'Ahmed' },
+        last_name: { type: 'string', example: 'Ali' },
+        phone: { type: 'string', example: '01012345678' },
+        email: { type: 'string', example: 'ahmed.ali@example.com' },
+        source: { type: 'string', example: 'FACEBOOK' }, // أو حسب الـ Enum اللي عندك
+        national_id: { type: 'string', example: '29912345678910' },
+        level_interest: { type: 'string', example: 'B1' },
+        notes: { type: 'string', example: 'Interested in English courses' },
+        assigned_to: { type: 'string', format: 'uuid', example: 'some-user-uuid' },
+        branch_id: { type: 'string', format: 'uuid', example: 'some-branch-uuid' },
+      },
+      required: ['first_name', 'last_name', 'phone', 'source'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Lead created successfully.' })
+  async create(@Body() createDto: any) {
+    return this.service.create(createDto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update an existing lead' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        first_name: { type: 'string', example: 'Ahmed' },
+        status: { type: 'string', example: 'CONTACTED' },
+        notes: { type: 'string', example: 'Updated notes' },
+      },
+    },
+  })
+  async update(@Param('id') id: string, @Body() updateDto: any) {
+    return this.service.update(id, updateDto);
+  }
+}
+</file>
+
+<file path="src/modules/leads/leads.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Lead } from '../../shared/entities/lead.entity';
+import { LeadTag } from '../../shared/entities/lead-tag.entity';
+import { LeadTagPivot } from '../../shared/entities/lead-tag-pivot.entity';
+import { LeadsController } from './leads.controller';
+import { LeadsService } from './leads.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Lead, LeadTag, LeadTagPivot])],
+  controllers: [LeadsController],
+  providers: [LeadsService],
+  exports: [LeadsService],
+})
+export class LeadsModule {}
+</file>
+
+<file path="src/modules/leads/leads.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Lead } from '../../shared/entities/lead.entity';
+
+@Injectable()
+export class LeadsService {
+  constructor(
+    @InjectRepository(Lead)
+    private readonly repo: Repository<Lead>,
+  ) {}
+
+  async findAll() {
+    return this.repo.find({
+      relations: ['branch', 'assigned_agent'],
+      order: { created_at: 'DESC' } as any,
+    });
+  }
+
+  async findOne(id: string) {
+    const lead = await this.repo.findOne({
+      where: { id },
+      relations: ['branch', 'assigned_agent'],
+    });
+
+    if (!lead) {
+      throw new NotFoundException(`Lead with ID ${id} not found`);
+    }
+
+    return lead;
+  }
+
+  async create(createDto: any) {
+    const newLead = this.repo.create(createDto);
+    return await this.repo.save(newLead);
+  }
+
+  async update(id: string, updateDto: any) {
+    await this.findOne(id);
+    await this.repo.update(id, updateDto);
+    return this.findOne(id);
+  }
+}
+</file>
+
+<file path="src/modules/notifications/notifications.controller.ts">
+import { Controller } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { NotificationService } from './notifications.service';
+
+@ApiTags('Users')
+@Controller('notifications')
+export class NotificationController {
+  constructor(private readonly service: NotificationService) {}
+}
+</file>
+
+<file path="src/modules/notifications/notifications.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { NotificationController } from './notifications.controller';
+import { NotificationService } from './notifications.service';
+import { Notification } from '../../shared/entities/notification.entity';
+import { NotificationPreference } from '../../shared/entities/notification-preference.entity';
+import { User } from '../../shared/entities/user.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      Notification,
+      NotificationPreference,
+      User,
+    ]),
+  ],
+  controllers: [NotificationController],
+  providers: [NotificationService],
+  exports: [NotificationService],
+})
+export class NotificationsModule {}
+</file>
+
+<file path="src/modules/notifications/notifications.service.ts">
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../../shared/entities/user.entity';
+
+@Injectable()
+export class NotificationService {
+  constructor(
+    @InjectRepository(User)
+    private readonly repo: Repository<User>,
+  ) {}
+}
+</file>
+
+<file path="src/modules/placement-tests/placement-tests.controller.ts">
+import { Controller, Get, Post, Put, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { PlacementTestsService } from './placement-tests.service';
+import { PlacementTest } from '../../shared/entities/placement-test.entity';
+
+@ApiTags('Placement Tests')
+@ApiBearerAuth('JWT')
+@Controller('placement-tests')
+export class PlacementTestsController {
+  constructor(private readonly service: PlacementTestsService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Schedule or submit a placement test slot/result' })
+  @ApiBody({ 
+    description: 'Placement test creation/scheduling payload',
+    schema: {
+      type: 'object',
+      properties: {
+        leadId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        scheduled_date: { type: 'string', format: 'date-time', example: '2026-09-05T14:00:00Z' },
+        status: { type: 'string', example: 'scheduled' },
+        written_score: { type: 'number', example: 85 },
+        oral_score: { type: 'number', example: 90 },
+        assigned_level: { type: 'string', example: 'Intermediate' },
+      },
+      required: ['leadId']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Placement test created successfully.' })
+  async create(@Body() createData: Partial<PlacementTest>) {
+    return this.service.create(createData);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all placement tests with optional lead filter' })
+  @ApiQuery({ name: 'leadId', required: false, description: 'Filter placement tests by lead ID' })
+  async findAll(@Query('leadId') leadId?: string) {
+    return this.service.findAll(leadId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get placement test details by id' })
+  @ApiParam({ name: 'id', description: 'Placement Test UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns placement test details.' })
+  @ApiResponse({ status: 404, description: 'Placement test not found.' })
+  async findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update test scores, oral/written results, and final assigned level' })
+  @ApiParam({ name: 'id', description: 'Placement Test UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiBody({ 
+    description: 'Placement test update payload',
+    schema: {
+      type: 'object',
+      properties: {
+        written_score: { type: 'number', example: 88 },
+        oral_score: { type: 'number', example: 92 },
+        assigned_level: { type: 'string', example: 'Upper-Intermediate' },
+        status: { type: 'string', example: 'completed' },
+      },
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Placement test updated successfully.' })
+  @ApiResponse({ status: 404, description: 'Placement test not found.' })
+  async update(@Param('id') id: string, @Body() updateData: Partial<PlacementTest>) {
+    return this.service.update(id, updateData);
+  }
+}
+</file>
+
+<file path="src/modules/placement-tests/placement-tests.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { PlacementTest } from '../../shared/entities/placement-test.entity';
+import { PlacementTestsController } from './placement-tests.controller';
+import { PlacementTestsService } from './placement-tests.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([PlacementTest])],
+  controllers: [PlacementTestsController],
+  providers: [PlacementTestsService],
+  exports: [PlacementTestsService],
+})
+export class PlacementTestsModule {}
+</file>
+
+<file path="src/modules/placement-tests/placement-tests.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PlacementTest } from '../../shared/entities/placement-test.entity';
+
+@Injectable()
+export class PlacementTestsService {
+  constructor(
+    @InjectRepository(PlacementTest)
+    private readonly repo: Repository<PlacementTest>,
+  ) {}
+
+  async create(data: Partial<PlacementTest>): Promise<PlacementTest> {
+    const test = this.repo.create(data);
+    return this.repo.save(test);
+  }
+
+  async findAll(leadId?: string): Promise<PlacementTest[]> {
+    const query = this.repo.createQueryBuilder('test')
+      .leftJoinAndSelect('test.lead', 'lead')
+      .leftJoinAndSelect('test.examiner', 'examiner');
+
+    if (leadId) {
+      query.andWhere('lead.id = :leadId', { leadId });
+    }
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<PlacementTest> {
+    const test = await this.repo.findOne({
+      where: { id },
+      relations: ['lead', 'examiner'],
+    });
+
+    if (!test) {
+      throw new NotFoundException(`Placement test with ID ${id} not found`);
+    }
+
+    return test;
+  }
+
+  async update(id: string, data: Partial<PlacementTest>): Promise<PlacementTest> {
+    const test = await this.findOne(id);
+    Object.assign(test, data);
+    return this.repo.save(test);
+  }
+}
+</file>
+
+<file path="src/modules/sessions/sessions.controller.ts">
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { SessionsService } from './sessions.service';
+import { Session } from '../../shared/entities/session.entity';
+
+@ApiTags('Sessions')
+@ApiBearerAuth('JWT')
+@Controller('sessions')
+export class SessionsController {
+  constructor(private readonly service: SessionsService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create a new session (in_person, online, or hybrid with meeting links)' })
+  @ApiBody({ 
+    description: 'Session creation payload',
+    schema: {
+      type: 'object',
+      properties: {
+        groupId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        title: { type: 'string', example: 'Introduction to Grammar' },
+        session_type: { type: 'string', enum: ['in_person', 'online', 'hybrid'], example: 'online' },
+        meeting_link: { type: 'string', example: 'https://zoom.us/j/123456789' },
+        classroomId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        start_time: { type: 'string', format: 'date-time', example: '2026-09-01T10:00:00Z' },
+        end_time: { type: 'string', format: 'date-time', example: '2026-09-01T12:00:00Z' },
+      },
+      required: ['groupId', 'title', 'session_type']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Session created successfully.' })
+  async create(@Body() createData: Partial<Session>) {
+    return this.service.create(createData);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all sessions with optional group filter' })
+  @ApiQuery({ name: 'groupId', required: false, description: 'Filter sessions by group' })
+  async findAll(@Query('groupId') groupId?: string) {
+    return this.service.findAll(groupId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get session details by id including attendance records' })
+  @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns session details.' })
+  @ApiResponse({ status: 404, description: 'Session not found.' })
+  async findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update session details or mark attendance' })
+  @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiBody({ 
+    description: 'Session update payload',
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', example: 'Advanced Grammar - Updated' },
+        session_type: { type: 'string', enum: ['in_person', 'online', 'hybrid'], example: 'hybrid' },
+        meeting_link: { type: 'string', example: 'https://zoom.us/j/987654321' },
+        status: { type: 'string', example: 'scheduled' },
+      },
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Session updated successfully.' })
+  @ApiResponse({ status: 404, description: 'Session not found.' })
+  async update(@Param('id') id: string, @Body() updateData: Partial<Session>) {
+    return this.service.update(id, updateData);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a session' })
+  @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Session deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'Session not found.' })
+  async remove(@Param('id') id: string) {
+    return this.service.remove(id);
+  }
+}
+</file>
+
+<file path="src/modules/sessions/sessions.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Session } from '../../shared/entities/session.entity';
+import { SessionsController } from './sessions.controller';
+import { SessionsService } from './sessions.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Session])],
+  controllers: [SessionsController],
+  providers: [SessionsService],
+  exports: [SessionsService],
+})
+export class SessionsModule {}
+</file>
+
+<file path="src/modules/sessions/sessions.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Session } from '../../shared/entities/session.entity';
+
+@Injectable()
+export class SessionsService {
+  constructor(
+    @InjectRepository(Session)
+    private readonly repo: Repository<Session>,
+  ) {}
+
+  async create(data: Partial<Session>): Promise<Session> {
+    const session = this.repo.create(data);
+    return this.repo.save(session);
+  }
+
+  async findAll(groupId?: string): Promise<Session[]> {
+    const query = this.repo.createQueryBuilder('session')
+      .leftJoinAndSelect('session.group', 'group');
+
+    if (groupId) {
+      query.andWhere('group.id = :groupId', { groupId });
+    }
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<Session> {
+    const session = await this.repo.findOne({
+      where: { id },
+      // جلب المجموعة وسجلات الحضور الخاصة بالجلسة بناءً على متطلبات القسم 4.5.3 و 4.5.4
+      relations: ['group', 'attendances', 'teacher'],
+    });
+
+    if (!session) {
+      throw new NotFoundException(`Session with ID ${id} not found`);
+    }
+
+    return session;
+  }
+
+  async update(id: string, data: Partial<Session>): Promise<Session> {
+    const session = await this.findOne(id);
+    Object.assign(session, data);
+    return this.repo.save(session);
+  }
+
+  async remove(id: string): Promise<void> {
+    const session = await this.findOne(id);
+    await this.repo.remove(session);
+  }
+}
+</file>
+
+<file path="src/modules/students/students.controller.ts">
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { StudentsService } from './students.service';
+
+@ApiTags('Students')
+@ApiBearerAuth('JWT')
+@Controller('students')
+export class StudentsController {
+  constructor(private readonly service: StudentsService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Get all students with search and filters' })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by name, email, or phone' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'Filter by branch' })
+  async findAll(
+    @Query('search') search?: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.service.findAll({ search, branchId });
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get student profile by id with full history (payments, attendance, levels)' })
+  @ApiResponse({ status: 200, description: 'Returns student profile details.' })
+  @ApiResponse({ status: 404, description: 'Student not found.' })
+  async findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+}
+</file>
+
+<file path="src/modules/students/students.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Student } from '../../shared/entities/student.entity';
+import { StudentProfile } from '../../shared/entities/student-profile.entity';
+import { StudentLevelHistory } from '../../shared/entities/student-level-history.entity';
+import { Referral } from '../../shared/entities/referral.entity';
+import { StudentsController } from './students.controller';
+import { StudentsService } from './students.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Student, StudentProfile, StudentLevelHistory, Referral])],
+  controllers: [StudentsController],
+  providers: [StudentsService],
+  exports: [StudentsService],
+})
+export class StudentsModule {}
+</file>
+
+<file path="src/modules/students/students.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Student } from '../../shared/entities/student.entity';
+
+@Injectable()
+export class StudentsService {
+  constructor(
+    @InjectRepository(Student)
+    private readonly repo: Repository<Student>,
+  ) {}
+
+  async findAll(filters: { search?: string; branchId?: string }): Promise<Student[]> {
+    const query = this.repo.createQueryBuilder('student')
+      .leftJoinAndSelect('student.branch', 'branch');
+
+    if (filters.search) {
+      query.andWhere(
+        '(student.first_name ILIKE :search OR student.last_name ILIKE :search OR student.email ILIKE :search OR student.phone ILIKE :search)',
+        { search: `%${filters.search}%` },
+      );
+    }
+
+    if (filters.branchId) {
+      query.andWhere('branch.id = :branchId', { branchId: filters.branchId });
+    }
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<Student> {
+    const student = await this.repo.findOne({
+      where: { id },
+      relations: ['branch', 'profile', 'level_history'], // الأسماء الصحيحة حسب الـ Entity
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Student with ID ${id} not found`);
+    }
+
+    return student;
+  }
+}
+</file>
+
+<file path="src/modules/waitlists/waitlists.controller.ts">
+import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
+import { WaitlistsService } from './waitlists.service';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+
+@ApiTags('Waitlists')
+@ApiBearerAuth('JWT')
+@Controller('waitlists')
+export class WaitlistsController {
+  constructor(private readonly service: WaitlistsService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Add a student to a waitlist (per level/branch)' })
+  @ApiBody({ 
+    description: 'Waitlist entry payload',
+    schema: {
+      type: 'object',
+      properties: {
+        studentId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        branchId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+        level: { type: 'string', example: 'Beginner' },
+        notes: { type: 'string', example: 'Preferred morning schedule' },
+      },
+      required: ['studentId', 'branchId', 'level']
+    }
+  })
+  @ApiResponse({ status: 201, description: 'Added to waitlist successfully.' })
+  async create(@Body() createData: Partial<Waitlist>) {
+    return this.service.create(createData);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get waitlists with optional branch or level filters' })
+  @ApiQuery({ name: 'branchId', required: false, description: 'Filter waitlist by branch' })
+  @ApiQuery({ name: 'level', required: false, description: 'Filter waitlist by level' })
+  async findAll(
+    @Query('branchId') branchId?: string,
+    @Query('level') level?: string,
+  ) {
+    return this.service.findAll({ branchId, level });
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get waitlist entry details by id' })
+  @ApiParam({ name: 'id', description: 'Waitlist UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Returns waitlist entry details.' })
+  @ApiResponse({ status: 404, description: 'Waitlist entry not found.' })
+  async findOne(@Param('id') id: string) {
+    return this.service.findOne(id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Remove a student from the waitlist (e.g. assigned to a group)' })
+  @ApiParam({ name: 'id', description: 'Waitlist UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 200, description: 'Removed from waitlist successfully.' })
+  @ApiResponse({ status: 404, description: 'Waitlist entry not found.' })
+  async remove(@Param('id') id: string) {
+    return this.service.remove(id);
+  }
+}
+</file>
+
+<file path="src/modules/waitlists/waitlists.module.ts">
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+import { WaitlistsController } from './waitlists.controller';
+import { WaitlistsService } from './waitlists.service';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([Waitlist])],
+  controllers: [WaitlistsController],
+  providers: [WaitlistsService],
+  exports: [WaitlistsService],
+})
+export class WaitlistsModule {}
+</file>
+
+<file path="src/modules/waitlists/waitlists.service.ts">
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Waitlist } from '../../shared/entities/waitlist.entity';
+
+@Injectable()
+export class WaitlistsService {
+  constructor(
+    @InjectRepository(Waitlist)
+    private readonly repo: Repository<Waitlist>,
+  ) {}
+
+  async create(data: Partial<Waitlist>): Promise<Waitlist> {
+    const entry = this.repo.create(data);
+    return this.repo.save(entry);
+  }
+
+  async findAll(filters: { branchId?: string; level?: string }): Promise<Waitlist[]> {
+    const query = this.repo.createQueryBuilder('waitlist')
+      .leftJoinAndSelect('waitlist.student', 'student')
+      .leftJoinAndSelect('waitlist.branch', 'branch');
+
+    if (filters.branchId) {
+      query.andWhere('branch.id = :branchId', { branchId: filters.branchId });
+    }
+
+    if (filters.level) {
+      query.andWhere('waitlist.level = :level', { level: filters.level });
+    }
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<Waitlist> {
+    const entry = await this.repo.findOne({
+      where: { id },
+      relations: ['student', 'branch'],
+    });
+
+    if (!entry) {
+      throw new NotFoundException(`Waitlist entry with ID ${id} not found`);
+    }
+
+    return entry;
+  }
+
+  async remove(id: string): Promise<void> {
+    const entry = await this.findOne(id);
+    await this.repo.remove(entry);
+  }
+}
+</file>
+
+<file path="src/app.module.ts">
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { RolesModule } from './modules/roles/roles.module';
+import { BranchesModule } from './modules/branches/branches.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { StudentsModule } from './modules/students/students.module';
+import { CoursesModule } from './modules/courses/courses.module';
+import { ClassroomsModule } from './modules/classrooms/classrooms.module';
+import { GroupsModule } from './modules/groups/groups.module';
+import { SessionsModule } from './modules/sessions/sessions.module';
+import { PlacementTestsModule } from './modules/placement-tests/placement-tests.module';
+import { WaitlistsModule } from './modules/waitlists/waitlists.module';
+import { AttendancesModule } from './modules/attendance/attendance.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { PublicModule } from './modules/public/public.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { HealthModule } from './modules/health/health.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { EnrollmentsModule } from './modules/enrollments/enrollments.module';
+import { CertificatesModule } from './modules/certificates/certificates.module';
+import { LmsModule } from './modules/lms/lms.module';
+import { HrModule } from './modules/hr/hr.module';
+import { ActivitiesModule } from './modules/activities/activities.module';
+import { KbModule } from './modules/kb/kb.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ChatModule } from './modules/chat/chat.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { RolesGuard } from './common/guards/roles.guard';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    DatabaseModule,
+    AuthModule,
+    UsersModule,
+    RolesModule,
+    BranchesModule,
+    LeadsModule,
+    StudentsModule,
+    CoursesModule,
+    ClassroomsModule,
+    GroupsModule,
+    SessionsModule,
+    AttendancesModule,
+    PlacementTestsModule,
+    WaitlistsModule,
+    InventoryModule,
+    PublicModule,
+    NotificationsModule,
+    HealthModule,
+    FinanceModule,
+    EnrollmentsModule,
+    CertificatesModule,
+    LmsModule,
+    HrModule,
+    ActivitiesModule,
+    KbModule,
+    ReportsModule,
+    ChatModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_INTERCEPTOR, useClass: TransformInterceptor },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+  ],
+})
+export class AppModule {}
+</file>
+
+<file path="package.json">
+{
+  "name": "speakup-tms-backend",
+  "version": "1.0.0",
+  "description": "Speak Up English Academy - Training Management System Backend",
+  "author": "Hassan Youssif",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "nest build",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main",
+    "lint": "eslint \"{src,apps,libs,test}/*\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
+    "migration:generate": "npm run typeorm -- migration:generate -d ./src/database/data-source.ts",
+    "migration:run": "npm run typeorm -- migration:run -d ./src/database/data-source.ts",
+    "migration:revert": "npm run typeorm -- migration:revert -d ./src/database/data-source.ts",
+    "seed": "ts-node -r tsconfig-paths/register src/database/seeds/main.seed.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.3.0",
+    "@nestjs/config": "^3.1.1",
+    "@nestjs/core": "^10.3.0",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.3.0",
+    "@nestjs/platform-socket.io": "^10.3.0",
+    "@nestjs/swagger": "^7.2.0",
+    "@nestjs/typeorm": "^10.0.1",
+    "@nestjs/websockets": "^10.3.0",
+    "bcrypt": "^5.1.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.3.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.11.3",
+    "reflect-metadata": "^0.2.1",
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.19",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0",
+    "winston-daily-rotate-file": "^4.7.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.3.0",
+    "@nestjs/schematics": "^10.1.0",
+    "@nestjs/testing": "^10.3.0",
+    "@types/bcrypt": "^5.0.2",
+    "@types/compression": "^1.7.5",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.6",
+    "@types/passport-jwt": "^4.0.0",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "^9.0.7",
+    "@typescript-eslint/eslint-plugin": "^6.16.0",
+    "@typescript-eslint/parser": "^6.16.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.1.1",
+    "source-map-support": "^0.5.21",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.1.1",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^6.0.3"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": "src",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
+    "coverageDirectory": "../coverage",
+    "testEnvironment": "node"
+  }
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2021",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "incremental": true,
+    "skipLibCheck": true,
+    "types": ["node", "jest"],
+    "strictNullChecks": false,
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "ignoreDeprecations": "6.0"
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}
+</file>
+
+</files>

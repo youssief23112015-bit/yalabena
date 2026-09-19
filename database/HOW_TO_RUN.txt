@@ -1,0 +1,131 @@
+SPEAK UP TMS - COMPLETE TEST SEED v2
+====================================
+
+SOURCE
+------
+This seed was generated from the uploaded:
+speakup_tms_full_schema.sql
+
+FILES
+-----
+seed-test-data.sql
+    The actual PostgreSQL seed. It populates every table in the schema
+    and creates test roles/accounts/data.
+
+seed-test-data.ps1
+    PowerShell wrapper. It runs the SQL inside the Docker PostgreSQL container.
+
+TEST_USERS_AND_PASSWORDS.txt
+    Login credentials and test scenarios.
+
+INSTALL / RUN
+-------------
+Put all three files into:
+
+C:\Users\WinDows\Desktop\newspeakup-main\database\
+
+Your final structure should be:
+
+newspeakup-main
+└── database
+    ├── seed-test-data.ps1
+    ├── seed-test-data.sql
+    ├── TEST_USERS_AND_PASSWORDS.txt
+    └── HOW_TO_RUN.txt
+
+YOUR CURRENT DOCKER CONTAINER
+-----------------------------
+Container: speakup-postgres
+Database:  speakup_tms
+User:      postgres
+
+STEP 1 - Make sure PostgreSQL is running
+-----------------------------------------
+Run:
+
+docker ps
+
+You should see:
+
+speakup-postgres
+
+STEP 2 - Allow the script for this PowerShell session
+------------------------------------------------------
+Run:
+
+Set-ExecutionPolicy -Scope Process Bypass -Force
+
+STEP 3 - Run the complete seed
+------------------------------
+Run:
+
+cd "C:\Users\WinDows\Desktop\newspeakup-main"
+.\database\seed-test-data.ps1
+
+OR, from inside the database folder:
+
+cd "C:\Users\WinDows\Desktop\newspeakup-main\database"
+.\seed-test-data.ps1
+
+STEP 4 - Login
+--------------
+Use the accounts in:
+
+TEST_USERS_AND_PASSWORDS.txt
+
+The common password for non-admin accounts is:
+
+Test@1234
+
+The super admin password is:
+
+Admin@1234
+
+WHAT THE SEED DOES
+------------------
+It fills every table defined in the supplied schema, including:
+
+RBAC
+Branches
+Users
+Students
+CRM
+Courses A1-C2
+Groups and schedules
+Sessions and attendance
+Placement tests
+LMS
+Assignments / quizzes
+Gradebook
+Finance
+Certificates
+HR / payroll
+Activities
+Inventory
+Knowledge Base
+Chat moderation
+Website content
+Notifications
+Audit logs
+Settings
+
+SAFETY
+------
+The seed does NOT drop or truncate the database.
+
+It uses deterministic test records and ON CONFLICT handling.
+
+It is for development/testing only.
+
+SUCCESS
+-------
+At the end of the script, PostgreSQL prints verification counts.
+The PowerShell script prints:
+
+TEST DATA SEED COMPLETED SUCCESSFULLY
+
+IF IT FAILS
+-----------
+Do not change the database manually.
+
+Copy the PostgreSQL error output and send it back exactly as shown.
