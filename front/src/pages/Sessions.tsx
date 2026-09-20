@@ -428,9 +428,9 @@ export default function SessionsPage() {
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                                {student.first_name?.[0]}{student.last_name?.[0]}
+                                {student.user?.first_name?.[0] || ""}{student.user?.last_name?.[0] || ""}
                               </div>
-                              <span className="text-sm">{student.first_name} {student.last_name}</span>
+                              <span className="text-sm">{student.user?.first_name || ""}{" "}{student.user?.last_name || ""}</span>
                             </div>
                           </td>
                           <td className="px-4 py-2">

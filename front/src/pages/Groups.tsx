@@ -463,11 +463,12 @@ export default function GroupsPage() {
                   <Card key={student.id}>
                     <CardContent className="p-3 flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                        {student.first_name[0]}{student.last_name[0]}
+                        {student.user?.first_name?.[0] || ""}
+                        {student.user?.last_name?.[0] || ""}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{student.first_name} {student.last_name}</p>
-                        <p className="text-xs text-muted-foreground">{student.email || student.phone || "—"}</p>
+                        <p className="font-medium text-sm">{student.user?.first_name || ""}{" "}{student.user?.last_name || ""}</p>
+                        <p className="text-xs text-muted-foreground">{student.user?.email ||student.user?.phone ||"—"}</p>
                       </div>
                     </CardContent>
                   </Card>

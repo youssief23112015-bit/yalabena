@@ -30,6 +30,10 @@ const TRUE_FALSE_FALLBACK: Choice[] = [
   { value: 'true', label: 'True' },
   { value: 'false', label: 'False' },
 ];
+
+const TEXT_INPUT_CLASS =
+  'w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-60';
+
 function toChoice(option: unknown): Choice | null {
   if (typeof option === 'string' || typeof option === 'number') {
     const text = String(option);
@@ -52,6 +56,7 @@ function toChoice(option: unknown): Choice | null {
   const value = String(raw);
   return { value, label: String(o.text ?? o.label ?? value) };
 }
+
 function getChoices(question: PlacementQuestion): Choice[] {
   const choices = (Array.isArray(question.options) ? question.options : [])
     .map(toChoice)
@@ -69,14 +74,20 @@ function getQuestionText(question: PlacementQuestion): string {
 
 function getErrorMessage(err: unknown, fallback: string): string {
   if (typeof err === 'object' && err !== null) {
-    const responseMessage = (err as { response?: { data?: { message?: unknown } } }).response?.data
-      ?.message;
+    const response = (
+      err as { response?: { status?: number; data?: { message?: unknown } } }
+    ).response;
 
-    if (Array.isArray(responseMessage) && responseMessage.length > 0) {
-      return responseMessage.map(String).join(', ');
+    const serverMessage = response?.data?.message;
+
+    if (Array.isArray(serverMessage) && serverMessage.length > 0) {
+      return serverMessage.map(String).join(', ');
     }
-    if (typeof responseMessage === 'string' && responseMessage !== '') {
-      return responseMessage;
+    if (typeof serverMessage === 'string' && serverMessage !== '') {
+      return serverMessage;
+    }
+    if (response?.status === 409) {
+      return 'This test has already been submitted.';
     }
 
     const message = (err as { message?: unknown }).message;
@@ -92,6 +103,7 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -102,6 +114,7 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
     setLoading(true);
     setError(null);
     setPaper(null);
+    setConfirming(false);
 
     getWrittenPaper(testId, PLACEMENT_LEVEL)
       .then((result) => {
@@ -126,30 +139,29 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
   const questions = useMemo(() => paper?.questions ?? [], [paper]);
   const currentQuestion = questions[currentIndex];
 
+  const isAnswered = (question: PlacementQuestion): boolean =>
+    (answers[question.id] ?? '').trim() !== '';
+
   const answeredCount = useMemo(
     () => questions.filter((q) => (answers[q.id] ?? '').trim() !== '').length,
     [answers, questions],
   );
+  const unansweredCount = questions.length - answeredCount;
 
   const setAnswer = (questionId: string, answer: string) => {
     setAnswers((previous) => ({ ...previous, [questionId]: answer }));
+    setConfirming(false);
   };
 
   const goPrevious = () => setCurrentIndex((i) => Math.max(0, i - 1));
   const goNext = () => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1));
 
   /* -------------------------------- Submit -------------------------------- */
-  const handleSubmit = async () => {
+  const submit = async () => {
     if (!paper || submitting) return;
 
-    if (answeredCount !== questions.length) {
-      const confirmed = window.confirm(
-        `You answered ${answeredCount} of ${questions.length} questions. Submit anyway?`,
-      );
-      if (!confirmed) return;
-    }
-
     setSubmitting(true);
+    setConfirming(false);
     setError(null);
 
     try {
@@ -170,31 +182,44 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
     }
   };
 
+  const handleSubmitClick = () => {
+    if (unansweredCount > 0) {
+      setConfirming(true);
+    } else {
+      void submit();
+    }
+  };
+
   /* --------------------------------- Views -------------------------------- */
   if (loading) {
     return (
       <section
         role="status"
         aria-live="polite"
-        className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm"
+        className="rounded-2xl border border-border bg-card p-8 shadow-sm"
       >
         <div className="flex items-center justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600" />
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
         </div>
-        <p className="text-center text-sm text-gray-600">Loading written placement test...</p>
+        <p className="text-center text-sm text-muted-foreground">
+          Loading written placement test...
+        </p>
       </section>
     );
   }
 
   if (error && !paper) {
     return (
-      <section role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6">
-        <h2 className="font-semibold text-red-900">Unable to load the test</h2>
-        <p className="mt-2 text-sm text-red-800">{error}</p>
+      <section
+        role="alert"
+        className="rounded-2xl border border-destructive/30 bg-destructive/10 p-6"
+      >
+        <h2 className="font-semibold text-destructive">Unable to load the test</h2>
+        <p className="mt-2 text-sm text-destructive">{error}</p>
         <button
           type="button"
           onClick={() => setReloadKey((k) => k + 1)}
-          className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          className="mt-4 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90"
         >
           Try again
         </button>
@@ -206,7 +231,7 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
     return (
       <section
         role="alert"
-        className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900"
+        className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-6 text-amber-800 dark:text-amber-300"
       >
         No questions are available for this written placement test.
       </section>
@@ -220,34 +245,36 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
     choices.length > 0;
   const isShortText =
     currentQuestion.type === 'fill_blank' || currentQuestion.type === 'short_answer';
+  const isManualGraded = currentQuestion.type === 'short_answer';
   const isLast = currentIndex === questions.length - 1;
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <section className="rounded-2xl border border-border bg-card text-card-foreground shadow-sm">
       {/* Header */}
-      <div className="border-b border-gray-200 p-6">
+      <div className="border-b border-border p-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Written Placement Test</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <h2 className="text-lg font-semibold text-foreground">Written Placement Test</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Question {currentIndex + 1} of {questions.length} · {answeredCount} answered
             </p>
           </div>
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             {paper.totalPoints} total point{paper.totalPoints === 1 ? '' : 's'}
           </div>
         </div>
 
         <div
-          className="mt-4 h-2 overflow-hidden rounded-full bg-gray-100"
+          className="mt-4 h-2 overflow-hidden rounded-full bg-muted"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={questions.length}
-          aria-valuenow={currentIndex + 1}
+          aria-valuenow={answeredCount}
+          aria-label="Questions answered"
         >
           <div
-            className="h-full rounded-full bg-indigo-600 transition-all"
-            style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${(answeredCount / questions.length) * 100}%` }}
           />
         </div>
       </div>
@@ -256,7 +283,7 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
       {error && (
         <div
           role="alert"
-          className="mx-6 mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          className="mx-6 mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
         >
           {error}
         </div>
@@ -265,14 +292,15 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
       {/* Question */}
       <div className="p-6">
         <div className="mb-6">
-          <div className="mb-3 text-sm font-medium text-indigo-600">
+          <div className="mb-3 text-sm font-medium text-primary">
             Question {currentIndex + 1}
           </div>
-          <h3 className="text-xl font-semibold leading-relaxed text-gray-900">
+          <h3 className="text-xl font-semibold leading-relaxed text-foreground">
             {getQuestionText(currentQuestion)}
           </h3>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             {currentQuestion.points} point{currentQuestion.points === 1 ? '' : 's'}
+            {isManualGraded ? ' · graded by your examiner' : ''}
           </p>
         </div>
 
@@ -288,11 +316,11 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
                 <label
                   key={`${choice.value}-${index}`}
                   className={[
-                    'flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition',
+                    'flex items-center gap-3 rounded-xl border p-4 transition',
                     selected
-                      ? 'border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500'
-                      : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50',
-                    submitting ? 'cursor-not-allowed opacity-60' : '',
+                      ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                      : 'border-border bg-card hover:bg-muted',
+                    submitting ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
                   ].join(' ')}
                 >
                   <input
@@ -302,9 +330,9 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
                     checked={selected}
                     disabled={submitting}
                     onChange={() => setAnswer(currentQuestion.id, choice.value)}
-                    className="h-4 w-4 accent-indigo-600"
+                    className="h-4 w-4 accent-primary"
                   />
-                  <span className="text-sm font-medium text-gray-800">{choice.label}</span>
+                  <span className="text-sm font-medium text-foreground">{choice.label}</span>
                 </label>
               );
             })}
@@ -316,24 +344,38 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
             <label htmlFor={`answer-${currentQuestion.id}`} className="sr-only">
               Your answer
             </label>
-            <input
-              id={`answer-${currentQuestion.id}`}
-              type="text"
-              value={currentAnswer}
-              disabled={submitting}
-              onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
-              placeholder="Type your answer..."
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
-            />
+            {isManualGraded ? (
+              <textarea
+                id={`answer-${currentQuestion.id}`}
+                value={currentAnswer}
+                disabled={submitting}
+                onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
+                rows={4}
+                placeholder="Type your answer..."
+                className={TEXT_INPUT_CLASS}
+              />
+            ) : (
+              <input
+                id={`answer-${currentQuestion.id}`}
+                type="text"
+                value={currentAnswer}
+                disabled={submitting}
+                onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
+                placeholder="Type your answer..."
+                autoComplete="off"
+                className={TEXT_INPUT_CLASS}
+              />
+            )}
           </div>
         )}
 
         {!isChoiceQuestion && !isShortText && (
           <div>
-            <label
-              htmlFor={`answer-${currentQuestion.id}`}
-              className="mb-2 block text-sm font-medium text-gray-700"
-            >
+            <p className="mb-2 text-sm text-muted-foreground">
+              This question type is not fully supported yet. You can type an answer, but it
+              may not be scored automatically.
+            </p>
+            <label htmlFor={`answer-${currentQuestion.id}`} className="sr-only">
               Your answer
             </label>
             <textarea
@@ -343,43 +385,122 @@ export default function WrittenTestPlayer({ testId, onSubmitted }: WrittenTestPl
               onChange={(event) => setAnswer(currentQuestion.id, event.target.value)}
               rows={4}
               placeholder="Type your answer..."
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+              className={TEXT_INPUT_CLASS}
             />
           </div>
         )}
       </div>
 
+      {/* Unanswered confirmation */}
+      {confirming && !submitting && (
+        <div
+          role="alertdialog"
+          aria-live="assertive"
+          className="mx-6 mb-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4"
+        >
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            You have {unansweredCount} unanswered question{unansweredCount === 1 ? '' : 's'}.
+            Submit anyway?
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void submit()}
+              className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Submit anyway
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false);
+                const firstBlank = questions.findIndex((q) => (answers[q.id] ?? '').trim() === '');
+                if (firstBlank >= 0) setCurrentIndex(firstBlank);
+              }}
+              className="rounded-lg border border-border bg-background px-4 py-1.5 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              Go to first unanswered
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
-      <div className="flex flex-col gap-3 border-t border-gray-200 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t border-border p-6 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="button"
           onClick={goPrevious}
           disabled={currentIndex === 0 || submitting}
-          className="rounded-lg border border-gray-300 px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
         >
           Previous
         </button>
 
-        {isLast ? (
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={submitting}
-            className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {submitting ? 'Submitting...' : 'Submit test'}
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={submitting}
-            className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next
-          </button>
-        )}
+        <div className="flex gap-3">
+          {!isLast && unansweredCount === 0 && (
+            <button
+              type="button"
+              onClick={handleSubmitClick}
+              disabled={submitting}
+              className="rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Submit now
+            </button>
+          )}
+
+          {isLast ? (
+            <button
+              type="button"
+              onClick={handleSubmitClick}
+              disabled={submitting}
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Submitting...' : 'Submit test'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={submitting}
+              className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Question navigator */}
+      {questions.length > 1 && (
+        <nav aria-label="Question navigator" className="border-t border-border p-6">
+          <div className="flex flex-wrap gap-2">
+            {questions.map((q, i) => {
+              const isCurrent = i === currentIndex;
+              const answered = isAnswered(q);
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  onClick={() => setCurrentIndex(i)}
+                  disabled={submitting}
+                  aria-label={`Question ${i + 1}, ${answered ? 'answered' : 'not answered'}`}
+                  aria-current={isCurrent ? 'step' : undefined}
+                  className={[
+                    'h-9 w-9 rounded-md border text-sm font-medium transition disabled:opacity-50',
+                    isCurrent
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : answered
+                        ? 'border-primary/40 bg-primary/10 text-primary'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                  ].join(' ')}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </section>
   );
 }

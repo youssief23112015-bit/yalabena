@@ -106,13 +106,14 @@ export interface SubmitWrittenResponse {
    Summary shown to the student after submitting
 ========================================================= */
 
-export interface WrittenSummary {
+export interface WrittenSummary{
   score: number;
   maxScore: number;
   percentage: number | null;
   level: string | null;
+  /** Questions awaiting manual grading (e.g. short answers). */
+  pendingManual: number;
 }
-
 /* =========================================================
    Helpers
 ========================================================= */
@@ -251,6 +252,7 @@ export function toWrittenSummary(response: SubmitWrittenResponse): WrittenSummar
     maxScore,
     percentage,
     level: response.level ?? null,
+    pendingManual: response.results.filter((r) => r.isCorrect === null).length,
   };
 }
 

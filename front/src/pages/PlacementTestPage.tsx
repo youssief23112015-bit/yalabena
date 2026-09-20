@@ -17,35 +17,43 @@ function ResultCard({ summary }: { summary: WrittenSummary }) {
   return (
     <section
       aria-live="polite"
-      className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm"
+      className="rounded-2xl border border-border bg-card p-8 text-center text-card-foreground shadow-sm"
     >
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-2xl text-primary">
         ✓
       </div>
-      <h2 className="mt-4 text-xl font-semibold text-gray-900">Written test submitted</h2>
+      <h2 className="mt-4 text-xl font-semibold text-foreground">Written test submitted</h2>
 
       <dl className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-lg bg-gray-50 p-4">
-          <dt className="text-xs uppercase tracking-wide text-gray-500">Score</dt>
-          <dd className="mt-1 text-2xl font-bold text-gray-900">
+        <div className="rounded-lg bg-muted p-4">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Score</dt>
+          <dd className="mt-1 text-2xl font-bold text-foreground">
             {summary.maxScore > 0 ? `${summary.score} / ${summary.maxScore}` : summary.score}
           </dd>
         </div>
 
-        <div className="rounded-lg bg-gray-50 p-4">
-          <dt className="text-xs uppercase tracking-wide text-gray-500">Percentage</dt>
-          <dd className="mt-1 text-2xl font-bold text-gray-900">
+        <div className="rounded-lg bg-muted p-4">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Percentage</dt>
+          <dd className="mt-1 text-2xl font-bold text-foreground">
             {summary.percentage !== null ? `${summary.percentage}%` : '—'}
           </dd>
         </div>
 
-        <div className="rounded-lg bg-gray-50 p-4">
-          <dt className="text-xs uppercase tracking-wide text-gray-500">Level</dt>
-          <dd className="mt-1 text-2xl font-bold text-indigo-700">{summary.level ?? 'Pending'}</dd>
+        <div className="rounded-lg bg-muted p-4">
+          <dt className="text-xs uppercase tracking-wide text-muted-foreground">Level</dt>
+          <dd className="mt-1 text-2xl font-bold text-primary">{summary.level ?? 'Pending'}</dd>
         </div>
       </dl>
 
-      <p className="mt-6 text-sm text-gray-600">
+      {summary.pendingManual > 0 && (
+        <p className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+          {summary.pendingManual} short-answer question
+          {summary.pendingManual === 1 ? '' : 's'} will be graded by your examiner, so your score
+          may change.
+        </p>
+      )}
+
+      <p className="mt-6 text-sm text-muted-foreground">
         {summary.level
           ? 'Your recommended level is shown above. Your oral assessment will follow.'
           : 'Your level will be confirmed after your oral assessment.'}
@@ -62,9 +70,9 @@ export function PlacementTestPage({ testId: testIdProp }: PlacementTestPageProps
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Placement Test — Written</h1>
+        <h1 className="text-2xl font-bold text-foreground">Placement Test — Written</h1>
         {!summary && (
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             Answer each question. You can move between questions before submitting.
           </p>
         )}
@@ -73,7 +81,7 @@ export function PlacementTestPage({ testId: testIdProp }: PlacementTestPageProps
       {!testId ? (
         <div
           role="alert"
-          className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900"
+          className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-6 text-amber-800 dark:text-amber-300"
         >
           No placement test was specified. Open this page from your test invitation link.
         </div>
