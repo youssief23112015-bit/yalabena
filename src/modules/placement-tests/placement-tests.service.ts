@@ -40,29 +40,44 @@ export class PlacementTestsService {
     return this.repo.save(test);
   }
 
-  async findAll(leadId?: string): Promise<PlacementTest[]> {
-    const query = this.repo
+  /**
+   * Joined lead/examiner rows expose ONLY the fields the UI needs.
+   * Never use leftJoinAndSelect on users: it returns password_hash.
+   */
+  private baseQuery() {
+    return this.repo
       .createQueryBuilder('test')
-      .leftJoinAndSelect('test.lead', 'lead')
-      .leftJoinAndSelect('test.examiner', 'examiner');
+      .leftJoin('test.lead', 'lead')
+      .leftJoin('test.examiner', 'examiner')
+      .addSelect([
+        'lead.id',
+        'lead.first_name',
+        'lead.last_name',
+        'lead.phone',
+        'lead.email',
+        'lead.status',
+        'lead.level_interest',
+        'examiner.id',
+        'examiner.first_name',
+        'examiner.last_name',
+      ]);
+  }
 
+  async findAll(leadId?: string): Promise<PlacementTest[]> {
+    const query = this.baseQuery().orderBy('test.scheduled_at', 'DESC');
     if (leadId) {
       query.andWhere('lead.id = :leadId', { leadId });
     }
-
     return query.getMany();
   }
 
   async findOne(id: string): Promise<PlacementTest> {
-    const test = await this.repo.findOne({
-      where: { id },
-      relations: ['lead', 'examiner'],
-    });
-
+    const test = await this.baseQuery()
+      .where('test.id = :id', { id })
+      .getOne();
     if (!test) {
       throw new NotFoundException(`Placement test with ID ${id} not found`);
     }
-
     return test;
   }
 

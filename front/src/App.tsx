@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/toaster';
 import LoginPage from '@/pages/Login';
 import RegisterPage from '@/pages/Register';
 import PlacementTestPage from '@/pages/PlacementTestPage';
+import PlacementTestsPage from '@/pages/PlacementTests';
 
 import DashboardPage from '@/pages/Dashboard';
 import LeadsPage from '@/pages/Leads';
@@ -54,20 +55,39 @@ function App() {
           }
         />
 
-        {/* Public Placement Test */}
-        <Route
-          path="/placement-test"
-          element={<PlacementTestPage />}
-        />
-
         {/* Protected Application Routes */}
         <Route element={<ProtectedRoute />}>
+          {/*
+            Written placement test player: focused full-page view (no AppShell).
+            Roles mirror the backend: POST /placement-tests/:id/written/paper|submit
+            The test is run by staff for a lead; leads have no account.
+          */}
+          <Route
+            path="/placement-test"
+            element={roleGate(
+              ['super_admin', 'branch_manager', 'academic', 'teacher'],
+              <PlacementTestPage />,
+            )}
+          />
+
           <Route element={<AppShell />}>
             <Route path="/" element={<DashboardPage />} />
 
             <Route
               path="/dashboard"
               element={<DashboardPage />}
+            />
+
+            {/*
+              Placement tests list. Roles = who can BOTH list
+              (GET /placement-tests) and run the written test.
+            */}
+            <Route
+              path="/placement-tests"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic'],
+                <PlacementTestsPage />,
+              )}
             />
 
             <Route

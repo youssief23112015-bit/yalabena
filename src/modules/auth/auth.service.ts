@@ -57,20 +57,25 @@ export class AuthService {
     return this.buildAuthResponse(user, roles, permissions);
   }
 
-  async login(dto: LoginDto) {
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+async login(dto: LoginDto) {
+  const user = await this.userRepo
+    .createQueryBuilder('user')
+    .addSelect('user.password_hash')
+    .where('user.email = :email', { email: dto.email })
+    .getOne();
 
-    const valid = await bcrypt.compare(dto.password, user.password_hash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+  if (!user) throw new UnauthorizedException('Invalid credentials');
 
-    await this.userRepo.update(user.id, { last_login_at: new Date() });
+  const valid = await bcrypt.compare(dto.password, user.password_hash);
+  if (!valid) throw new UnauthorizedException('Invalid credentials');
 
-    const roles = await this.getUserRoles(user.id);
-    const permissions = await this.getUserPermissions(user.id);
+  await this.userRepo.update(user.id, { last_login_at: new Date() });
 
-    return this.buildAuthResponse(user, roles, permissions);
-  }
+  const roles = await this.getUserRoles(user.id);
+  const permissions = await this.getUserPermissions(user.id);
+
+  return this.buildAuthResponse(user, roles, permissions);
+}
 
   async refresh(dto: RefreshTokenDto) {
     try {
