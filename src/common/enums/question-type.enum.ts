@@ -1,8 +1,8 @@
 export enum QuestionType {
-  MCQ = 'mcq',
-  FILL_BLANK = 'fill_blank',
-  MATCHING = 'matching',
-  TRUE_FALSE = 'true_false',
-  ORDERING = 'ordering',
-  SHORT_ANSWER = 'short_answer',
+MCQ = 'MCQ',
+  TRUE_FALSE = 'TRUE_FALSE',
+  SHORT_ANSWER = 'SHORT_ANSWER',
+  MATCHING = 'MATCHING',
+  ORDERING = 'ORDERING',
+  FILL_BLANK = 'FILL_BLANK',
 }

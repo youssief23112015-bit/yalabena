@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { User } from '../../../shared/entities/user.entity';
 import { UserRole } from '../../../shared/entities/user-role.entity';
 import { Role } from '../../../shared/entities/role.entity';
+import { UserStatus } from '../../../common/enums/user-status.enum';
 
 export interface JwtPayload {
   sub: string;
@@ -30,15 +31,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    // 1. جلب بيانات المستخدم مع الفرع فقط (بدون userRoles لمنع الخطأ)
     const user = await this.userRepo.findOne({
       where: { id: payload.sub },
       relations: ['branch'],
     });
 
-    if (!user || user.status !== 'active') {
-      throw new UnauthorizedException('User inactive or not found');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
 
+    // 2. التحقق من حالة المستخدم بناءً على الـ Enum
+    if (user.status !== UserStatus.ACTIVE && user.status?.toString().toLowerCase() !== 'active') {
+      throw new UnauthorizedException('User is inactive');
+    }
+
+    // 3. جلب الأدوَار والصلاحيات ديناميكياً من جدول userRoleRepo
     const userRoles = await this.userRoleRepo.find({
       where: { user_id: user.id },
       relations: { role: { permissions: true } },
@@ -56,9 +64,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ),
     ];
 
-    // Keep both `id` and `userId` because existing controllers use both forms.
-    // Load branch/roles/permissions from DB so permission changes are effective
-    // on the next request without relying on stale JWT fields.
     return {
       id: user.id,
       userId: user.id,
@@ -66,6 +71,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       roles,
       permissions,
       branchId: user.branch_id ?? null,
+      status: user.status,
     };
   }
 }

@@ -50,8 +50,6 @@ services:
         condition: service_started
     volumes:
       - uploads:/app/uploads
-      - ./src:/app/src        # <-- ADD THIS for hot reload
-      - /app/node_modules     # <-- ADD THIS to preserve container node_modules
 
 volumes:
   postgres_data:

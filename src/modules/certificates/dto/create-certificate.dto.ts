@@ -1,10 +1,8 @@
-import { IsUUID, IsOptional, IsString, IsDateString } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class CreateCertificateDto {
-  @ApiProperty() @IsUUID() student_id: string;
-  @ApiProperty() @IsUUID() course_id: string;
-  @ApiProperty() @IsUUID() group_id: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() template_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsDateString() expiry_date?: string;
+  @IsUUID() student_id: string;
+  @IsUUID() course_id: string;
+  @IsUUID() group_id: string;
+  @IsOptional() @IsUUID() template_id?: string;
 }

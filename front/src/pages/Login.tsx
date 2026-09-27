@@ -4,13 +4,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
-import { authApi } from "@/api/auth";
+import { authApi, isTwoFactorChallenge } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import type { TwoFactorChallenge } from "@/types";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -25,6 +26,8 @@ export default function LoginPage() {
   const { toast } = useToast();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [challenge, setChallenge] = useState<TwoFactorChallenge | null>(null);
+  const [totpCode, setTotpCode] = useState("");
 
   const {
     register,
@@ -41,6 +44,12 @@ export default function LoginPage() {
         email: data.email,
         password: data.password,
       });
+
+      if (isTwoFactorChallenge(res)) {
+        setChallenge(res);
+        setTotpCode("");
+        return;
+      }
 
       setAuth(res.user, res.access_token, res.refresh_token);
 
@@ -60,6 +69,76 @@ export default function LoginPage() {
       setIsSubmitting(false);
     }
   };
+
+  const onVerify2fa = async () => {
+    if (!challenge) return;
+    setIsSubmitting(true);
+    try {
+      const res = await authApi.verify2fa(challenge.temp_token, totpCode);
+      setAuth(res.user, res.access_token, res.refresh_token);
+      toast({
+        title: t("auth.loginSuccess"),
+        description: `${res.user.first_name} ${res.user.last_name}`,
+      });
+      navigate("/");
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: t("security.2faInvalidCode"),
+        description: err.message || t("common.error"),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (challenge) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold">{t("security.2faTitle")}</CardTitle>
+            <CardDescription>{t("security.2faLoginHint")}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="totp">{t("security.enterCode")}</Label>
+              <Input
+                id="totp"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                placeholder="123456"
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && totpCode.length === 6) onVerify2fa();
+                }}
+                className="text-center text-lg tracking-[0.3em]"
+                autoFocus
+              />
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <Button
+              className="w-full"
+              onClick={onVerify2fa}
+              disabled={isSubmitting || totpCode.length !== 6}
+            >
+              {isSubmitting ? t("common.loading") : t("security.verify")}
+            </Button>
+            <button
+              type="button"
+              className="text-sm text-muted-foreground underline"
+              onClick={() => setChallenge(null)}
+            >
+              {t("common.back")}
+            </button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">

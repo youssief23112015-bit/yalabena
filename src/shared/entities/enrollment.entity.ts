@@ -23,7 +23,7 @@ export class Enrollment {
   @JoinColumn({ name: 'group_id' })
   group: Group;
 
-  @Column({ type: 'enum', enum: EnrollmentStatus, default: EnrollmentStatus.PENDING })
+@Column({ type: 'enum', enum: EnrollmentStatus, default: EnrollmentStatus.ACTIVE })
   status: EnrollmentStatus;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })

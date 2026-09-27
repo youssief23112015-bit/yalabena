@@ -459,20 +459,24 @@ export default function GroupsPage() {
           <TabsContent value="students" className="space-y-4">
             {selectedGroup.students && selectedGroup.students.length > 0 ? (
               <div className="grid gap-3 md:grid-cols-2">
-                {selectedGroup.students.map((student) => (
-                  <Card key={student.id}>
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
-                        {student.user?.first_name?.[0] || ""}
-                        {student.user?.last_name?.[0] || ""}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{student.user?.first_name || ""}{" "}{student.user?.last_name || ""}</p>
-                        <p className="text-xs text-muted-foreground">{student.user?.email ||student.user?.phone ||"—"}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {selectedGroup.students.map((student) => {
+                  const firstName = student.user?.first_name || student.first_name || "—";
+                  const lastName = student.user?.last_name || student.last_name || "";
+                  const contact = student.user?.email || student.user?.phone || student.email || student.phone || "—";
+                  return (
+                    <Card key={student.id}>
+                      <CardContent className="p-3 flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">
+                          {firstName[0]}{lastName[0] || ""}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{firstName} {lastName}</p>
+                          <p className="text-xs text-muted-foreground">{contact}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">No students enrolled.</div>

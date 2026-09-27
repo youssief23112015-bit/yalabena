@@ -1,11 +1,14 @@
-import { IsOptional, IsString, IsUUID, IsDateString, IsNumber } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class QueryInvoiceDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() student_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsDateString() due_from?: string;
-  @ApiPropertyOptional() @IsOptional() @IsDateString() due_to?: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() offset?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() limit?: number;
+  @IsOptional() @IsUUID() student_id?: string;
+  @IsOptional() @IsUUID() branch_id?: string;
+  @IsOptional() @IsIn(['UNPAID', 'PARTIAL', 'PAID', 'CANCELLED', 'OVERDUE']) status?: string;
+  @IsOptional() @IsString() from?: string;
+  @IsOptional() @IsString() to?: string;
+  @IsOptional() @IsString() due_from?: string;
+  @IsOptional() @IsString() due_to?: string;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) offset?: number = 0;
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(1) limit?: number = 20;
 }

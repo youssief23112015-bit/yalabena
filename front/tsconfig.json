@@ -16,12 +16,13 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "ignoreDeprecations": "5.0",
+    
     "baseUrl": ".",
     
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client", "jest"]
+    "types": ["vite/client", "jest ", "node", "express", "multer"]
   },
   "include": ["src", "test"],
   "references": [{ "path": "./tsconfig.node.json" }]

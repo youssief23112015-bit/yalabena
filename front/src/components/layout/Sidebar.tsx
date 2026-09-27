@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard,
   Users,
@@ -11,6 +12,20 @@ import {
   Building2,
   UserCog,
   ShieldCheck,
+  ClipboardCheck,
+  Hourglass,
+  Wallet,
+  Award,
+  BookMarked,
+  Briefcase,
+  Sparkles,
+  BookOpenText,
+  BarChart3,
+  MessagesSquare,
+  Package,
+  Bell,
+  ScrollText,
+  ShieldHalf,
   LogOut,
   X,
 } from "lucide-react";
@@ -22,21 +37,50 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
-const navItems = [
-  { to: "/", label: "nav.dashboard", icon: LayoutDashboard },
-  { to: "/leads", label: "nav.leads", icon: Users },
-  { to: "/students", label: "nav.students", icon: GraduationCap },
-  { to: "/courses", label: "nav.courses", icon: BookOpen },
-  { to: "/groups", label: "nav.groups", icon: CalendarDays },
-  { to: "/sessions", label: "nav.sessions", icon: Clock },
-  { to: "/branches", label: "nav.branches", icon: Building2 },
-  { to: "/users", label: "nav.users", icon: UserCog },
-  { to: "/roles", label: "nav.roles", icon: ShieldCheck },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  roles: string[];
+}
+
+const navItems: NavItem[] = [
+  { to: "/", label: "nav.dashboard", icon: LayoutDashboard, roles: [] },
+  { to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "branch_manager", "sales"] },
+  { to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "branch_manager", "sales", "finance", "academic", "teacher"] },
+  { to: "/courses", label: "nav.courses", icon: BookOpen, roles: [] },
+  { to: "/groups", label: "nav.groups", icon: CalendarDays, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+  { to: "/sessions", label: "nav.sessions", icon: Clock, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+  { to: "/attendance", label: "nav.attendance", icon: ClipboardCheck, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+  { to: "/placement-tests", label: "nav.placementTests", icon: BookMarked, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+  { to: "/waitlists", label: "nav.waitlists", icon: Hourglass, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+  { to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "branch_manager", "sales", "finance", "academic"] },
+  { to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance", "branch_manager"] },
+  { to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "branch_manager", "academic", "finance", "teacher"] },
+  { to: "/lms", label: "nav.lms", icon: BookMarked, roles: ["super_admin", "academic", "teacher", "student"] },
+  { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "branch_manager"] },
+  { to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "branch_manager", "teacher", "student"] },
+  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance"] },
+  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: [] },
+  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
+  { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance"] },
+  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] },
+  { to: "/branches", label: "nav.branches", icon: Building2, roles: ["super_admin", "branch_manager"] },
+  { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
+  { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
+  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin"] },
+  { to: "/security", label: "nav.security", icon: ShieldHalf, roles: [] },
 ];
 
 export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
   const { t } = useTranslation("common");
   const location = useLocation();
+  const user = useAuthStore((s) => s.user);
+  const roles = user?.roles ?? (user?.role ? [user.role] : []);
+  const isSuper = roles.includes("super_admin");
+  const visible = navItems.filter(
+    (i) => i.roles.length === 0 || isSuper || i.roles.some((r) => roles.includes(r)),
+  );
 
   return (
     <aside
@@ -65,9 +109,10 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
 
       {/* Rail nav: icons always, labels on hover (desktop) */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-        {navItems.map((item) => {
+        {visible.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.to;
+          const isActive =
+            item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
           return (
             <NavLink
               key={item.to}

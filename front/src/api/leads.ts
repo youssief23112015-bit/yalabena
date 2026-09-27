@@ -101,11 +101,16 @@ export const leadsApi = {
 
   addActivity: async (
     id: string,
-    activity: Omit<LeadActivity, "id" | "lead_id" | "created_at">,
+    activity: { type: string; note?: string; description?: string; scheduled_at?: string },
   ): Promise<LeadActivity> => {
+    const payload = {
+      type: activity.type,
+      note: activity.note || activity.description || "",
+      scheduled_at: activity.scheduled_at,
+    };
     const response = await api.post(
       `/leads/${id}/activities`,
-      activity,
+      payload,
     );
 
     return unwrap<LeadActivity>(response);

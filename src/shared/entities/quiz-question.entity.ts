@@ -2,7 +2,6 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Jo
 import { Quiz } from './quiz.entity';
 import { TestQuestion } from './test-question.entity';
 import { QuestionType } from '../../common/enums/question-type.enum';
-
 @Entity('quiz_questions')
 export class QuizQuestion {
   @PrimaryGeneratedColumn('uuid')

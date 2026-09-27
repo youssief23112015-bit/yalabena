@@ -106,14 +106,13 @@ export interface SubmitWrittenResponse {
    Summary shown to the student after submitting
 ========================================================= */
 
-export interface WrittenSummary{
+export interface WrittenSummary {
   score: number;
   maxScore: number;
   percentage: number | null;
   level: string | null;
-  /** Questions awaiting manual grading (e.g. short answers). */
-  pendingManual: number;
 }
+
 /* =========================================================
    Helpers
 ========================================================= */
@@ -252,7 +251,6 @@ export function toWrittenSummary(response: SubmitWrittenResponse): WrittenSummar
     maxScore,
     percentage,
     level: response.level ?? null,
-    pendingManual: response.results.filter((r) => r.isCorrect === null).length,
   };
 }
 
@@ -357,57 +355,6 @@ export async function submitWrittenTest(
 ): Promise<SubmitWrittenResponse> {
   return submitWritten(testId, answers);
 }
-/* =========================================================
-   Placement test list (staff)
-   GET /placement-tests
-========================================================= */
-
-export interface PlacementTestListItem {
-  id: string;
-  status: string;
-  scheduledAt: string | null;
-  /** null until the written test has been submitted. */
-  writtenScore: number | null;
-  writtenMax: number;
-  personName: string;
-  phone: string | null;
-  examinerName: string | null;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function fullName(person: any): string | null {
-  if (!person) return null;
-  const name = [person.first_name, person.last_name].filter(Boolean).join(" ").trim();
-  return name === "" ? null : name;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizePlacementTestListItem(raw: any): PlacementTestListItem {
-  const score = raw?.written_score;
-  return {
-    id: String(raw?.id ?? ""),
-    status: String(raw?.status ?? ""),
-    scheduledAt: raw?.scheduled_at ? String(raw.scheduled_at) : null,
-    // TypeORM returns decimal columns as strings ("18.18").
-    writtenScore: score === null || score === undefined ? null : toNumber(score),
-    writtenMax: toNumber(raw?.written_max, 100),
-    personName: fullName(raw?.lead) ?? "Unnamed",
-    phone: raw?.lead?.phone ? String(raw.lead.phone) : null,
-    examinerName: fullName(raw?.examiner),
-  };
-}
-
-export async function listPlacementTests(leadId?: string): Promise<PlacementTestListItem[]> {
-  const response = await apiClient.get("/placement-tests", {
-    params: leadId ? { leadId } : undefined,
-  });
-
-  const data = unwrap(response.data);
-
-  return Array.isArray(data)
-    ? data.map(normalizePlacementTestListItem).filter((t) => t.id !== "")
-    : [];
-}
 
 /* =========================================================
    API Object
@@ -418,7 +365,6 @@ export const placementApi = {
   fetchWrittenPaper,
   submitWritten,
   submitWrittenTest,
-  listPlacementTests,
 };
 
 export default placementApi;

@@ -41,19 +41,19 @@ export const branchesApi = {
     return data;
   },
   getClassrooms: async (id: string): Promise<Classroom[]> => {
-    const { data } = await apiClient.get<Classroom[]>(`/branches/${id}/classrooms`);
+    const { data } = await apiClient.get<Classroom[]>(`/classrooms`, { params: { branchId: id } });
     return data;
   },
   createClassroom: async (id: string, dto: { name: string; capacity: number }): Promise<Classroom> => {
-    const { data } = await apiClient.post<Classroom>(`/branches/${id}/classrooms`, dto);
+    const { data } = await apiClient.post<Classroom>(`/classrooms`, { ...dto, branchId: id });
     return data;
   },
-  updateClassroom: async (branchId: string, classroomId: string, dto: { name?: string; capacity?: number; status?: string }): Promise<Classroom> => {
-    const { data } = await apiClient.put<Classroom>(`/branches/${branchId}/classrooms/${classroomId}`, dto);
+  updateClassroom: async (_branchId: string, classroomId: string, dto: { name?: string; capacity?: number; status?: string }): Promise<Classroom> => {
+    const { data } = await apiClient.put<Classroom>(`/classrooms/${classroomId}`, dto);
     return data;
   },
-  removeClassroom: async (branchId: string, classroomId: string): Promise<unknown> => {
-    const { data } = await apiClient.delete(`/branches/${branchId}/classrooms/${classroomId}`);
+  removeClassroom: async (_branchId: string, classroomId: string): Promise<unknown> => {
+    const { data } = await apiClient.delete(`/classrooms/${classroomId}`);
     return data;
   },
 };

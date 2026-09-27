@@ -5,7 +5,11 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ROLES_KEY, PERMISSIONS_KEY, PERMISSIONS_OPTIONS_KEY } from '../decorators/roles.decorator';
+import {
+  ROLES_KEY,
+  PERMISSIONS_KEY,
+  PERMISSIONS_OPTIONS_KEY,
+} from '../decorators/roles.decorator';
 import type { PermissionsOptions } from '../decorators/roles.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
@@ -20,7 +24,7 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     if (isPublic) {
-      return true; // يتجاوز فحص الأدوار والمستخدم تماماً للمسارات العامة
+      return true;
     }
 
     const { user } = context.switchToHttp().getRequest();
@@ -31,7 +35,7 @@ export class RolesGuard implements CanActivate {
     // --- Super Admin Bypass ---
     const userRoles: string[] = user.roles ?? [];
     if (userRoles.includes('super_admin')) {
-      return true; // يتجاوز أي قيود roles أو permissions فوراً
+      return true;
     }
 
     const requiredRoles = this.reflector.getAllAndOverride<string[]>(ROLES_KEY, [
@@ -42,10 +46,11 @@ export class RolesGuard implements CanActivate {
       PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
-    const permOptions = this.reflector.getAllAndOverride<PermissionsOptions>(
-      PERMISSIONS_OPTIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    ) ?? {};
+    const permOptions =
+      this.reflector.getAllAndOverride<PermissionsOptions>(
+        PERMISSIONS_OPTIONS_KEY,
+        [context.getHandler(), context.getClass()],
+      ) ?? {};
 
     // No requirements -> allow
     if (!requiredRoles?.length && !requiredPermissions?.length) return true;
@@ -67,9 +72,10 @@ export class RolesGuard implements CanActivate {
       const check = (perm: string) =>
         granted.some((g) => this.permissionMatches(g, perm));
 
-      const passed = mode === 'all'
-        ? requiredPermissions.every(check)
-        : requiredPermissions.some(check);
+      const passed =
+        mode === 'all'
+          ? requiredPermissions.every(check)
+          : requiredPermissions.some(check);
 
       if (!passed) {
         throw new ForbiddenException(
@@ -83,9 +89,9 @@ export class RolesGuard implements CanActivate {
 
   /**
    * Wildcard / hierarchical permission matching.
-   *   '*'                          -> everything
-   *   'users' or 'users:*'         -> any action inside the users module
-   *   'users:create'               -> exact match
+   *   '*'                 -> everything
+   *   'users' or 'users:*' -> any action inside the users module
+   *   'users:create'       -> exact match
    */
   private permissionMatches(granted: string, required: string): boolean {
     if (granted === '*' || granted === required) return true;
@@ -93,7 +99,7 @@ export class RolesGuard implements CanActivate {
     const [gModule, gAction = '*'] = granted.split(':');
     const [rModule, rAction = '*'] = required.split(':');
     if (gModule !== rModule) return false;
-    if (!rAction || !gAction) return true; // module-only grant covers the whole module
+    if (!rAction || !gAction) return true;
     return gAction === '*' || gAction === rAction;
   }
 }

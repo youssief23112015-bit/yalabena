@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Branch } from './branch.entity';
 import { UserStatus } from '../../common/enums/user-status.enum';
+import { UserRole } from './user-role.entity'; // 👈 استيراد كيان user-role
 
 @Entity('users')
 export class User {
@@ -13,7 +14,7 @@ export class User {
   @Column({ type: 'varchar', length: 20, unique: true, nullable: true })
   phone: string;
 
-  @Column({ type: 'varchar', length: 255, select: false })
+  @Column({ type: 'varchar', length: 255 })
   password_hash: string;
 
   @Column({ type: 'varchar', length: 100 })
@@ -34,6 +35,10 @@ export class User {
   @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'branch_id' })
   branch: Branch;
+
+  // 👈 إضافة تعريف علاقة userRoles هنا
+  @OneToMany(() => UserRole, (userRole) => userRole.user)
+  userRoles: UserRole[];
 
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
   status: UserStatus;
@@ -64,6 +69,4 @@ export class User {
 
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at: Date;
-
-  
 }

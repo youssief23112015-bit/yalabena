@@ -1,8 +1,8 @@
-import { IsString, IsEnum, IsOptional } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EnrollmentStatus } from '../../../common/enums/enrollment-status.enum';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateEnrollmentStatusDto {
-  @ApiProperty({ enum: EnrollmentStatus }) @IsEnum(EnrollmentStatus) status: EnrollmentStatus;
-  @ApiPropertyOptional() @IsOptional() @IsString() reason?: string;
+  @IsIn(['PENDING', 'ACTIVE', 'COMPLETED', 'DROPPED'])
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'DROPPED';
+
+  @IsOptional() @IsString() reason?: string;
 }

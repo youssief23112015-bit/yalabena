@@ -1,11 +1,16 @@
-import { IsUUID, IsNumber, IsOptional, IsString, IsEnum } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { EnrollmentStatus } from '../../../common/enums/enrollment-status.enum';
+import { IsUUID, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateEnrollmentDto {
-  @ApiProperty() @IsUUID() student_id: string;
-  @ApiProperty() @IsUUID() group_id: string;
-  @ApiPropertyOptional({ enum: EnrollmentStatus }) @IsOptional() @IsEnum(EnrollmentStatus) status?: EnrollmentStatus;
-  @ApiProperty() @IsNumber() total_fee: number;
-  @ApiPropertyOptional() @IsOptional() @IsUUID() promo_code_id?: string;
+  @IsUUID() student_id: string;
+  @IsUUID() group_id: string;
+
+  @IsOptional() @IsNumber() @Min(0) total_fee?: number;
+
+  @IsOptional() @IsNumber() @Min(0) discount_amount?: number;
+
+  @IsOptional() @IsString() promo_code?: string;
+
+  @IsOptional() @IsNumber() @Min(1) installments_count?: number;
+
+  @IsOptional() @IsNumber() @Min(0) due_days?: number;
 }

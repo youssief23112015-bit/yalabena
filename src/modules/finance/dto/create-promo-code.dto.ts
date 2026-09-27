@@ -1,14 +1,12 @@
-import { IsString, IsNumber, IsOptional, IsEnum, IsDateString, IsJSON } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PromoType } from '../../../common/enums/promo-type.enum';
+import { IsArray, IsDateString, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreatePromoCodeDto {
-  @ApiProperty() @IsString() code: string;
-  @ApiProperty({ enum: PromoType }) @IsEnum(PromoType) type: PromoType;
-  @ApiProperty() @IsNumber() value: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() max_discount?: number;
-  @ApiProperty() @IsDateString() expiry_date: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() usage_limit?: number;
-  @ApiPropertyOptional() @IsOptional() applicable_courses?: any;
-  @ApiPropertyOptional() @IsOptional() applicable_branches?: any;
+  @IsString() code: string;
+  @IsIn(['percentage', 'fixed']) type: 'percentage' | 'fixed';
+  @IsNumber() @Min(0) value: number;
+  @IsOptional() @IsNumber() @Min(0) max_discount?: number;
+  @IsDateString() expiry_date: string;
+  @IsOptional() @IsNumber() @Min(1) usage_limit?: number;
+  @IsOptional() @IsArray() applicable_courses?: string[];
+  @IsOptional() @IsArray() applicable_branches?: string[];
 }

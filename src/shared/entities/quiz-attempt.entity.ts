@@ -53,7 +53,8 @@ export class QuizAttempt {
 
   @Column({ type: 'uuid', nullable: true })
   graded_by: string;
-
+  @Column({ name: 'needs_manual_review', type: 'boolean', default: false })
+  needs_manual_review: boolean; 
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'graded_by' })
   grader: User;

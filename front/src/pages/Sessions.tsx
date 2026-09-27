@@ -423,14 +423,16 @@ export default function SessionsPage() {
                     {students.map((student: Student) => {
                       const existing = getAttendanceForStudent(student.id);
                       const currentStatus = attendanceMap[student.id] || existing?.status || "absent";
+                      const firstName = student.user?.first_name || student.first_name || "—";
+                      const lastName = student.user?.last_name || student.last_name || "";
                       return (
                         <tr key={student.id} className="border-t">
                           <td className="px-4 py-2">
                             <div className="flex items-center gap-2">
                               <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                                {student.user?.first_name?.[0] || ""}{student.user?.last_name?.[0] || ""}
+                                {firstName[0]}{lastName[0] || ""}
                               </div>
-                              <span className="text-sm">{student.user?.first_name || ""}{" "}{student.user?.last_name || ""}</span>
+                              <span className="text-sm">{firstName} {lastName}</span>
                             </div>
                           </td>
                           <td className="px-4 py-2">

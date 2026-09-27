@@ -11,7 +11,6 @@ import { InvoiceItem } from '../../shared/entities/invoice-item.entity';
 import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
 import { PaymentStatus } from '../../common/enums/payment-status.enum';
 import { RefundStatus } from '../../common/enums/refund-status.enum';
-import { InstallmentStatus } from '../../common/enums/installment-status.enum';
 import { TransactionDirection } from '../../common/enums/transaction-direction.enum';
 import { FinancialTransactionType } from '../../common/enums/financial-transaction-type.enum';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -19,6 +18,7 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { CreatePromoCodeDto } from './dto/create-promo-code.dto';
 import { QueryInvoiceDto } from './dto/query-invoice.dto';
+
 
 @Injectable()
 export class FinanceService {
@@ -33,14 +33,91 @@ export class FinanceService {
     private dataSource: DataSource,
   ) {}
 
+  // ─── ALIASES FOR CONTROLLER & ENROLLMENTS COMPATIBILITY ───
+
+  async createInvoiceForEnrollment(data: any) {
+    return this.createInvoice(data, data.created_by, data.branch_id);
+  }
+
+  async createManualInvoice(dto: CreateInvoiceDto, user: any) {
+    const userId = typeof user === 'string' ? user : user?.id;
+    const branchId = typeof user === 'object' ? user?.branch_id || user?.branchId : undefined;
+    return this.createInvoice(dto, userId, branchId);
+  }
+
+  async listInvoices(query: QueryInvoiceDto, user: any) {
+    return this.findInvoices(query, user);
+  }
+
+  async createPromo(dto: CreatePromoCodeDto, user: any) {
+    const userId = typeof user === 'string' ? user : user?.id;
+    return this.createPromoCode(dto, userId);
+  }
+
+  async listPromos() {
+    return this.promoRepo.find();
+  }
+
+  async setPromoStatus(id: string, status: 'active' | 'inactive') {
+    await this.promoRepo.update(id, { status } as any);
+    return { success: true };
+  }
+
+  async listPayments(user: any, filter: any) {
+    return this.paymentRepo.find({ where: filter });
+  }
+
+  async getPayment(id: string, user: any) {
+    return this.getPaymentWithDetails(id);
+  }
+
+  async createRefund(dto: CreateRefundDto, user: any) {
+    const userId = typeof user === 'string' ? user : user?.id;
+    return this.requestRefund(dto, userId);
+  }
+
+  async listRefunds(user: any, filter: any) {
+    return this.refundRepo.find({ where: filter });
+  }
+
+  async decideRefund(id: string, action: string, note: string, user: any) {
+    const status = action === 'APPROVE' ? RefundStatus.APPROVED : RefundStatus.REJECTED;
+    await this.refundRepo.update(id, { status, rejection_reason: note } as any);
+    return { success: true };
+  }
+
+  async ledger(user: any, from?: string, to?: string, branchId?: string) {
+    return this.getRevenueReport(branchId || user?.branchId || null, from ? new Date(from) : new Date(0), to ? new Date(to) : new Date());
+  }
+
+  async receivables(user: any, branchId?: string) {
+    return this.getOutstandingPayments(branchId || user?.branchId || null);
+  }
+
+  // ─── RECEIPTS (SRS 4.8) ───
+
+  async getPaymentWithDetails(id: string) {
+    const payment = await this.paymentRepo.findOne({
+      where: { id },
+      relations: [
+        'invoice',
+        'invoice.student',
+        'invoice.student.user',
+        'invoice.branch',
+        'invoice.items',
+      ],
+    });
+    if (!payment) throw new NotFoundException('Payment not found');
+    return payment;
+  }
+
   // ─── INVOICES ───
 
-   async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string) {
+  async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      // Destructure to omit 'items' from dto spread
       const { items: dtoItems, ...invoiceData } = dto;
 
       const invoice = this.invoiceRepo.create({
@@ -50,15 +127,14 @@ export class FinanceService {
         created_by: userId,
         status: InvoiceStatus.UNPAID,
         paid_amount: 0,
-        balance_due: dto.total_amount,
-      });
-      const saved = await queryRunner.manager.save(invoice);
-
+        balance_due: (dto as any).total_amount || (dto as any).amount || 0,
+      } as any);
+      const saved = (await queryRunner.manager.save(invoice)) as unknown as Invoice;
       if (dtoItems?.length) {
-        const items = dtoItems.map((item) =>
-          this.itemRepo.create({ 
-            ...item, 
-            invoice_id: saved[0].id,
+        const items = dtoItems.map((item: any) =>
+          this.itemRepo.create({
+            ...item,
+            invoice_id: saved.id,
             item_type: item.item_type as any,
           } as any),
         );
@@ -66,7 +142,7 @@ export class FinanceService {
       }
 
       await queryRunner.commitTransaction();
-      return this.invoiceRepo.findOne({ where: { id: saved[0].id }, relations: ['items'] });
+      return this.invoiceRepo.findOne({ where: { id: saved.id }, relations: ['items'] });
     } catch (err) {
       await queryRunner.rollbackTransaction();
       throw err;
@@ -74,6 +150,7 @@ export class FinanceService {
       await queryRunner.release();
     }
   }
+
   async findInvoices(query: QueryInvoiceDto, user: any) {
     const qb = this.invoiceRepo.createQueryBuilder('i')
       .leftJoinAndSelect('i.items', 'items')
@@ -81,7 +158,7 @@ export class FinanceService {
       .leftJoinAndSelect('student.user', 'user')
       .orderBy('i.created_at', 'DESC');
 
-    if (!user.roles?.includes('super_admin')) {
+    if (!user?.roles?.includes('super_admin') && user?.branchId) {
       qb.andWhere('i.branch_id = :branchId', { branchId: user.branchId });
     }
     if (query.status) qb.andWhere('i.status = :status', { status: query.status });
@@ -99,7 +176,7 @@ export class FinanceService {
       relations: ['items', 'payments', 'installments', 'student', 'student.user'],
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (!user.roles?.includes('super_admin') && invoice.branch_id !== user.branchId) {
+    if (!user?.roles?.includes('super_admin') && invoice.branch_id !== user?.branchId) {
       throw new ForbiddenException('Access denied');
     }
     return invoice;
@@ -107,7 +184,8 @@ export class FinanceService {
 
   // ─── PAYMENTS ───
 
-  async recordPayment(dto: CreatePaymentDto, userId: string) {
+  async recordPayment(dto: CreatePaymentDto, userOrUserId: any) {
+    const userId = typeof userOrUserId === 'string' ? userOrUserId : userOrUserId?.id;
     const invoice = await this.invoiceRepo.findOne({ where: { id: dto.invoice_id } });
     if (!invoice) throw new NotFoundException('Invoice not found');
 
@@ -116,13 +194,11 @@ export class FinanceService {
       recorded_by: userId,
       status: PaymentStatus.COMPLETED,
       receipt_number: await this.generateReceiptNumber(),
-    });
-    const saved = await this.paymentRepo.save(payment);
+    } as any);
+    const saved = await this.paymentRepo.save(payment) as any;
 
-    // Auto-sync invoice
     await this.syncInvoice(invoice.id);
 
-    // Log transaction
     await this.ftRepo.save({
       branch_id: invoice.branch_id,
       invoice_id: invoice.id,
@@ -130,10 +206,10 @@ export class FinanceService {
       transaction_type: FinancialTransactionType.PAYMENT,
       direction: TransactionDirection.IN,
       amount: dto.amount,
-      transaction_date: dto.paid_at,
+      transaction_date: (dto as any).paid_at || new Date(),
       description: `Payment ${saved.receipt_number}`,
       created_by: userId,
-    });
+    } as any);
 
     return saved;
   }
@@ -160,11 +236,12 @@ export class FinanceService {
       ...dto,
       invoice_id: payment.invoice_id,
       status: RefundStatus.PENDING,
-    });
+    } as any);
     return this.refundRepo.save(refund);
   }
 
-  async processRefund(id: string, userId: string) {
+  async processRefund(id: string, userOrUserId: any) {
+    const userId = typeof userOrUserId === 'string' ? userOrUserId : userOrUserId?.id;
     const refund = await this.refundRepo.findOne({ where: { id } });
     if (!refund) throw new NotFoundException('Refund not found');
     if (refund.status !== RefundStatus.APPROVED) {
@@ -178,7 +255,6 @@ export class FinanceService {
 
     await this.syncInvoice(refund.invoice_id);
 
-    // Log transaction
     const invoice = await this.invoiceRepo.findOne({ where: { id: refund.invoice_id } });
     await this.ftRepo.save({
       branch_id: invoice?.branch_id,
@@ -190,7 +266,7 @@ export class FinanceService {
       transaction_date: new Date(),
       description: `Refund ${refund.reason_code}`,
       created_by: userId,
-    });
+    } as any);
 
     return refund;
   }
@@ -198,12 +274,12 @@ export class FinanceService {
   // ─── PROMO CODES ───
 
   async createPromoCode(dto: CreatePromoCodeDto, userId: string) {
-    const promo = this.promoRepo.create({ ...dto, created_by: userId });
+    const promo = this.promoRepo.create({ ...dto, created_by: userId } as any);
     return this.promoRepo.save(promo);
   }
 
   async validatePromoCode(code: string, courseId?: string, branchId?: string) {
-    const promo = await this.promoRepo.findOne({ where: { code, status: 'active' } });
+    const promo = await this.promoRepo.findOne({ where: { code, status: 'active' } as any });
     if (!promo) throw new NotFoundException('Invalid promo code');
     if (new Date(promo.expiry_date) < new Date()) throw new BadRequestException('Promo code expired');
     if (promo.usage_limit && promo.used_count >= promo.usage_limit) {

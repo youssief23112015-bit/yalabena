@@ -1,6 +1,6 @@
-import { IsUUID, IsOptional, IsString } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class ApproveRefundDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() approval_note?: string;
+  @IsIn(['approve', 'reject']) action: 'approve' | 'reject';
+  @IsOptional() @IsString() note?: string;
 }

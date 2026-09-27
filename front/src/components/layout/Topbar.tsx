@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { Button } from "@/components/ui/button";
 import { Menu, Globe, LogOut } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
 
 interface TopbarProps {
   onMenuToggle: () => void;
@@ -27,7 +28,8 @@ export function Topbar({ onMenuToggle, onLogout }: TopbarProps) {
         <h1 className="text-lg font-semibold">{t("app.tagline")}</h1>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1">
+        <NotificationBell />
         <Button variant="ghost" size="sm" onClick={toggleLang} className="gap-2">
           <Globe className="h-4 w-4" />
           {i18n.language === "ar" ? "English" : "العربية"}
