@@ -22,7 +22,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client", "jest ", "node", "express", "multer"]
+    "types": ["vite/client",  "node", "express", "multer"]
   },
   "include": ["src", "test"],
   "references": [{ "path": "./tsconfig.node.json" }]

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ChatRoom } from '../../shared/entities/chat-room.entity';
 import { ChatRoomMember } from '../../shared/entities/chat-room-member.entity';
 import { ChatMessage } from '../../shared/entities/chat-message.entity';
@@ -15,6 +15,25 @@ import { ChatMessageType } from '../../common/enums/chat-message-type.enum';
 import { ViolationAction } from '../../common/enums/violation-action.enum';
 import { StrikeAction } from '../../common/enums/strike-action.enum';
 import { normalizeChatMessage } from './utils/normalize-chat';
+import { toCsvLine } from './utils/csv';
+import { isInternalUploadUrl } from './utils/attachment-url';
+// ASSUMPTION: PdfService already exists under src/modules/pdf (seen in the
+// project's module listing). If it doesn't yet expose renderChatAuditPdf(),
+// see pdf.service.ts in this delivery for the method to merge in.
+import { PdfService } from '../pdf/pdf.service';
+
+export interface ChatAuditRow {
+  id: string;
+  createdAt: Date;
+  senderId: string;
+  senderName: string;
+  type: string;
+  deleted: boolean;
+  editedCount: number;
+  body: string;
+  fileUrl: string | null;
+  fileName: string | null;
+}
 
 @Injectable()
 export class ChatService {
@@ -25,6 +44,7 @@ export class ChatService {
     @InjectRepository(ChatViolation) private violationRepo: Repository<ChatViolation>,
     @InjectRepository(ChatStrike) private strikeRepo: Repository<ChatStrike>,
     @InjectRepository(User) private userRepo: Repository<User>,
+    private readonly pdfService: PdfService,
   ) {}
 
   // ─── ROOMS ───
@@ -77,6 +97,13 @@ export class ChatService {
 
   // ─── MESSAGES ───
 
+  /**
+   * CHAT-BE-01: the REST path must run the exact same compliance check as
+   * the WebSocket gateway, and it must run BEFORE the message is persisted
+   * (SRS §6.4). Previously this method only checked ban/mute status and let
+   * every message body straight through — a contact number sent via
+   * POST /chat/messages was never scanned at all.
+   */
   async saveMessage(dto: SendMessageDto, senderId: string) {
     const membership = await this.memberRepo.findOne({
       where: { room_id: dto.room_id, user_id: senderId },
@@ -84,6 +111,20 @@ export class ChatService {
     if (!membership || membership.is_banned) throw new ForbiddenException('You cannot send messages in this room');
     if (membership.is_muted && membership.muted_until && membership.muted_until > new Date()) {
       throw new ForbiddenException('You are muted in this room');
+    }
+
+    if (dto.file_url && !isInternalUploadUrl(dto.file_url)) {
+      throw new BadRequestException('Attachments must be uploaded through the platform, not linked externally');
+    }
+
+    const scan = this.scanMessage(dto.body || '');
+    if (scan?.violation) {
+      // messageId is null: the message must never be persisted once a
+      // violation fires, so no message row — and therefore no id — exists.
+      await this.recordViolation(null, dto.room_id, senderId, scan.rule, dto.body || '', scan.action);
+      throw new ForbiddenException(
+        'Sharing personal contact info is not allowed. This attempt has been logged.',
+      );
     }
 
     const message = this.messageRepo.create({
@@ -136,7 +177,7 @@ export class ChatService {
     return this.messageRepo.save(message);
   }
 
-  // ─── MODERATION ───
+  // ─── MODERATION (manual) ───
 
   async moderateUser(dto: ModerateUserDto, moderatorId: string) {
     const room = await this.roomRepo.findOne({ where: { id: dto.room_id } });
@@ -200,8 +241,13 @@ export class ChatService {
 
   // ─── VIOLATIONS & STRIKES ───
 
-  async logViolation(
-    messageId: string,
+  /**
+   * Persists a chat_violations record and runs the strike system (SRS §4.7.2, §6.4).
+   * This is the canonical entry point going forward — both the REST path
+   * (saveMessage) and the WebSocket gateway should call this.
+   */
+  async recordViolation(
+    messageId: string | null,
     roomId: string,
     senderId: string,
     ruleMatched: string,
@@ -220,12 +266,27 @@ export class ChatService {
     });
     const saved = await this.violationRepo.save(violation);
 
-    // Apply strike system
-    await this.applyStrike(senderId, saved.id);
+    await this.applyStrike(senderId, roomId, saved.id);
     return saved;
   }
 
-  private async applyStrike(userId: string, violationId: string) {
+  /**
+   * @deprecated Kept so existing call sites (ChatGateway, older tests) keep
+   * working unchanged. New code should call recordViolation() directly.
+   */
+  async logViolation(
+    messageId: string | null,
+    roomId: string,
+    senderId: string,
+    ruleMatched: string,
+    originalMessage: string,
+    actionTaken: ViolationAction,
+    detectionMethod = 'text_regex',
+  ) {
+    return this.recordViolation(messageId, roomId, senderId, ruleMatched, originalMessage, actionTaken, detectionMethod);
+  }
+
+  private async applyStrike(userId: string, roomId: string, violationId: string) {
     const strikeCount = await this.strikeRepo.count({ where: { user_id: userId, is_active: true } });
     const strikeNumber = strikeCount + 1;
 
@@ -248,7 +309,38 @@ export class ChatService {
       action,
       expires_at: expiresAt,
     });
-    return this.strikeRepo.save(strike);
+    await this.strikeRepo.save(strike);
+
+    // CHAT-BE-13: the consequence must be applied automatically, not just
+    // logged for a moderator to notice and act on manually.
+    await this.enforceStrikeConsequence(userId, roomId, action, expiresAt);
+
+    return strike;
+  }
+
+  private async enforceStrikeConsequence(
+    userId: string,
+    roomId: string,
+    action: StrikeAction,
+    muteExpiresAt: Date | null,
+  ) {
+    if (action !== StrikeAction.MUTE_24H && action !== StrikeAction.BAN_PERMANENT) return;
+
+    let member = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
+    if (!member) {
+      member = this.memberRepo.create({ room_id: roomId, user_id: userId, role: 'member' });
+    }
+
+    if (action === StrikeAction.MUTE_24H) {
+      member.is_muted = true;
+      member.muted_until = muteExpiresAt;
+    } else if (action === StrikeAction.BAN_PERMANENT) {
+      member.is_banned = true;
+      member.banned_until = null; // permanent — no expiry
+      member.ban_reason = member.ban_reason || 'Automatic: 3rd contact-info-sharing strike (SRS §6.4)';
+    }
+
+    await this.memberRepo.save(member);
   }
 
   async getViolations(query: ViolationQueryDto) {
@@ -288,9 +380,68 @@ export class ChatService {
     });
   }
 
-  // ─── COMPLIANCE ENGINE ───
+  // ─── AUDIT EXPORT (CHAT-BE-10) ───
 
-    scanMessage(body: string): { violation: boolean; rule: string; action: ViolationAction } | null {
+  private async loadAuditRows(roomId: string): Promise<ChatAuditRow[]> {
+    const messages = await this.messageRepo.find({
+      where: { room_id: roomId },
+      relations: ['sender'],
+      order: { created_at: 'ASC' },
+    });
+
+    return messages.map((m: any) => {
+      const deleted = !!m.deleted_at;
+      return {
+        id: m.id,
+        createdAt: m.created_at,
+        senderId: m.sender_id,
+        senderName: m.sender ? `${m.sender.first_name} ${m.sender.last_name}` : 'Unknown',
+        type: m.type,
+        deleted,
+        editedCount: m.edited_count ?? 0,
+        // The audit trail keeps the row (nothing is ever hard-deleted per
+        // SRS §4.7.1), but the exported content itself reflects the same
+        // "[deleted]" treatment the UI shows rather than exposing the
+        // original body to every reader of the export.
+        body: deleted ? 'This message was deleted' : (m.body ?? ''),
+        fileUrl: deleted ? null : (m.file_url ?? null),
+        fileName: deleted ? null : (m.file_name ?? null),
+      };
+    });
+  }
+
+  async exportRoomMessagesCsv(roomId: string): Promise<string> {
+    const rows = await this.loadAuditRows(roomId);
+
+    const header = [
+      'id', 'created_at', 'sender_id', 'sender_name', 'type',
+      'deleted', 'edited_count', 'body', 'file_url', 'file_name',
+    ];
+
+    const lines = [header, ...rows.map((r) => [
+      r.id,
+      r.createdAt.toISOString(),
+      r.senderId,
+      r.senderName,
+      r.type,
+      r.deleted ? 'yes' : 'no',
+      r.editedCount,
+      r.body,
+      r.fileUrl ?? '',
+      r.fileName ?? '',
+    ])];
+
+    return lines.map(toCsvLine).join('\n');
+  }
+
+  async exportRoomMessagesPdf(roomId: string): Promise<Buffer> {
+    const rows = await this.loadAuditRows(roomId);
+    return this.pdfService.renderChatAuditPdf(roomId, rows);
+  }
+
+  // ─── COMPLIANCE ENGINE (SRS §6.1–§6.3) ───
+
+  scanMessage(body: string): { violation: boolean; rule: string; action: ViolationAction } | null {
     if (!body) return null;
 
     const { canonical, squashed } = normalizeChatMessage(body);

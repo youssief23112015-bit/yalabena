@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { CreateRoomDto } from './dto/create-room.dto';
@@ -50,6 +51,42 @@ export class ChatController {
     @CurrentUser() user?: any,
   ) {
     return this.chatService.getMessages(id, user.userId, offset, limit);
+  }
+
+  /**
+   * NEW — companion route for CHAT-BE-10. The service methods
+   * (exportRoomMessagesCsv / exportRoomMessagesPdf) were the only
+   * deliverable explicitly requested for this ticket, but without a route
+   * they're unreachable from the frontend's export button (RoomActions.tsx).
+   * Restricted to moderator/super_admin, matching SRS §6.5's export
+   * requirement being a moderator tool.
+   */
+  @Get('rooms/:id/export')
+  @Roles('super_admin', 'moderator')
+  @ApiOperation({ summary: 'Export room chat audit log as CSV or PDF' })
+  @ApiParam({ name: 'id', description: 'Chat Room UUID' })
+  @ApiQuery({ name: 'format', required: false, enum: ['csv', 'pdf'], description: 'Defaults to csv' })
+  async exportRoom(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('format') format: 'csv' | 'pdf' = 'csv',
+    @Res() res: Response,
+  ) {
+    if (format === 'pdf') {
+      const buffer = await this.chatService.exportRoomMessagesPdf(id);
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="chat-audit-${id}.pdf"`,
+      });
+      res.send(buffer);
+      return;
+    }
+
+    const csv = await this.chatService.exportRoomMessagesCsv(id);
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="chat-audit-${id}.csv"`,
+    });
+    res.send(csv);
   }
 
   @Post('messages')
