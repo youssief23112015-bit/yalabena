@@ -27,8 +27,8 @@ export class NotificationsGateway implements OnGatewayConnection {
     }
     try {
       const payload = this.jwtService.verify(token);
-      client.data.user = payload;
-      client.join(`user:${payload.userId}`);
+      client.data.user = { ...payload, userId: payload.sub };
+      client.join(`user:${payload.sub}`);
     } catch {
       client.disconnect();
     }

@@ -141,11 +141,24 @@ export class ChatService {
     });
     if (!membership) throw new ForbiddenException('Access denied');
 
+    // NOTE: an earlier version of this fix removed 'reply_to' from
+    // `relations`, guessing it was an undefined relation causing a 500.
+    // That was wrong — the actual cause (confirmed via server stack trace)
+    // was `skip: NaN` reaching TypeORM, fixed in the controller with
+    // DefaultValuePipe. Restored 'reply_to' here since removing it wasn't
+    // necessary and would have silently dropped a real feature.
+    //
+    // Defensive clamp kept anyway: guards this method against NaN/negative
+    // values reaching TypeORM even if it's ever called from somewhere
+    // other than the (now-fixed) controller.
+    const safeOffset = Number.isFinite(offset) && offset >= 0 ? Math.trunc(offset) : 0;
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(200, Math.trunc(limit)) : 50;
+
     const [messages, total] = await this.messageRepo.findAndCount({
       where: { room_id: roomId, deleted_at: null },
       order: { created_at: 'DESC' },
-      skip: offset,
-      take: limit,
+      skip: safeOffset,
+      take: safeLimit,
       relations: ['sender', 'reply_to'],
     });
 

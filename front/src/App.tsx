@@ -30,6 +30,8 @@ import AuditLogsPage from '@/pages/AuditLogs';
 import SecuritySettingsPage from '@/pages/SecuritySettings';
 import LmsPage from '@/pages/Lms'; // <--- 1. Import your LMS Page
 import NotFoundPage from '@/pages/NotFound';
+import ChatPage from '@/pages/Chat';
+
 
 const roleGate = (roles: string[], element: ReactNode) => (
   <RequireRoles roles={roles}>{element}</RequireRoles>
@@ -94,6 +96,9 @@ function App() {
                 <LeadsPage />,
               )}
             />
+
+            <Route path="/chat" element={<ChatPage />} />
+
 
             <Route
               path="/students"

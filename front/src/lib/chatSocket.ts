@@ -1,35 +1,62 @@
 import { io, type Socket } from 'socket.io-client';
+import { useAuthStore } from '../store/authStore';
 import type { ClientToServerEvents, ServerToClientEvents } from '../types/chat';
 
-// ASSUMPTION: token storage. FIXES.md (from the RBAC patch) references
-// front/src/store/authStore.ts as the existing auth source of truth. If
-// that store is a Zustand store, `authStore.getState().accessToken` works
-// outside React components; adjust the import/getter below to match its
-// real shape. Falling back to localStorage so this file is still usable
-// standing alone.
-function getAccessToken(): string | null {
+type TokenProvider = () => string | null;
+
+// ✅ FIXED: Read from the actual Zustand persist store with localStorage fallback
+let tokenProvider: TokenProvider = () => {
   try {
-    // Preferred: pull from the app's real auth store if it exposes a
-    // non-hook getter (e.g. a Zustand vanilla store).
-    // import { authStore } from '../store/authStore';
-    // return authStore.getState().accessToken ?? null;
-    return localStorage.getItem('access_token');
+    // Preferred: pull from the app's real auth store
+    return useAuthStore.getState().accessToken ?? null;
   } catch {
-    return null;
+    // Fallback: try the nested persist structure or raw keys
+    try {
+      const raw = localStorage.getItem('speakup-auth');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.state?.accessToken) return parsed.state.accessToken;
+      }
+    } catch {
+      // ignore
+    }
+    try {
+      return localStorage.getItem('access_token');
+    } catch {
+      return null;
+    }
   }
+};
+
+export function setChatAuthTokenProvider(provider: TokenProvider): void {
+  tokenProvider = provider;
 }
 
-const CHAT_NAMESPACE = (import.meta as any).env?.VITE_CHAT_WS_URL || '/chat';
+function resolveChatNamespaceUrl(): string {
+  const env = (import.meta as any).env ?? {};
+  if (env.VITE_CHAT_WS_URL) return env.VITE_CHAT_WS_URL;
+
+  if (env.VITE_API_URL) {
+    try {
+      const origin = new URL(env.VITE_API_URL).origin; // e.g. http://localhost:3000
+      return `${origin}/chat`;
+    } catch {
+      // Fall through
+    }
+  }
+
+  return '/chat';
+}
+
+const CHAT_NAMESPACE = resolveChatNamespaceUrl();
+
+// eslint-disable-next-line no-console
+console.info('[chat] socket namespace resolved to:', CHAT_NAMESPACE);
 
 type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 let socket: ChatSocket | null = null;
 
-/**
- * Returns the singleton chat socket, creating it on first call. The token
- * is re-read on every (re)connect attempt via the `auth` callback form, so
- * a refreshed JWT is picked up automatically without recreating the socket.
- */
 export function getChatSocket(): ChatSocket {
   if (socket) return socket;
 
@@ -39,8 +66,12 @@ export function getChatSocket(): ChatSocket {
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 10000,
-    transports: ['websocket', 'polling'],
-    auth: (cb) => cb({ token: getAccessToken() }),
+    // ابدأ بـ polling لتجاوز مشاكل الـ Handshake ثم تحول إلى websocket تلقائياً
+    transports: ['polling', 'websocket'],
+    auth: (cb) => {
+      const token = tokenProvider();
+      cb({ token });
+    },
   });
 
   socket.on('connect_error', (err) => {
@@ -51,14 +82,19 @@ export function getChatSocket(): ChatSocket {
   return socket;
 }
 
-/** Connects the shared socket if it isn't already connected. Safe to call repeatedly. */
 export function connectChatSocket(): ChatSocket {
   const s = getChatSocket();
   if (!s.connected) s.connect();
   return s;
 }
 
-/** Disconnects the shared socket (e.g. on logout). */
+export function reconnectChatSocket(): ChatSocket {
+  const s = getChatSocket();
+  if (s.connected) s.disconnect();
+  s.connect();
+  return s;
+}
+
 export function disconnectChatSocket(): void {
   socket?.disconnect();
 }

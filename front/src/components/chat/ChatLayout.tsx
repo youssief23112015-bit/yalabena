@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { MessageSquare } from 'lucide-react';
 import { connectChatSocket } from '../../lib/chatSocket';
+import { apiFetch } from '../../lib/apiFetch';
 import type { ChatMessage, ChatRoom, ChatRoomMember, SendMessagePayload } from '../../types/chat';
 import { MessageBubble } from './MessageBubble';
 import { MessageComposer } from './MessageComposer';
@@ -10,18 +11,10 @@ import { RoomActions } from './RoomActions';
 import { ChatToastProvider, useChatToast } from '../../hooks/useChatToast';
 
 export interface ChatLayoutProps {
-  apiBase: string; // e.g. '/api'
+  apiBase: string;
   currentUserId: string;
   isModerator: boolean;
   authHeader: () => Record<string, string>;
-  /**
-   * Whether the user has already consented. There is no "get consent status"
-   * endpoint in the current backend (CHAT-BE-09 — POST /chat/consent — is not
-   * part of this delivery), so the caller decides; pass the value from the
-   * user profile once `chat_consent_accepted_at` exists.
-   */
-  consentAccepted: boolean;
-  onConsentAccepted: () => void;
 }
 
 export function ChatLayout(props: ChatLayoutProps) {
@@ -32,14 +25,7 @@ export function ChatLayout(props: ChatLayoutProps) {
   );
 }
 
-function ChatLayoutInner({
-  apiBase,
-  currentUserId,
-  isModerator,
-  authHeader,
-  consentAccepted,
-  onConsentAccepted,
-}: ChatLayoutProps) {
+function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: ChatLayoutProps) {
   const { pushViolationToast, pushToast } = useChatToast();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
@@ -50,60 +36,103 @@ function ChatLayoutInner({
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeRoomId = activeRoom?.id;
 
-  const getJson = useCallback(
-    async <T,>(path: string): Promise<T> => {
-      const res = await fetch(`${apiBase}${path}`, { headers: authHeader() });
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      return res.json() as Promise<T>;
-    },
-    [apiBase, authHeader],
-  );
+  const [consentAccepted, setConsentAccepted] = useState<boolean | null>(null);
 
-  // Rooms
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{ accepted: boolean }>(`${apiBase}/chat/consent`, { headers: authHeader() })
+      .then((body) => {
+        if (!cancelled) setConsentAccepted(body.accepted);
+      })
+      .catch(() => {
+        if (!cancelled) setConsentAccepted(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBase, authHeader]);
+
+  // Rooms list fetch
   useEffect(() => {
     if (!consentAccepted) return;
-    getJson<ChatRoom[]>('/chat/rooms').then(setRooms).catch(() => pushToast({ kind: 'error', message: 'Could not load conversations.' }));
-  }, [consentAccepted, getJson, pushToast]);
+    apiFetch<ChatRoom[]>(`${apiBase}/chat/rooms`, { headers: authHeader() })
+      .then(setRooms)
+      .catch(() => pushToast({ kind: 'error', message: 'Could not load conversations.' }));
+  }, [consentAccepted, apiBase, authHeader, pushToast]);
 
   // Active room: history + members + socket join
   useEffect(() => {
     if (!activeRoomId || !consentAccepted) return;
+    
     const socket = connectChatSocket();
+    if (!socket.connected) {
+      socket.connect();
+    }
+
     setMessages([]);
     setTyping({});
+    setOnlineIds(new Set());
 
-    getJson<ChatRoom>(`/chat/rooms/${activeRoomId}`).then((r) => setMembers(r.members ?? [])).catch(() => undefined);
-    getJson<{ data: ChatMessage[] }>(`/chat/rooms/${activeRoomId}/messages`)
+    // جلب أعضاء الغرفة والرسائل مرة واحدة فقط
+    apiFetch<ChatRoom>(`${apiBase}/chat/rooms/${activeRoomId}`, { headers: authHeader() })
+      .then((r) => setMembers(r.members ?? []))
+      .catch(() => undefined);
+      
+    apiFetch<{ data: ChatMessage[] }>(`${apiBase}/chat/rooms/${activeRoomId}/messages`, { headers: authHeader() })
       .then((r) => setMessages(r.data))
       .catch(() => pushToast({ kind: 'error', message: 'Could not load messages.' }));
 
+    // الانضمام للغرفة عبر السوكيت
     socket.emit('join_room', { room_id: activeRoomId });
 
     const onNew = (m: ChatMessage) => {
       if (m.room_id !== activeRoomId) return;
-      setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+      
+      setMessages((prev) => {
+        // Check if this is the real version of an optimistic message
+        const tempIndex = prev.findIndex(
+          (x) => x.id.startsWith('temp-') && 
+                   x.sender_id === m.sender_id && 
+                   x.body === m.body &&
+                   Math.abs(new Date(x.created_at).getTime() - new Date(m.created_at).getTime()) < 5000
+        );
+        
+        if (tempIndex !== -1) {
+          // Replace temp with real message
+          const next = [...prev];
+          next[tempIndex] = m;
+          return next;
+        }
+        
+        // Otherwise just add if not duplicate
+        return prev.some((x) => x.id === m.id) ? prev : [...prev, m];
+      });
+      
       if (m.sender_id !== currentUserId) socket.emit('mark_read', { room_id: activeRoomId });
     };
+
     const onTyping = (e: { user_id: string; is_typing: boolean }) => {
       if (e.user_id === currentUserId) return;
       setTyping((prev) => {
         const next = { ...prev };
         if (e.is_typing) {
-          const member = members.find((mm) => mm.user_id === e.user_id);
-          next[e.user_id] = { id: e.user_id, name: member?.user ? member.user.first_name : 'Someone' };
+          next[e.user_id] = { id: e.user_id, name: 'Someone' };
         } else delete next[e.user_id];
         return next;
       });
     };
-    // Presence is approximated from join/leave events in the current room;
-    // the gateway has no dedicated presence broadcast yet.
-    const onJoined = (e: { user_id: string }) => setOnlineIds((s) => new Set(s).add(e.user_id));
-    const onLeft = (e: { user_id: string }) =>
+
+    const onJoined = (e: { user_id: string }) => {
+      setOnlineIds((s) => new Set(s).add(e.user_id));
+    };
+
+    const onLeft = (e: { user_id: string }) => {
       setOnlineIds((s) => {
         const n = new Set(s);
         n.delete(e.user_id);
         return n;
       });
+    };
 
     socket.on('new_message', onNew);
     socket.on('typing', onTyping);
@@ -118,9 +147,7 @@ function ChatLayoutInner({
       socket.off('user_left', onLeft);
       socket.emit('leave_room', { room_id: activeRoomId });
     };
-    // members intentionally excluded: only used for display names in typing
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRoomId, consentAccepted, currentUserId]);
+  }, [activeRoomId, consentAccepted, currentUserId, apiBase, authHeader, pushToast]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,26 +155,46 @@ function ChatLayoutInner({
 
   const handleSend = (payload: Omit<SendMessagePayload, 'room_id'>) => {
     if (!activeRoomId) return;
-    connectChatSocket().emit('send_message', { ...payload, room_id: activeRoomId }, (ack) => {
+    
+    const socket = connectChatSocket();
+    
+    socket.emit('send_message', { ...payload, room_id: activeRoomId }, (ack: any) => {
       if (ack?.error) {
+        // Remove the optimistic message on failure
+        setMessages((prev) => prev.filter((m) => !m.id.startsWith('temp-')));
         if (ack.rule) pushViolationToast(ack.rule);
         else pushToast({ kind: 'error', message: ack.error });
       }
     });
+
+    // Optimistic update with temp ID
+    const tempId = 'temp-' + Date.now();
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      room_id: activeRoomId,
+      sender_id: currentUserId,
+      body: payload.body ?? '',
+      file_url: payload.file_url,
+      file_name: payload.file_name,
+      type: payload.type || 'text',
+      created_at: new Date().toISOString(),
+      edited_count: 0,
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
   };
 
   const editMessage = async (id: string, body: string) => {
-    const res = await fetch(`${apiBase}/chat/messages/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ body }),
-    });
-    if (!res.ok) {
+    try {
+      const updated = await apiFetch<ChatMessage>(`${apiBase}/chat/messages/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
+        body: JSON.stringify({ body }),
+      });
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
+    } catch {
       pushToast({ kind: 'error', message: 'Could not edit message (edit window may have expired).' });
-      return;
     }
-    const updated = (await res.json()) as ChatMessage;
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...updated } : m)));
   };
 
   const deleteMessage = async (id: string) => {
@@ -159,7 +206,6 @@ function ChatLayoutInner({
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, deleted_at: new Date().toISOString() } : m)));
   };
 
-  // Read receipt: double-check turns blue when every OTHER member has read past this message.
   const isReadByAll = useCallback(
     (m: ChatMessage) => {
       const others = members.filter((mm) => mm.user_id !== m.sender_id);
@@ -181,13 +227,15 @@ function ChatLayoutInner({
       ? 'You are temporarily muted in this conversation.'
       : undefined;
 
+  if (consentAccepted === null) return null;
+
   return (
     <div className="flex h-full min-h-[32rem] overflow-hidden rounded-xl border border-slate-200 bg-white">
       <ChatConsentModal
         open={!consentAccepted}
         consentEndpoint={`${apiBase}/chat/consent`}
         authHeader={authHeader}
-        onAccepted={onConsentAccepted}
+        onAccepted={() => setConsentAccepted(true)}
       />
 
       <aside className="w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-slate-50">

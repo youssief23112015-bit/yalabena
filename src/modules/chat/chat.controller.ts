@@ -1,19 +1,74 @@
-import { Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, Res } from '@nestjs/common';
+import {
+  Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, Res,
+  UseInterceptors, UploadedFile, BadRequestException, DefaultValuePipe, ParseIntPipe,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
+import { ChatConsentService } from './chat-consent.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ModerateUserDto } from './dto/moderate-user.dto';
 import { ViolationQueryDto } from './dto/violation-query.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { chatUploadMulterOptions, CHAT_UPLOAD_URL_PREFIX, isImageMimetype } from './utils/upload.config';
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT')
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly consentService: ChatConsentService,
+  ) {}
+
+  // ─── CONSENT (CHAT-BE-09, SRS §6.6) ───
+
+  @Post('consent')
+  @ApiOperation({ summary: 'Record chat policy consent for the current user' })
+  @ApiResponse({ status: 201, description: 'Consent recorded.' })
+  async acceptConsent(@CurrentUser() user: any) {
+    const consent = await this.consentService.accept(user.userId);
+    return { accepted: true, accepted_at: consent.accepted_at.toISOString(), policy_version: consent.policy_version };
+  }
+
+  @Get('consent')
+  @ApiOperation({ summary: 'Get chat policy consent status for the current user' })
+  @ApiResponse({ status: 200, description: 'Returns whether the user has accepted the current policy version.' })
+  async getConsentStatus(@CurrentUser() user: any) {
+    return this.consentService.getStatus(user.userId);
+  }
+
+  // ─── UPLOAD (CHAT-BE-03/04/05 — upload portion) ───
+
+  @Post('upload')
+  @ApiOperation({ summary: 'Upload a chat attachment (image, PDF, or doc)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiResponse({ status: 201, description: 'Returns the internal URL of the stored file.' })
+  @UseInterceptors(FileInterceptor('file', chatUploadMulterOptions))
+  uploadAttachment(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file provided');
+
+    // NOTE: this endpoint stores the file and returns its URL — it does
+    // NOT yet run OCR (tesseract.js), QR decoding (jsQR), or PDF text
+    // extraction (pdf-parse) against scanMessage(). That's the remaining
+    // scope of CHAT-BE-03/04/05 beyond "the upload works": an image
+    // containing a phone number, or a QR code encoding a WhatsApp link,
+    // will currently pass through unscanned. Flagging this explicitly
+    // rather than silently shipping partial compliance coverage.
+    return {
+      url: `${CHAT_UPLOAD_URL_PREFIX}/${file.filename}`,
+      name: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      is_image: isImageMimetype(file.mimetype),
+    };
+  }
+
+  // ─── ROOMS ───
 
   @Post('rooms')
   @ApiOperation({ summary: 'Create chat room' })
@@ -46,21 +101,18 @@ export class ChatController {
   @ApiResponse({ status: 200, description: 'Returns room messages list.' })
   getMessages(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('offset') offset?: number,
-    @Query('limit') limit?: number,
+    // DefaultValuePipe MUST come before ParseIntPipe: it substitutes 0/50
+    // when the query param is absent, BEFORE ParseIntPipe (or the global
+    // ValidationPipe's implicit Number conversion) ever sees it. Without
+    // this, an absent query param gets coerced to NaN, not undefined —
+    // that's what was causing "Provided skip value is not a number".
+    @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     @CurrentUser() user?: any,
   ) {
     return this.chatService.getMessages(id, user.userId, offset, limit);
   }
 
-  /**
-   * NEW — companion route for CHAT-BE-10. The service methods
-   * (exportRoomMessagesCsv / exportRoomMessagesPdf) were the only
-   * deliverable explicitly requested for this ticket, but without a route
-   * they're unreachable from the frontend's export button (RoomActions.tsx).
-   * Restricted to moderator/super_admin, matching SRS §6.5's export
-   * requirement being a moderator tool.
-   */
   @Get('rooms/:id/export')
   @Roles('super_admin', 'moderator')
   @ApiOperation({ summary: 'Export room chat audit log as CSV or PDF' })

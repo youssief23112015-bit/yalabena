@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertOctagon, Ban, MessageSquareWarning, VolumeX, Radio } from 'lucide-react';
 import { connectChatSocket } from '../../lib/chatSocket';
+import { apiFetch } from '../../lib/apiFetch';
 import type { ChatViolation, ChatViolationPushEvent, ModerationAction } from '../../types/chat';
 
 export interface ModeratorDashboardProps {
@@ -33,9 +34,9 @@ export function ModeratorDashboard({ apiBase, authHeader, pollIntervalMs = 15000
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`${apiBase}/chat/violations?limit=50`, { headers: authHeader() });
-      if (!res.ok) throw new Error(`Failed to load violations (${res.status})`);
-      const body = (await res.json()) as { data: ChatViolation[] };
+      const body = await apiFetch<{ data: ChatViolation[] }>(`${apiBase}/chat/violations?limit=50`, {
+        headers: authHeader(),
+      });
       setViolations(body.data);
       setError(null);
     } catch (err) {

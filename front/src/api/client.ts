@@ -3,8 +3,21 @@ import { useAuthStore } from "@/store/authStore";
 import { authApi } from "./auth";
 import type { ApiResponse, ApiError } from "@/types";
 
-// التعديل: التوجيه المباشر لسيرفر NestJS على المنفذ 3000
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
+// FIX: VITE_API_URL (absolute, e.g. http://localhost:3000/api/v1) now takes
+// priority over VITE_API_BASE_URL (relative, e.g. /api/v1). The previous
+// order checked the relative one first — since it's always truthy when set,
+// the absolute fallback below it was never actually reachable, so every
+// request through this client resolved against the Vite dev server
+// (localhost:5173) instead of the NestJS backend (localhost:3000).
+//
+// In production, if you deploy behind a reverse proxy that serves both the
+// frontend and /api/v1 from the same origin, simply don't set VITE_API_URL
+// in that environment's .env — it'll fall through to the relative path as
+// before. Setting VITE_API_URL always wins, in any environment.
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:3000/api/v1";
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

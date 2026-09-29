@@ -1,10 +1,13 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // استخدام NestExpressApplication لدعم دمج ملفات الـ Static Assets
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors({
     origin: true,
@@ -12,6 +15,9 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api/v1');
+
+  // تفعيل المجلد الثابت للملفات المرفوعة (يتم وضعه داخل التطبيق بعد إنشائه)
+  app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
 
   app.useGlobalPipes(
     new ValidationPipe({
