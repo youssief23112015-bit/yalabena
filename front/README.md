@@ -13,6 +13,7 @@ Training Management System frontend for Speak Up English Academy.
 - i18next (English / Arabic, RTL/LTR)
 - Axios (API client)
 - Lucide React (icons)
+- Socket.io Client (Real-time communication & WebSockets)
 
 ## Features Implemented
 
@@ -21,34 +22,36 @@ Training Management System frontend for Speak Up English Academy.
 - ✅ Protected routes
 - ✅ RTL/LTR language switching (Arabic / English)
 - ✅ Responsive sidebar + topbar layout
-- ✅ Toast notifications
-- ✅ Centralized API client with error handling
-- ✅ Real backend API integration (no mock data)
-- ✅ Branches (list, view)
-- ✅ Users (list, view)
-- ✅ Roles (list, view with permissions)
-- ✅ Leads (full CRUD)
-- ✅ Students (list, search, branch filter)
-- ✅ Courses (full CRUD)
-- ✅ Groups (full CRUD with course/branch relations)
-- ✅ Sessions (full CRUD with group filter)
+- ✅ Toast notifications (including chat violation & alert toasts)[cite: 2]
+- ✅ Centralized API client with error handling[cite: 2]
+- ✅ Real backend API integration (no mock data)[cite: 2]
+- ✅ Real-time Chat & WebSockets (Room joining, messaging, typing indicators, presence tracking via `/chat` namespace)
+- ✅ Branches (list, view)[cite: 2]
+- ✅ Users (list, view)[cite: 2]
+- ✅ Roles (list, view with permissions)[cite: 2]
+- ✅ Leads (full CRUD)[cite: 2]
+- ✅ Students (list, search, branch filter)[cite: 2]
+- ✅ Courses (full CRUD)[cite: 2]
+- ✅ Groups (full CRUD with course/branch relations)[cite: 2]
+- ✅ Sessions (full CRUD with group filter)[cite: 2]
+
 
 ## Project Structure
 
 ```
 src/
-├── api/           # API service modules (one per backend module)
+├── api/           # API service modules (one per backend module)[cite: 2]
 ├── components/
-│   ├── ui/        # Reusable UI components (shadcn style)
-│   ├── layout/    # AppShell, Sidebar, Topbar
-│   └── common/    # DataTable, PageWrapper
-├── hooks/         # Custom hooks (use-toast)
-├── lib/           # Utilities, i18n config
-├── locales/       # Translation files (en, ar)
-├── pages/         # Page components
-├── routes/        # Route guards
-├── store/         # Zustand stores
-└── types/         # TypeScript types
+│   ├── ui/        # Reusable UI components (shadcn style)[cite: 2]
+│   ├── layout/    # AppShell, Sidebar, Topbar[cite: 2]
+│   └── chat/      # ChatLayout, MessageBubble, MessageComposer, ChatConsentModal[cite: 2]
+├── hooks/         # Custom hooks (use-toast, useChatToast)[cite: 2]
+├── lib/           # Utilities, i18n config, chatSocket (Zustand state integration)[cite: 2]
+├── locales/       # Translation files (en, ar)[cite: 2]
+├── pages/         # Page components[cite: 2]
+├── routes/        # Route guards[cite: 2]
+├── store/         # Zustand stores (authStore with persist state storage)[cite: 2]
+└── types/         # TypeScript types (chat, user, etc.)[cite: 2]
 ```
 
 ## Quick Start

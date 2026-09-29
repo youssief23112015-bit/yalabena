@@ -1,6 +1,6 @@
-# LMS Module — NestJS Backend
+# SpeakUp Backend & LMS Module — NestJS
 
-Complete LMS backend module covering all task-schedule items LMS-BE-01 through LMS-BE-12 plus unit tests (LMS-TEST-01).
+Complete backend module covering LMS tasks, real-time chat with WebSockets (Socket.io), custom guards, and unit tests.
 
 ## Install Dependencies
 
@@ -8,8 +8,7 @@ Complete LMS backend module covering all task-schedule items LMS-BE-01 through L
 npm install pdf-lib
 npm install class-validator class-transformer
 npm install @nestjs/swagger @nestjs/platform-express
-```
-
+npm install socket.io socket.io-client
 ## File Structure
 
 ```
@@ -25,6 +24,13 @@ src/
 │       ├── release-mode.enum.ts
 │       └── submission-status.enum.ts
 ├── modules/
+│   ├── chat/                  # Real-time Chat Gateway & Services
+│   │   ├── chat.gateway.ts
+│   │   ├── chat.module.ts
+│   │   ├── chat.service.ts
+│   │   ├── ws-jwt.guard.ts    # WebSocket JWT Authentication Guard
+│   │   └── dto/
+│   │       └── ...
 │   └── lms/
 │       ├── dto/
 │       │   ├── create-assignment.dto.ts
@@ -69,19 +75,8 @@ src/
         ├── submission.entity.ts
         ├── teacher-evaluation.entity.ts
         └── user.entity.ts
-```
 
-## Key Conventions
-
-| Entity | Field | Notes |
-|--------|-------|-------|
-| LmsModule / LmsLesson | `order_index` | Positional ordering (int) |
-| Assignment | `due_at` | Deadline (timestamptz) |
-| Assignment | `allow_late` | Boolean, default false |
-| Quiz | `release_mode` | `instant` or `after_teacher_review` |
-| QuizAttempt | `needs_manual_review` | Set when Short Answer present |
-| Enrollment | `status` | Uses `EnrollmentStatus` enum |
-
+Key Conventions & FeaturesComponentField / MechanismNotesLmsModule / LmsLessonorder_indexPositional ordering (int)   Assignmentdue_at / allow_lateDeadline (timestamptz) & late submission flag   Quizrelease_modeinstant or after_teacher_review   QuizAttemptneeds_manual_reviewSet when Short Answer present   EnrollmentstatusUses EnrollmentStatus enum   Chat Gateway/chat NamespaceReal-time messaging, typing indicators, and room synchronization via Socket.ioWsJwtGuardWebSocket SecurityValidates JWT tokens from handshake auth/headers without crashing client connections on retry
 ## Running Tests
 
 ```bash
