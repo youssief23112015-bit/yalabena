@@ -9,8 +9,9 @@ import { ViolationAction } from '../../common/enums/violation-action.enum';
  */
 describe('ChatService — compliance engine', () => {
  const svc = new ChatService(
-  null as any, null as any, null as any, null as any,
-  null as any, null as any,
+null as any, null as any, null as any, null as any,
+    null as any, null as any, null as any, null as any,
+    null as any, null as any, null as any
 );
   describe('scanMessage — evasion MUST be caught', () => {
     const evasion: Array<[string, string, ViolationAction]> = [

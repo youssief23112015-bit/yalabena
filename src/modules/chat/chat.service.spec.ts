@@ -15,6 +15,10 @@ describe('ChatService — messaging, moderation & strikes', () => {
   let violationRepo: any;
   let strikeRepo: any;
   let userRepo: any;
+  let groupRepo: any;
+  let groupStudentRepo: any;
+  let enrollmentRepo: any;
+  let userRoleRepo: any;
   let pdfService: any;
 
   const member = { room_id: 'room-1', user_id: 'u-1', is_banned: false, is_muted: false, role: 'member' };
@@ -49,11 +53,19 @@ describe('ChatService — messaging, moderation & strikes', () => {
       count: jest.fn(async () => 0),
     };
     userRepo = {};
+    groupRepo = { findOne: jest.fn() };
+    groupStudentRepo = { findOne: jest.fn() };
+    enrollmentRepo = { findOne: jest.fn() };
+    userRoleRepo = { find: jest.fn(async () => []) };
     pdfService = { renderChatAuditPdf: jest.fn(async () => Buffer.from('pdf')) };
-    service = new ChatService(roomRepo, memberRepo, messageRepo, violationRepo, strikeRepo, userRepo, pdfService);
+
+    service = new ChatService(
+      roomRepo, memberRepo, messageRepo, violationRepo, strikeRepo, userRepo,
+      groupRepo, groupStudentRepo, enrollmentRepo, userRoleRepo, pdfService,
+    );
   });
 
-  describe('saveMessage (SRS 6.4 enforcement path)', () => {
+  describe('saveMessage (SRS 6.4 enforcement path — single source of truth)', () => {
     const dto: any = { room_id: 'room-1', body: 'Hello everyone' };
 
     it('rejects non-members and banned users', async () => {
@@ -75,16 +87,17 @@ describe('ChatService — messaging, moderation & strikes', () => {
       expect(messageRepo.save).not.toHaveBeenCalled();
     });
 
-    it('blocks contact-info messages BEFORE persistence and logs the violation + strike', async () => {
+    it('blocks contact-info messages BEFORE persistence and logs the violation + strike (exactly once)', async () => {
       memberRepo.findOne.mockResolvedValue({ ...member });
       await expect(
         service.saveMessage({ ...dto, body: 'call me on 01012345678' }, 'u-1'),
       ).rejects.toThrow(ForbiddenException);
 
       expect(messageRepo.save).not.toHaveBeenCalled(); // never persisted
+      expect(violationRepo.save).toHaveBeenCalledTimes(1); // single strike — no double-scan
       expect(violationRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          message_id: null, // blocked before an id exists
+          message_id: null,
           room_id: 'room-1',
           sender_id: 'u-1',
           rule_matched: 'phone_egyptian',
@@ -158,15 +171,15 @@ describe('ChatService — messaging, moderation & strikes', () => {
 
     it('rejects moderators without a moderator role in the room', async () => {
       roomRepo.findOne.mockResolvedValue({ id: 'room-1' });
-      memberRepo.findOne.mockResolvedValue({ ...member, role: 'member' }); // mod check fails
+      memberRepo.findOne.mockResolvedValue({ ...member, role: 'member' });
       await expect(service.moderateUser(dto, 'u-1')).rejects.toThrow(ForbiddenException);
     });
 
     it('mutes a user for the given duration', async () => {
       roomRepo.findOne.mockResolvedValue({ id: 'room-1' });
       memberRepo.findOne
-        .mockResolvedValueOnce({ ...member, role: 'admin' }) // moderator
-        .mockResolvedValueOnce({ room_id: 'room-1', user_id: 'u-2' }); // target
+        .mockResolvedValueOnce({ ...member, role: 'admin' })
+        .mockResolvedValueOnce({ room_id: 'room-1', user_id: 'u-2' });
 
       const res = await service.moderateUser(dto, 'u-1');
       expect(memberRepo.save).toHaveBeenCalledWith(
@@ -206,10 +219,10 @@ describe('ChatService — messaging, moderation & strikes', () => {
       const csv = await service.exportRoomMessagesCsv('room-1');
       const lines = csv.split('\n');
       expect(lines[0]).toBe('id,created_at,sender_id,sender_name,type,deleted,edited_count,body,file_url,file_name');
-      expect(lines[1]).toContain('"hello, ""world"""'); // CSV escaping
+      expect(lines[1]).toContain('"hello, ""world"""');
       expect(lines[1]).toContain('Ahmed Ali');
       expect(lines[1]).toContain(',no,');
-      expect(lines[2]).toContain(',yes,'); // soft-deleted still exported, marked
+      expect(lines[2]).toContain(',yes,');
       expect(lines[2]).toContain(',2,');
     });
   });
@@ -231,14 +244,6 @@ describe('ChatService — messaging, moderation & strikes', () => {
       await expect(service.getRoom('room-1', 'u-1')).rejects.toThrow(ForbiddenException);
     });
 
-    it('joinRoom is idempotent for existing members', async () => {
-      roomRepo.findOne.mockResolvedValue({ id: 'room-1' });
-      memberRepo.findOne.mockResolvedValue({ ...member });
-      const res = await service.joinRoom('room-1', 'u-1');
-      expect(res.user_id).toBe('u-1');
-      expect(memberRepo.save).not.toHaveBeenCalled();
-    });
-
     it('leaveRoom throws for non-members', async () => {
       memberRepo.findOne.mockResolvedValue(null);
       await expect(service.leaveRoom('room-1', 'u-1')).rejects.toThrow(NotFoundException);
@@ -257,5 +262,83 @@ describe('ChatService — messaging, moderation & strikes', () => {
       );
     });
   });
-});
 
+  // ─── FIX: joinRoom authorization (enrollment / room access) ───
+
+  describe('joinRoom — enrollment & room access (Critical fix)', () => {
+    const groupRoom = {
+      id: 'room-1',
+      group_id: 'g-1',
+      group: { id: 'g-1', teacher_id: 't-1', substitute_teacher_id: null },
+    };
+
+    beforeEach(() => {
+      memberRepo.findOne.mockResolvedValue(null); // not already a member
+    });
+
+    it('rejects joining a group room when NOT enrolled (and not staff/teacher)', async () => {
+      roomRepo.findOne.mockResolvedValue(groupRoom);
+      userRoleRepo.find.mockResolvedValue([]); // no roles
+      groupStudentRepo.findOne.mockResolvedValue(null);
+      enrollmentRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.joinRoom('room-1', 'u-1')).rejects.toThrow(ForbiddenException);
+      expect(memberRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('allows joining a group room as an ACTIVE group_student', async () => {
+      roomRepo.findOne.mockResolvedValue(groupRoom);
+      userRoleRepo.find.mockResolvedValue([]);
+      groupStudentRepo.findOne.mockResolvedValue({ student: { user_id: 'u-1' } });
+
+      await service.joinRoom('room-1', 'u-1');
+      expect(memberRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ room_id: 'room-1', user_id: 'u-1', role: 'member' }),
+      );
+    });
+
+    it('allows joining a group room via an ACTIVE enrollment', async () => {
+      roomRepo.findOne.mockResolvedValue(groupRoom);
+      userRoleRepo.find.mockResolvedValue([]);
+      groupStudentRepo.findOne.mockResolvedValue({ student: { user_id: 'someone-else' } });
+      enrollmentRepo.findOne.mockResolvedValue({ student: { user_id: 'u-1' } });
+
+      await service.joinRoom('room-1', 'u-1');
+      expect(memberRepo.save).toHaveBeenCalled();
+    });
+
+    it('allows the group teacher to join without enrollment', async () => {
+      roomRepo.findOne.mockResolvedValue(groupRoom);
+      userRoleRepo.find.mockResolvedValue([]);
+
+      await service.joinRoom('room-1', 't-1');
+      expect(memberRepo.save).toHaveBeenCalled();
+      expect(groupStudentRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('allows staff roles (super_admin) to join any room', async () => {
+      roomRepo.findOne.mockResolvedValue(groupRoom);
+      userRoleRepo.find.mockResolvedValue([{ role: { slug: 'super_admin' } }]);
+
+      await service.joinRoom('room-1', 'u-1');
+      expect(memberRepo.save).toHaveBeenCalled();
+    });
+
+    it('rejects self-joining a non-group room without prior membership', async () => {
+      roomRepo.findOne.mockResolvedValue({ id: 'room-1', group_id: null, group: null });
+      userRoleRepo.find.mockResolvedValue([]);
+
+      await expect(service.joinRoom('room-1', 'u-1')).rejects.toThrow(ForbiddenException);
+      expect(memberRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent for existing members (no authorization re-check needed)', async () => {
+      roomRepo.findOne.mockResolvedValue(groupRoom);
+      memberRepo.findOne.mockResolvedValue({ ...member });
+
+      const res = await service.joinRoom('room-1', 'u-1');
+      expect(res.user_id).toBe('u-1');
+      expect(memberRepo.save).not.toHaveBeenCalled();
+    });
+  });
+});

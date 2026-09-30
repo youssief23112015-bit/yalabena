@@ -7,19 +7,21 @@ import { ChatMessage } from '../../shared/entities/chat-message.entity';
 import { ChatViolation } from '../../shared/entities/chat-violation.entity';
 import { ChatStrike } from '../../shared/entities/chat-strike.entity';
 import { User } from '../../shared/entities/user.entity';
+import { Group } from '../../shared/entities/group.entity';
+import { GroupStudent } from '../../shared/entities/group-student.entity';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+import { UserRole } from '../../shared/entities/user-role.entity';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ModerateUserDto } from './dto/moderate-user.dto';
 import { ViolationQueryDto } from './dto/violation-query.dto';
 import { ChatMessageType } from '../../common/enums/chat-message-type.enum';
+import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
 import { ViolationAction } from '../../common/enums/violation-action.enum';
 import { StrikeAction } from '../../common/enums/strike-action.enum';
 import { normalizeChatMessage } from './utils/normalize-chat';
 import { toCsvLine } from './utils/csv';
 import { isInternalUploadUrl } from './utils/attachment-url';
-// ASSUMPTION: PdfService already exists under src/modules/pdf (seen in the
-// project's module listing). If it doesn't yet expose renderChatAuditPdf(),
-// see pdf.service.ts in this delivery for the method to merge in.
 import { PdfService } from '../pdf/pdf.service';
 
 export interface ChatAuditRow {
@@ -37,6 +39,13 @@ export interface ChatAuditRow {
 
 @Injectable()
 export class ChatService {
+  /**
+   * FIX (Room Access): role slugs that may enter ANY chat room without an
+   * enrollment check. Matches the slugs produced by JwtStrategy and seeded
+   * in the `roles` table.
+   */
+  private readonly STAFF_ROLE_SLUGS = ['super_admin', 'admin', 'moderator', 'academic'];
+
   constructor(
     @InjectRepository(ChatRoom) private roomRepo: Repository<ChatRoom>,
     @InjectRepository(ChatRoomMember) private memberRepo: Repository<ChatRoomMember>,
@@ -44,6 +53,10 @@ export class ChatService {
     @InjectRepository(ChatViolation) private violationRepo: Repository<ChatViolation>,
     @InjectRepository(ChatStrike) private strikeRepo: Repository<ChatStrike>,
     @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(Group) private groupRepo: Repository<Group>,
+    @InjectRepository(GroupStudent) private groupStudentRepo: Repository<GroupStudent>,
+    @InjectRepository(Enrollment) private enrollmentRepo: Repository<Enrollment>,
+    @InjectRepository(UserRole) private userRoleRepo: Repository<UserRole>,
     private readonly pdfService: PdfService,
   ) {}
 
@@ -98,11 +111,18 @@ export class ChatService {
   // ─── MESSAGES ───
 
   /**
-   * CHAT-BE-01: the REST path must run the exact same compliance check as
-   * the WebSocket gateway, and it must run BEFORE the message is persisted
-   * (SRS §6.4). Previously this method only checked ban/mute status and let
-   * every message body straight through — a contact number sent via
-   * POST /chat/messages was never scanned at all.
+   * SINGLE SOURCE OF TRUTH for message enforcement (SRS §6.4).
+   *
+   * Both the REST path (POST /chat/messages) and the WebSocket path
+   * ('send_message') funnel through this method, and this method alone:
+   *   1. membership + ban/mute checks  → BEFORE any scan, so a banned user
+   *      can no longer spam the violations table (minor DoS vector closed)
+   *   2. attachment URL validation
+   *   3. contact-info scan             → exactly once per message
+   *   4. violation logging + strike escalation on hit
+   *
+   * The gateway used to scan too; that duplicate has been removed so a
+   * message can never be evaluated twice or produce two strikes.
    */
   async saveMessage(dto: SendMessageDto, senderId: string) {
     const membership = await this.memberRepo.findOne({
@@ -135,22 +155,23 @@ export class ChatService {
     return this.messageRepo.save(message);
   }
 
+  /**
+   * Public accessor for the gateway (replaces the old
+   * chatService['messageRepo'] bracket-notation access).
+   */
+  async getMessageWithSender(messageId: string) {
+    return this.messageRepo.findOne({
+      where: { id: messageId },
+      relations: ['sender'],
+    });
+  }
+
   async getMessages(roomId: string, userId: string, offset = 0, limit = 50) {
     const membership = await this.memberRepo.findOne({
       where: { room_id: roomId, user_id: userId, is_banned: false },
     });
     if (!membership) throw new ForbiddenException('Access denied');
 
-    // NOTE: an earlier version of this fix removed 'reply_to' from
-    // `relations`, guessing it was an undefined relation causing a 500.
-    // That was wrong — the actual cause (confirmed via server stack trace)
-    // was `skip: NaN` reaching TypeORM, fixed in the controller with
-    // DefaultValuePipe. Restored 'reply_to' here since removing it wasn't
-    // necessary and would have silently dropped a real feature.
-    //
-    // Defensive clamp kept anyway: guards this method against NaN/negative
-    // values reaching TypeORM even if it's ever called from somewhere
-    // other than the (now-fixed) controller.
     const safeOffset = Number.isFinite(offset) && offset >= 0 ? Math.trunc(offset) : 0;
     const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(200, Math.trunc(limit)) : 50;
 
@@ -162,11 +183,24 @@ export class ChatService {
       relations: ['sender', 'reply_to'],
     });
 
-    // Update last read
     membership.last_read_at = new Date();
     await this.memberRepo.save(membership);
 
     return { data: messages.reverse(), total };
+  }
+
+  /**
+   * Public accessor used by the gateway's mark_read handler (replaces the
+   * old chatService['memberRepo'] bracket-notation access).
+   */
+  async markAsRead(roomId: string, userId: string) {
+    const member = await this.memberRepo.findOne({
+      where: { room_id: roomId, user_id: userId },
+    });
+    if (!member) throw new NotFoundException('Not a member of this room');
+    member.last_read_at = new Date();
+    await this.memberRepo.save(member);
+    return { success: true };
   }
 
   async editMessage(messageId: string, userId: string, body: string) {
@@ -245,7 +279,6 @@ export class ChatService {
         }
         break;
       case 'warn':
-        // Just a logical action, could emit a system message
         break;
     }
 
@@ -254,11 +287,6 @@ export class ChatService {
 
   // ─── VIOLATIONS & STRIKES ───
 
-  /**
-   * Persists a chat_violations record and runs the strike system (SRS §4.7.2, §6.4).
-   * This is the canonical entry point going forward — both the REST path
-   * (saveMessage) and the WebSocket gateway should call this.
-   */
   async recordViolation(
     messageId: string | null,
     roomId: string,
@@ -284,8 +312,8 @@ export class ChatService {
   }
 
   /**
-   * @deprecated Kept so existing call sites (ChatGateway, older tests) keep
-   * working unchanged. New code should call recordViolation() directly.
+   * @deprecated Kept so existing call sites keep working. New code should
+   * call recordViolation() directly.
    */
   async logViolation(
     messageId: string | null,
@@ -324,8 +352,6 @@ export class ChatService {
     });
     await this.strikeRepo.save(strike);
 
-    // CHAT-BE-13: the consequence must be applied automatically, not just
-    // logged for a moderator to notice and act on manually.
     await this.enforceStrikeConsequence(userId, roomId, action, expiresAt);
 
     return strike;
@@ -349,7 +375,7 @@ export class ChatService {
       member.muted_until = muteExpiresAt;
     } else if (action === StrikeAction.BAN_PERMANENT) {
       member.is_banned = true;
-      member.banned_until = null; // permanent — no expiry
+      member.banned_until = null;
       member.ban_reason = member.ban_reason || 'Automatic: 3rd contact-info-sharing strike (SRS §6.4)';
     }
 
@@ -412,10 +438,6 @@ export class ChatService {
         type: m.type,
         deleted,
         editedCount: m.edited_count ?? 0,
-        // The audit trail keeps the row (nothing is ever hard-deleted per
-        // SRS §4.7.1), but the exported content itself reflects the same
-        // "[deleted]" treatment the UI shows rather than exposing the
-        // original body to every reader of the export.
         body: deleted ? 'This message was deleted' : (m.body ?? ''),
         fileUrl: deleted ? null : (m.file_url ?? null),
         fileName: deleted ? null : (m.file_name ?? null),
@@ -458,22 +480,16 @@ export class ChatService {
     if (!body) return null;
 
     const { canonical, squashed } = normalizeChatMessage(body);
-    const targets = [canonical, squashed]; // test both forms
+    const targets = [canonical, squashed];
 
-    const rules: Array<{ name: string; pattern: RegExp; action: ViolationAction }> = [
-      // Egyptian mobile: 010/011/012/015 + 8 digits (catches squashed separators too)
+ const rules: Array<{ name: string; pattern: RegExp; action: ViolationAction }> = [
       { name: 'phone_egyptian', pattern: /01[0125]\d{8}/, action: ViolationAction.BLOCKED },
-      // International Egypt: +20 / 0020 variants
       { name: 'phone_egyptian_intl', pattern: /(\+?20|0020)1[0125]\d{8}/, action: ViolationAction.BLOCKED },
-      // Any 10–15 digit run (post-squash catches spaced/dashed forms)
       { name: 'phone_generic', pattern: /\d{10,15}/, action: ViolationAction.BLOCKED },
-      // Email (canonical already collapsed "at"/"dot")
-      { name: 'email', pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, action: ViolationAction.BLOCKED },
-      // WhatsApp / messenger links
+      { name: 'email', pattern: /[a-zA-Z0-9._%+\-\s]{3,}@[a-zA-Z0-9.\-_\s]+\.[a-zA-Z]{2,}/, action: ViolationAction.BLOCKED },
       { name: 'messenger_link', pattern: /(wa\.me\/|api\.whatsapp\.com|t\.me\/|m\.me\/|telegram\.org|signal\.me|viber\.com)/i, action: ViolationAction.BLOCKED },
-      // Social handle + platform mention
-      { name: 'social_handle', pattern: /(facebook|instagram|twitter|telegram|snapchat|tiktok)\s*[:@]\s*\w+/i, action: ViolationAction.WARNED },
-      // Trigger phrases (EN + AR)
+      // تم تصحيح القاعدة لتشترط وجود اسم المنصة أو علامة واضحة لمنع التداخل مع جمل اللغة الإنجليزية الطبيعية
+      { name: 'social_handle', pattern: /(?:facebook|instagram|twitter|telegram|snapchat|tiktok|insta)\s*[:@\-\s]+\s*@[a-zA-Z0-9._]{3,}|(?:ig|fb|tg|insta|snap)\s*:\s*@[a-zA-Z0-9._]{3,}/i, action: ViolationAction.WARNED },
       { name: 'trigger_contact_share', pattern: /(call me|text me|dm me|my number is|كلمني بره|رقمي هو|ابعت ?لي|ابعتلي|على الواتس|الواتس اب|الواتساب)/i, action: ViolationAction.BLOCKED },
     ];
 
@@ -487,17 +503,60 @@ export class ChatService {
     return null;
   }
 
-  // ─── MEMBERSHIP ───
+  // ─── MEMBERSHIP (FIX: enrollment / room-access check) ───
 
   async joinRoom(roomId: string, userId: string) {
-    const room = await this.roomRepo.findOne({ where: { id: roomId } });
+    const room = await this.roomRepo.findOne({ where: { id: roomId }, relations: ['group'] });
     if (!room) throw new NotFoundException('Room not found');
 
     const exists = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
-    if (exists) return exists;
+    if (exists) return exists; // idempotent for current members
+
+    await this.assertCanJoinRoom(userId, room);
 
     const member = this.memberRepo.create({ room_id: roomId, user_id: userId, role: 'member' });
     return this.memberRepo.save(member);
+  }
+
+  private async getUserRoleSlugs(userId: string): Promise<string[]> {
+    const userRoles = await this.userRoleRepo.find({
+      where: { user_id: userId },
+      relations: ['role'],
+    });
+    return [...new Set(userRoles.map((ur) => ur.role?.slug).filter(Boolean))];
+  }
+
+  private async assertCanJoinRoom(userId: string, room: ChatRoom): Promise<void> {
+    // 1) Staff bypass
+    const slugs = await this.getUserRoleSlugs(userId);
+    if (slugs.some((s) => this.STAFF_ROLE_SLUGS.includes(s))) return;
+
+    // 2) Group-linked rooms → enrollment check
+    if (room.group_id && room.group) {
+      const group = room.group;
+
+      // Teacher of the group (or its substitute)
+      if (group.teacher_id === userId || group.substitute_teacher_id === userId) return;
+
+      // Enrolled via group_students (active)
+      const groupStudent = await this.groupStudentRepo.findOne({
+        where: { group_id: group.id, status: 'active' },
+        relations: ['student'],
+      });
+      if (groupStudent?.student?.user_id === userId) return;
+
+      // Enrolled via enrollments (active)
+      const enrollment = await this.enrollmentRepo.findOne({
+        where: { group_id: group.id, status: EnrollmentStatus.ACTIVE },
+        relations: ['student'],
+      });
+      if (enrollment?.student?.user_id === userId) return;
+
+      throw new ForbiddenException('You are not enrolled in the group linked to this chat room');
+    }
+
+    // 3) Non-group rooms: only existing members may be here
+    throw new ForbiddenException('You are not a member of this chat room');
   }
 
   async leaveRoom(roomId: string, userId: string) {

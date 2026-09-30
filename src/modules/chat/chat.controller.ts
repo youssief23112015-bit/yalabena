@@ -1,12 +1,15 @@
 import {
   Controller, Get, Post, Put, Body, Param, Query, ParseUUIDPipe, Res,
   UseInterceptors, UploadedFile, BadRequestException, DefaultValuePipe, ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery, ApiResponse, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { ChatService } from './chat.service';
 import { ChatConsentService } from './chat-consent.service';
+import { ChatConsentGuard } from './guards/chat-consent.guard';
+import { SkipChatConsent } from './decorators/skip-chat-consent.decorator';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ModerateUserDto } from './dto/moderate-user.dto';
@@ -17,6 +20,7 @@ import { chatUploadMulterOptions, CHAT_UPLOAD_URL_PREFIX, isImageMimetype } from
 
 @ApiTags('Chat')
 @ApiBearerAuth('JWT')
+@UseGuards(ChatConsentGuard) // FIX (Consent): enforced on every chat REST endpoint…
 @Controller('chat')
 export class ChatController {
   constructor(
@@ -25,8 +29,11 @@ export class ChatController {
   ) {}
 
   // ─── CONSENT (CHAT-BE-09, SRS §6.6) ───
+  // …except these two, which must stay reachable so a user can check and
+  // accept the policy in the first place (chicken-and-egg exemption).
 
   @Post('consent')
+  @SkipChatConsent()
   @ApiOperation({ summary: 'Record chat policy consent for the current user' })
   @ApiResponse({ status: 201, description: 'Consent recorded.' })
   async acceptConsent(@CurrentUser() user: any) {
@@ -35,6 +42,7 @@ export class ChatController {
   }
 
   @Get('consent')
+  @SkipChatConsent()
   @ApiOperation({ summary: 'Get chat policy consent status for the current user' })
   @ApiResponse({ status: 200, description: 'Returns whether the user has accepted the current policy version.' })
   async getConsentStatus(@CurrentUser() user: any) {
@@ -52,13 +60,8 @@ export class ChatController {
   uploadAttachment(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('No file provided');
 
-    // NOTE: this endpoint stores the file and returns its URL — it does
-    // NOT yet run OCR (tesseract.js), QR decoding (jsQR), or PDF text
-    // extraction (pdf-parse) against scanMessage(). That's the remaining
-    // scope of CHAT-BE-03/04/05 beyond "the upload works": an image
-    // containing a phone number, or a QR code encoding a WhatsApp link,
-    // will currently pass through unscanned. Flagging this explicitly
-    // rather than silently shipping partial compliance coverage.
+    // NOTE: OCR / QR decoding / PDF text extraction against scanMessage()
+    // is still not wired in — that remains the open scope of CHAT-BE-03/04/05.
     return {
       url: `${CHAT_UPLOAD_URL_PREFIX}/${file.filename}`,
       name: file.originalname,
@@ -101,11 +104,6 @@ export class ChatController {
   @ApiResponse({ status: 200, description: 'Returns room messages list.' })
   getMessages(
     @Param('id', ParseUUIDPipe) id: string,
-    // DefaultValuePipe MUST come before ParseIntPipe: it substitutes 0/50
-    // when the query param is absent, BEFORE ParseIntPipe (or the global
-    // ValidationPipe's implicit Number conversion) ever sees it. Without
-    // this, an absent query param gets coerced to NaN, not undefined —
-    // that's what was causing "Provided skip value is not a number".
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
     @CurrentUser() user?: any,
