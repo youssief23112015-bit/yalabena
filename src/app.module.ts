@@ -13,6 +13,7 @@ import { ClassroomsModule } from './modules/classrooms/classrooms.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { PlacementTestsModule } from './modules/placement-tests/placement-tests.module';
+import { TestSlotsModule } from './modules/test-slots/test-slots.module'; // <-- الموديول الجديد
 import { WaitlistsModule } from './modules/waitlists/waitlists.module';
 import { AttendancesModule } from './modules/attendance/attendance.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -49,6 +50,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     SessionsModule,
     AttendancesModule,
     PlacementTestsModule,
+    TestSlotsModule, // <-- إضافته هنا في الـ imports
     WaitlistsModule,
     InventoryModule,
     PublicModule,

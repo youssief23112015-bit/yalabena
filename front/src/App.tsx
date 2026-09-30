@@ -21,6 +21,7 @@ import UsersPage from '@/pages/Users';
 import RolesPage from '@/pages/Roles';
 import AttendancePage from '@/pages/Attendance';
 import PlacementTestsPage from '@/pages/PlacementTests';
+import TestSlotsPage from '@/pages/TestSlotsPage'; // <--- 1. استيراد صفحة الـ Test Slots الجديدة
 import WaitlistsPage from '@/pages/Waitlists';
 import EnrollmentsPage from '@/pages/Enrollments';
 import FinancePage from '@/pages/Finance';
@@ -28,10 +29,10 @@ import CertificatesPage from '@/pages/Certificates';
 import NotificationsPage from '@/pages/Notifications';
 import AuditLogsPage from '@/pages/AuditLogs';
 import SecuritySettingsPage from '@/pages/SecuritySettings';
-import LmsPage from '@/pages/Lms'; // <--- 1. Import your LMS Page
+import LmsPage from '@/pages/Lms';
 import NotFoundPage from '@/pages/NotFound';
 import ChatPage from '@/pages/Chat';
-
+import LandingPage from '@/pages/public/LandingPage';
 
 const roleGate = (roles: string[], element: ReactNode) => (
   <RequireRoles roles={roles}>{element}</RequireRoles>
@@ -59,6 +60,7 @@ function App() {
             isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
           }
         />
+        <Route path="/welcome" element={<LandingPage />} />
 
         <Route
           path="/register"
@@ -83,7 +85,6 @@ function App() {
               element={<DashboardPage />}
             />
 
-            {/* <--- 2. Add the /lms route here ---> */}
             <Route
               path="/lms/*"
               element={<LmsPage />}
@@ -159,6 +160,15 @@ function App() {
               element={roleGate(
                 ['super_admin', 'branch_manager', 'sales', 'academic'],
                 <PlacementTestsPage />,
+              )}
+            />
+
+            {/* <--- 2. إضافة الـ Route الخاص بـ Test Slots هنا ---> */}
+            <Route
+              path="/test-slots"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic'],
+                <TestSlotsPage />,
               )}
             />
 

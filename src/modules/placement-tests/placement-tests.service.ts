@@ -7,6 +7,7 @@ import { PlacementTestAnswer } from '../../shared/entities/placement-test-answer
 import { QuestionType } from '../../common/enums/question-type.enum';
 import { TestStatus } from '../../common/enums/test-status.enum';
 import { SubmitWrittenDto } from './dto/submit-written.dto';
+import { TestSlotsService } from '../test-slots/test-slots.service';
 
 type ScoredAnswer = {
   questionId: string;
@@ -25,10 +26,50 @@ export class PlacementTestsService {
     private readonly questionRepo: Repository<TestQuestion>,
     @InjectRepository(PlacementTestAnswer)
     private readonly answerRepo: Repository<PlacementTestAnswer>,
+    private readonly testSlotsService: TestSlotsService,
   ) {}
 
-  async create(data: Partial<PlacementTest>): Promise<PlacementTest> {
-    const test = this.repo.create(data);
+  async create(data: Record<string, any>): Promise<PlacementTest> {
+    // 1. ربط الأسماء القادمة من الـ Frontend (CamelCase) بأسماء أعمدة قاعدة البيانات (Snake_case)
+    if (data.leadId && !data.lead_id) {
+      data.lead_id = data.leadId;
+    }
+    if (data.studentId && !data.student_id) {
+      data.student_id = data.studentId;
+    }
+    if (data.slotId && !data.slot_id) {
+      data.slot_id = data.slotId;
+    }
+    if (data.scheduled_date && !data.scheduled_at) {
+      data.scheduled_at = data.scheduled_date;
+    }
+
+    // 2. جلب بيانات الـ Slot لاستكمال النواقص (examiner_id, branch_id, scheduled_at)
+    if (data.slot_id) {
+      try {
+        const slot = await this.testSlotsService.findOne(data.slot_id);
+        if (slot) {
+          if (!data.examiner_id && slot.examiner_id) {
+            data.examiner_id = slot.examiner_id;
+          }
+          if (!data.branch_id && slot.branch_id) {
+            data.branch_id = slot.branch_id;
+          }
+          if (!data.scheduled_at && slot.date) {
+            data.scheduled_at = slot.date;
+          }
+        }
+      } catch {
+        // في حال فشل جلب الـ slot
+      }
+    }
+
+    // 3. التحقق من التزام القيد (chk_pt_target): إما lead_id أو student_id حصراً
+    if ((!data.lead_id && !data.student_id) || (data.lead_id && data.student_id)) {
+      throw new BadRequestException('Either lead_id or student_id must be provided, but not both.');
+    }
+
+    const test = this.repo.create(data as Partial<PlacementTest>);
     return this.repo.save(test);
   }
 
@@ -63,12 +104,6 @@ export class PlacementTestsService {
     return this.repo.save(test);
   }
 
-  /**
-   * Builds a randomized written-test paper for a placement test.
-   * Questions are drawn from the bank by level, optionally filtered by
-   * category, then shuffled (Fisher-Yates) and capped at `count`.
-   * Correct answers are NEVER returned to the client.
-   */
   async generateWrittenPaper(
     testId: string,
     opts: { level: string; count?: number; categories?: string[]; seed?: number } = { level: '' },
@@ -108,15 +143,6 @@ export class PlacementTestsService {
     };
   }
 
-  /**
-   * Auto-scores a written submission. Objective types (MCQ, TRUE_FALSE,
-   * FILL_BLANK, MATCHING, ORDERING) are graded automatically; SHORT_ANSWER
-   * is stored with score 0 and is_correct = null for manual grading.
-   *
-   * Idempotent per test: all previously stored answers for the test are
-   * replaced, and the delete + insert + score update run in ONE transaction,
-   * so a failure can never leave partial rows behind.
-   */
   async submitWritten(testId: string, dto: SubmitWrittenDto) {
     const test = await this.findOne(testId);
 
@@ -124,8 +150,6 @@ export class PlacementTestsService {
       throw new BadRequestException('Test is already completed');
     }
 
-    // Dedupe by question_id (last value wins) so the unique index
-    // (test_id, question_id) can never be tripped by the payload itself.
     const answersByQuestion = new Map<string, { question_id: string; answer: unknown }>();
     for (const item of dto.answers ?? []) {
       answersByQuestion.set(item.question_id, item);
@@ -169,8 +193,6 @@ export class PlacementTestsService {
       });
     }
 
-    // Scale to the test's written_max (defaults to 100) and clamp so the
-    // CHECK (written_score <= written_max) constraint can never fail.
     const scale = Number(test.written_max) || 100;
     const writtenScore =
       possible > 0
@@ -233,12 +255,10 @@ export class PlacementTestsService {
     const pts = Number(question.points) || 0;
     const correct = question.correct_answer;
 
-    // Short answers are always graded manually, even when blank.
     if (question.type === QuestionType.SHORT_ANSWER) {
       return { isCorrect: null, score: 0 };
     }
 
-    // An unanswered objective question is simply wrong.
     if (this.isBlank(answer)) {
       return { isCorrect: false, score: 0 };
     }
@@ -249,7 +269,6 @@ export class PlacementTestsService {
         return { isCorrect: ok, score: ok ? pts : 0 };
       }
       case QuestionType.TRUE_FALSE: {
-        // Frontend sends "true"/"false" strings; Boolean("false") would be true.
         const given = this.toBool(answer);
         const expected = this.toBool(correct);
         const ok = given !== null && expected !== null && given === expected;
@@ -262,19 +281,16 @@ export class PlacementTestsService {
         return { isCorrect: ok, score: ok ? pts : 0 };
       }
       case QuestionType.MATCHING: {
-        // correct_answer: { "leftId": "rightId", ... } ; answer: same shape
         const ok = this.shallowEqual(correct, answer);
         return { isCorrect: ok, score: ok ? pts : 0 };
       }
       case QuestionType.ORDERING: {
-        // correct_answer: ["a","b","c"] ; answer: submitted array
         const ok = Array.isArray(correct) && Array.isArray(answer)
           && correct.length === answer.length
           && correct.every((v, i) => String(v) === String((answer as unknown[])[i]));
         return { isCorrect: ok, score: ok ? pts : 0 };
       }
       default:
-        // Unknown type: manual grading required.
         return { isCorrect: null, score: 0 };
     }
   }
@@ -290,10 +306,8 @@ export class PlacementTestsService {
 
   private shuffle<T>(arr: T[], seed?: number): T[] {
     const out = [...arr];
-    // xorshift32 gets stuck at 0, so never start from 0.
     let s = (seed ?? Date.now()) | 0 || 1;
     const rand = () => {
-      // xorshift32 — deterministic when seed is provided
       s ^= s << 13; s ^= s >>> 17; s ^= s << 5;
       return ((s >>> 0) / 0xffffffff);
     };

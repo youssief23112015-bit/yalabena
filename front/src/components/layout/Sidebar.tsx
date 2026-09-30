@@ -28,6 +28,7 @@ import {
   ShieldHalf,
   LogOut,
   X,
+  Calendar, // <--- أيقونة المواعيد
 } from "lucide-react";
 
 interface SidebarProps {
@@ -53,6 +54,7 @@ const navItems: NavItem[] = [
   { to: "/sessions", label: "nav.sessions", icon: Clock, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
   { to: "/attendance", label: "nav.attendance", icon: ClipboardCheck, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
   { to: "/placement-tests", label: "nav.placementTests", icon: BookMarked, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+  { to: "/test-slots", label: "Test Slots", icon: Calendar, roles: ["super_admin", "branch_manager", "academic"] }, // <--- أضفنا صفحة Test Slots هنا
   { to: "/waitlists", label: "nav.waitlists", icon: Hourglass, roles: ["super_admin", "branch_manager", "sales", "academic"] },
   { to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "branch_manager", "sales", "finance", "academic"] },
   { to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance", "branch_manager"] },
@@ -117,7 +119,7 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
             <NavLink
               key={item.to}
               to={item.to}
-              title={t(item.label)}
+              title={item.label.startsWith("nav.") ? t(item.label) : item.label}
               onClick={isMobile ? onClose : undefined}
               className={cn(
                 "flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-colors",
@@ -128,7 +130,9 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
-              <span className={cn("truncate", !isMobile && "hidden group-hover:block")}>{t(item.label)}</span>
+              <span className={cn("truncate", !isMobile && "hidden group-hover:block")}>
+                {item.label.startsWith("nav.") ? t(item.label) : item.label}
+              </span>
             </NavLink>
           );
         })}

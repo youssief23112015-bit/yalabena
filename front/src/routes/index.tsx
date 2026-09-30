@@ -16,6 +16,7 @@ import LoginPage from '@/pages/Login';
 import RegisterPage from '@/pages/Register';
 import NotFoundPage from '@/pages/NotFound';
 import ChatPage from '@/pages/Chat';
+import CoursesPagePublic from '@/pages/public/CoursesPage';
 
 const gate = (roles: string[], element: ReactNode) => (
   <RequireRoles roles={roles}>{element}</RequireRoles>
@@ -35,6 +36,7 @@ export default function AppRoutes() {
         <Route path="/groups" element={gate(['super_admin', 'academic', 'branch_manager', 'teacher'], <GroupsPage />)} />
         <Route path="/sessions" element={gate(['super_admin', 'academic', 'branch_manager', 'teacher'], <SessionsPage />)} />
         <Route path="/branches" element={gate(['super_admin', 'branch_manager'], <BranchesPage />)} />
+        <Route path="/courses" element={<CoursesPagePublic />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/users" element={gate(['super_admin', 'branch_manager', 'hr'], <UsersPage />)} />
         <Route path="/roles" element={gate(['super_admin'], <RolesPage />)} />

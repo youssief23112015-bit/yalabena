@@ -5,6 +5,8 @@ export interface PlacementTest {
   id: string;
   leadId?: string;
   lead_id?: string;
+  slot_id?: string;  // أضفنا هذا الحقل هنا
+  slot?: any;        // أضفنا هذا الحقل هنا أيضاً لدعم بيانات الـ Slot لو جاءت مع الـ Response
   lead?: any;
   examiner?: any;
   scheduled_date?: string;
@@ -24,7 +26,7 @@ export const placementAdminApi = {
     const { data } = await apiClient.get<PlacementTest>(`/placement-tests/${id}`);
     return data;
   },
-  create: async (dto: Partial<PlacementTest> & { leadId: string }): Promise<PlacementTest> => {
+  create: async (dto: Partial<PlacementTest> & { leadId: string; slot_id: string }): Promise<PlacementTest> => {
     const { data } = await apiClient.post<PlacementTest>("/placement-tests", dto);
     return data;
   },

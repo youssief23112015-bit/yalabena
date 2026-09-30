@@ -1,4 +1,5 @@
 import { IsUUID, IsDateString, IsString, Matches, IsOptional, IsInt, Min, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
 import { GroupMode } from '../../../common/enums/group-mode.enum';
 
 export class CreateSlotDto {
@@ -29,5 +30,3 @@ export class CreateSlotDto {
   @Min(1)
   capacity?: number;
 }
-
-import { Type } from 'class-transformer';
