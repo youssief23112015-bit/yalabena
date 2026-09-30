@@ -28,7 +28,7 @@ import {
   ShieldHalf,
   LogOut,
   X,
-  Calendar, // <--- أيقونة المواعيد
+  Calendar, ShieldAlert // <
 } from "lucide-react";
 
 interface SidebarProps {
@@ -46,15 +46,15 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: "/", label: "nav.dashboard", icon: LayoutDashboard, roles: [] },
+  { to: "/", label: "nav.dashboard", icon: LayoutDashboard, roles: [] }, // متاح للجميع
   { to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "branch_manager", "sales"] },
   { to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "branch_manager", "sales", "finance", "academic", "teacher"] },
-  { to: "/courses", label: "nav.courses", icon: BookOpen, roles: [] },
+  { to: "/courses", label: "nav.courses", icon: BookOpen, roles: ["super_admin", "branch_manager", "academic", "teacher"] },
   { to: "/groups", label: "nav.groups", icon: CalendarDays, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
   { to: "/sessions", label: "nav.sessions", icon: Clock, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
   { to: "/attendance", label: "nav.attendance", icon: ClipboardCheck, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
   { to: "/placement-tests", label: "nav.placementTests", icon: BookMarked, roles: ["super_admin", "branch_manager", "sales", "academic"] },
-  { to: "/test-slots", label: "Test Slots", icon: Calendar, roles: ["super_admin", "branch_manager", "academic"] }, // <--- أضفنا صفحة Test Slots هنا
+  { to: "/test-slots", label: "Test Slots", icon: Calendar, roles: ["super_admin", "branch_manager", "academic"] },
   { to: "/waitlists", label: "nav.waitlists", icon: Hourglass, roles: ["super_admin", "branch_manager", "sales", "academic"] },
   { to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "branch_manager", "sales", "finance", "academic"] },
   { to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance", "branch_manager"] },
@@ -62,18 +62,17 @@ const navItems: NavItem[] = [
   { to: "/lms", label: "nav.lms", icon: BookMarked, roles: ["super_admin", "academic", "teacher", "student"] },
   { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "branch_manager"] },
   { to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "branch_manager", "teacher", "student"] },
-  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance"] },
-  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: [] },
-  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
+  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance", "academic", "student"] },
+  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "branch_manager", "academic", "teacher", "student", "moderator"] },
+  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher", "auditor"] },
   { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance"] },
-  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] },
+  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] }, // متاح للجميع (مستلم الإشعارات)
   { to: "/branches", label: "nav.branches", icon: Building2, roles: ["super_admin", "branch_manager"] },
   { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
   { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
-  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin"] },
-  { to: "/security", label: "nav.security", icon: ShieldHalf, roles: [] },
+  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] }, // تمت إضافة دور الـ auditor هنا ليتوافق مع SRS
+  { to: "/security", label: "nav.security", icon: ShieldHalf, roles: ["super_admin"] },
 ];
-
 export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
   const { t } = useTranslation("common");
   const location = useLocation();

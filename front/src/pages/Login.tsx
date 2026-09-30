@@ -178,8 +178,9 @@ export default function LoginPage() {
               {isSubmitting ? t("common.loading") : t("auth.login")}
             </Button>
             <p className="text-sm text-muted-foreground">
-              {t("auth.noAccount")}{" "}
+              {t("Don't have an account yet?")}{" "}
               <Link to="/register" className="text-primary underline">
+              
                 {t("auth.register")}
               </Link>
             </p>
