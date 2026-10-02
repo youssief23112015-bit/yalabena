@@ -28,7 +28,7 @@ import {
   ShieldHalf,
   LogOut,
   X,
-  Calendar, ShieldAlert // <
+  Calendar// <
 } from "lucide-react";
 
 interface SidebarProps {

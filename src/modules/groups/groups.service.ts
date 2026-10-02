@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Group } from '../../shared/entities/group.entity';
@@ -7,15 +7,33 @@ import { GroupMode } from '../../common/enums/group-mode.enum';
 import { GroupStatus } from '../../common/enums/group-status.enum';
 import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import { ChatService } from '../chat/chat.service';
 
 @Injectable()
 export class GroupsService {
+  private readonly logger = new Logger(GroupsService.name);
+
   constructor(
     @InjectRepository(Group)
     private readonly repo: Repository<Group>,
     @InjectRepository(GroupSchedule)
     private readonly scheduleRepo: Repository<GroupSchedule>,
+    private readonly chatService: ChatService,
   ) {}
+
+  /**
+   * Automatic group chat rooms: whenever a study Group exists, its chat
+   * room is created (if missing) and its membership is synced with the
+   * group's teacher, substitute teacher, and active students. Chat
+   * failures are logged but never break group management operations.
+   */
+  private async syncChatRoomSafely(groupId: string): Promise<void> {
+    try {
+      await this.chatService.syncGroupChatRoom(groupId);
+    } catch (err: any) {
+      this.logger.warn(`Chat room sync failed for group ${groupId}: ${err?.message ?? err}`);
+    }
+  }
 
   async create(dto: CreateGroupDto): Promise<Group> {
     const entityData: Partial<Group> = {
@@ -32,7 +50,9 @@ export class GroupsService {
     };
 
     const group = this.repo.create(entityData);
-    return this.repo.save(group);
+    const saved = await this.repo.save(group);
+    await this.syncChatRoomSafely(saved.id);
+    return saved;
   }
 
   async findAll(filters: { branchId?: string; courseId?: string }): Promise<Group[]> {
@@ -68,7 +88,7 @@ export class GroupsService {
 
   async update(id: string, dto: UpdateGroupDto): Promise<Group> {
     const group = await this.findOne(id);
-    
+
     if (dto.name !== undefined) group.name = dto.name;
     if (dto.courseId !== undefined) group.course_id = dto.courseId;
     if (dto.branchId !== undefined) group.branch_id = dto.branchId;
@@ -80,7 +100,9 @@ export class GroupsService {
     if (dto.end_date !== undefined) group.end_date = new Date(dto.end_date);
     if (dto.status !== undefined) group.status = dto.status as GroupStatus;
 
-    return this.repo.save(group);
+    const saved = await this.repo.save(group);
+    await this.syncChatRoomSafely(saved.id); // picks up teacher/substitute changes
+    return saved;
   }
 
   async remove(id: string): Promise<void> {
@@ -143,13 +165,13 @@ export class GroupsService {
 
   async assignStudent(groupId: string, studentId: string): Promise<any> {
     const group = await this.findOne(groupId);
-    
+
     const result = await this.repo.query(
       `SELECT COUNT(*) as count FROM group_students WHERE group_id = $1 AND status = 'active'`,
       [groupId]
     );
     const currentCount = parseInt(result[0]?.count || '0', 10);
-    
+
     if (currentCount >= group.capacity) {
       throw new BadRequestException('Group capacity exceeded');
     }
@@ -167,6 +189,7 @@ export class GroupsService {
       [groupId, studentId]
     );
 
+    await this.syncChatRoomSafely(groupId); // auto-join the new student to the group chat room
     return { group_id: groupId, student_id: studentId, status: 'active' };
   }
 
@@ -178,5 +201,6 @@ export class GroupsService {
     if (!result || result.length === 0) {
       throw new NotFoundException(`Student ${studentId} not found in group ${groupId}`);
     }
+    await this.syncChatRoomSafely(groupId);
   }
 }

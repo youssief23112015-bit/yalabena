@@ -214,6 +214,33 @@ export class FinanceService {
     return saved;
   }
 
+  // ─── ACTIVITY FEES (SRS 4.11) ───
+
+  /**
+   * Record income collected for an extracurricular activity fee.
+   * Activity fees are not tied to an enrollment, so they are booked directly
+   * into the financial_transactions ledger (they show up in /finance/ledger
+   * and the revenue report) instead of an invoice (invoices.enrollment_id
+   * is NOT NULL in the schema).
+   */
+  async recordActivityFee(data: {
+    branch_id: string;
+    amount: number;
+    description: string;
+    created_by?: string;
+    transaction_date?: Date;
+  }) {
+    return this.ftRepo.save({
+      branch_id: data.branch_id,
+      transaction_type: FinancialTransactionType.PAYMENT,
+      direction: TransactionDirection.IN,
+      amount: data.amount,
+      transaction_date: data.transaction_date ?? new Date(),
+      description: data.description,
+      created_by: data.created_by ?? null,
+    } as any);
+  }
+
   // ─── REFUNDS ───
 
   async requestRefund(dto: CreateRefundDto, userId: string) {

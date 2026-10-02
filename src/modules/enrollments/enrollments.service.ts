@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Enrollment } from '../../shared/entities/enrollment.entity';
@@ -8,18 +8,34 @@ import { Course } from '../../shared/entities/course.entity';
 import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
 import { AuthUser, effectiveBranchFilter } from '../../common/utils/branch-scope';
 import { FinanceService } from '../finance/finance.service';
+import { ChatService } from '../chat/chat.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
 
 @Injectable()
 export class EnrollmentsService {
+  private readonly logger = new Logger(EnrollmentsService.name);
+
   constructor(
     @InjectRepository(Enrollment) private readonly enrollments: Repository<Enrollment>,
     @InjectRepository(Student) private readonly students: Repository<Student>,
     @InjectRepository(Group) private readonly groups: Repository<Group>,
     @InjectRepository(Course) private readonly courses: Repository<Course>,
     private readonly finance: FinanceService,
+    private readonly chatService: ChatService,
   ) {}
+
+  /**
+   * Keep the group's chat room in sync with ACTIVE enrollments. Failures
+   * are logged but never break enrollment operations.
+   */
+  private async syncChatRoomSafely(groupId: string): Promise<void> {
+    try {
+      await this.chatService.syncGroupChatRoom(groupId);
+    } catch (err: any) {
+      this.logger.warn(`Chat room sync failed for group ${groupId}: ${err?.message ?? err}`);
+    }
+  }
 
   async create(dto: CreateEnrollmentDto, user: AuthUser) {
     const student = await this.students.findOne({ where: { id: dto.student_id } });
@@ -73,6 +89,7 @@ export class EnrollmentsService {
     enrollment.final_amount = invoice.total_amount;
     await this.enrollments.save(enrollment);
 
+    await this.syncChatRoomSafely(group.id); // auto-join the enrolled student to the group chat room
     return this.findOne(enrollment.id, user);
   }
 
@@ -113,7 +130,9 @@ export class EnrollmentsService {
       e.dropped_at = new Date();
       e.drop_reason = dto.reason ?? null;
     }
-    return this.enrollments.save(e);
+    const saved = await this.enrollments.save(e);
+    await this.syncChatRoomSafely(e.group_id);
+    return saved;
   }
 
   async drop(id: string, reason: string | undefined, user: AuthUser) {

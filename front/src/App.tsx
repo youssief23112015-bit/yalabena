@@ -21,7 +21,7 @@ import UsersPage from '@/pages/Users';
 import RolesPage from '@/pages/Roles';
 import AttendancePage from '@/pages/Attendance';
 import PlacementTestsPage from '@/pages/PlacementTests';
-import TestSlotsPage from '@/pages/TestSlotsPage'; // <--- 1. استيراد صفحة الـ Test Slots الجديدة
+import TestSlotsPage from '@/pages/TestSlotsPage';
 import WaitlistsPage from '@/pages/Waitlists';
 import EnrollmentsPage from '@/pages/Enrollments';
 import FinancePage from '@/pages/Finance';
@@ -33,6 +33,11 @@ import LmsPage from '@/pages/Lms';
 import NotFoundPage from '@/pages/NotFound';
 import ChatPage from '@/pages/Chat';
 import LandingPage from '@/pages/public/LandingPage';
+
+// استيراد صفحات الـ Activities الجديدة
+import ActivitiesListPage from '@/pages/activities/ActivitiesListPage';
+import ActivityDetailsPage from '@/pages/activities/ActivityDetailsPage';
+import ActivityFormPage from '@/pages/activities/ActivityFormPage';
 
 const roleGate = (roles: string[], element: ReactNode) => (
   <RequireRoles roles={roles}>{element}</RequireRoles>
@@ -100,7 +105,6 @@ function App() {
 
             <Route path="/chat" element={<ChatPage />} />
 
-
             <Route
               path="/students"
               element={roleGate(
@@ -147,6 +151,36 @@ function App() {
               )}
             />
 
+            {/* --- مسارات الـ Activities الجديدة --- */}
+            <Route
+              path="/activities"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
+                <ActivitiesListPage />,
+              )}
+            />
+            <Route
+              path="/activities/new"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
+                <ActivityFormPage />,
+              )}
+            />
+            <Route
+              path="/activities/:id/edit"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic'],
+                <ActivityFormPage />,
+              )}
+            />
+            <Route
+              path="/activities/:id"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
+                <ActivityDetailsPage />,
+              )}
+            />
+
             <Route
               path="/attendance"
               element={roleGate(
@@ -163,7 +197,6 @@ function App() {
               )}
             />
 
-            {/* <--- 2. إضافة الـ Route الخاص بـ Test Slots هنا ---> */}
             <Route
               path="/test-slots"
               element={roleGate(

@@ -23,13 +23,30 @@ describe('ChatService — messaging, moderation & strikes', () => {
 
   const member = { room_id: 'room-1', user_id: 'u-1', is_banned: false, is_muted: false, role: 'member' };
 
-  beforeEach(() => {
+ beforeEach(() => {
     jest.clearAllMocks();
     roomRepo = {
       create: jest.fn((x: any) => x),
       save: jest.fn(async (x: any) => ({ id: 'room-1', ...x })),
       findOne: jest.fn(),
+      find: jest.fn(async () => []),
     };
+    
+    groupRepo = { 
+      findOne: jest.fn(), 
+      find: jest.fn(async () => []) 
+    };
+    
+    groupStudentRepo = { 
+      findOne: jest.fn(), 
+      find: jest.fn(async () => []) 
+    };
+    
+    enrollmentRepo = { 
+      findOne: jest.fn(), 
+      find: jest.fn(async () => []) 
+    };
+
     memberRepo = {
       create: jest.fn((x: any) => x),
       save: jest.fn(async (x: any) => x),
@@ -37,25 +54,26 @@ describe('ChatService — messaging, moderation & strikes', () => {
       find: jest.fn(async () => []),
       remove: jest.fn(async () => undefined),
     };
+    
     messageRepo = {
       create: jest.fn((x: any) => x),
       save: jest.fn(async (x: any) => ({ id: 'msg-1', ...x })),
       find: jest.fn(async () => []),
     };
+    
     violationRepo = {
       create: jest.fn((x: any) => x),
       save: jest.fn(async (x: any) => ({ id: 'viol-1', ...x })),
       findOne: jest.fn(),
     };
+    
     strikeRepo = {
       create: jest.fn((x: any) => x),
       save: jest.fn(async (x: any) => x),
       count: jest.fn(async () => 0),
     };
+    
     userRepo = {};
-    groupRepo = { findOne: jest.fn() };
-    groupStudentRepo = { findOne: jest.fn() };
-    enrollmentRepo = { findOne: jest.fn() };
     userRoleRepo = { find: jest.fn(async () => []) };
     pdfService = { renderChatAuditPdf: jest.fn(async () => Buffer.from('pdf')) };
 
@@ -339,6 +357,110 @@ describe('ChatService — messaging, moderation & strikes', () => {
       const res = await service.joinRoom('room-1', 'u-1');
       expect(res.user_id).toBe('u-1');
       expect(memberRepo.save).not.toHaveBeenCalled();
+    });
+  });
+    // ─── Automatic group chat rooms & seamless access ───
+
+  describe('group chat room provisioning (automatic rooms & access)', () => {
+    const group = { id: 'g-1', name: 'Physics 101', teacher_id: 't-1', substitute_teacher_id: 's-1' };
+
+    it('ensureGroupChatRoom creates one GROUP room per group (idempotent) and seats the teachers', async () => {
+      roomRepo.findOne.mockResolvedValue(null);
+      groupRepo.findOne.mockResolvedValue(group);
+      memberRepo.findOne.mockResolvedValue(null);
+
+      await service.ensureGroupChatRoom('g-1');
+
+      expect(roomRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ group_id: 'g-1', name: 'Physics 101 — Group Chat', created_by: 't-1' }),
+      );
+      expect(memberRepo.save).toHaveBeenCalledWith(expect.objectContaining({ user_id: 't-1', role: 'teacher' }));
+      expect(memberRepo.save).toHaveBeenCalledWith(expect.objectContaining({ user_id: 's-1', role: 'teacher' }));
+
+      roomRepo.findOne.mockResolvedValue({ id: 'room-g', group_id: 'g-1' });
+      await service.ensureGroupChatRoom('g-1');
+      expect(roomRepo.save).toHaveBeenCalledTimes(1); // second call reuses the existing room
+    });
+
+    it('syncGroupChatRoom adds active group students and enrollment students', async () => {
+      roomRepo.findOne.mockResolvedValue({ id: 'room-g', group_id: 'g-1' });
+      groupRepo.findOne.mockResolvedValue(group);
+      groupStudentRepo.find.mockResolvedValue([{ group_id: 'g-1', student: { user_id: 'stu-1' } }]);
+      enrollmentRepo.find.mockResolvedValue([{ group_id: 'g-1', student: { user_id: 'stu-2' } }]);
+      memberRepo.findOne.mockResolvedValue(null);
+
+      await service.syncGroupChatRoom('g-1');
+
+      expect(memberRepo.save).toHaveBeenCalledWith(expect.objectContaining({ room_id: 'room-g', user_id: 'stu-1', role: 'member' }));
+      expect(memberRepo.save).toHaveBeenCalledWith(expect.objectContaining({ room_id: 'room-g', user_id: 'stu-2', role: 'member' }));
+      expect(memberRepo.save).toHaveBeenCalledWith(expect.objectContaining({ room_id: 'room-g', user_id: 't-1', role: 'teacher' }));
+    });
+
+    it('syncGroupChatRoom never overwrites moderation state of existing members', async () => {
+      roomRepo.findOne.mockResolvedValue({ id: 'room-g', group_id: 'g-1' });
+      groupRepo.findOne.mockResolvedValue(group);
+      groupStudentRepo.find.mockResolvedValue([{ group_id: 'g-1', student: { user_id: 'stu-1' } }]);
+      enrollmentRepo.find.mockResolvedValue([]);
+      memberRepo.findOne.mockResolvedValue({ room_id: 'room-g', user_id: 'stu-1', is_banned: true, role: 'member' });
+
+      await service.syncGroupChatRoom('g-1');
+      expect(memberRepo.save).not.toHaveBeenCalled(); // existing banned member left untouched
+    });
+
+    it('findRooms auto-joins a student into their group room even without prior membership', async () => {
+      memberRepo.find.mockResolvedValue([]);
+      userRoleRepo.find.mockResolvedValue([]); // not staff
+      groupRepo.find.mockResolvedValue([]);
+      groupStudentRepo.find.mockResolvedValue([{ group_id: 'g-1', student: { user_id: 'u-1' } }]);
+      enrollmentRepo.find.mockResolvedValue([]);
+      roomRepo.findOne.mockResolvedValue(null); // no room yet → provision it
+      groupRepo.findOne.mockResolvedValue(group);
+      groupStudentRepo.findOne.mockResolvedValue({ student: { user_id: 'u-1' } });
+      memberRepo.findOne.mockResolvedValue(null);
+
+      const rooms = await service.findRooms('u-1');
+
+      expect(roomRepo.save).toHaveBeenCalledWith(expect.objectContaining({ group_id: 'g-1' }));
+      expect(memberRepo.save).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'u-1', role: 'member' }));
+      expect(rooms).toHaveLength(1);
+    });
+
+    it('findRooms surfaces every group room to staff without writing member rows', async () => {
+      memberRepo.find.mockResolvedValue([]);
+      userRoleRepo.find.mockResolvedValue([{ role: { slug: 'academic' } }]);
+      roomRepo.find.mockResolvedValue([{ id: 'room-g', type: 'group', group: { id: 'g-1' } }]);
+
+      const rooms = await service.findRooms('staff-1');
+
+      expect(rooms).toHaveLength(1);
+      expect(memberRepo.save).not.toHaveBeenCalled();
+    });
+
+   it('getRoom seamlessly provisions eligible students on first access', async () => {
+      roomRepo.findOne
+        .mockResolvedValueOnce({ id: 'room-g', group_id: 'g-1', group }) // auto-join lookup
+        .mockResolvedValueOnce({ id: 'room-g', members: [] });          // reload after join
+      userRoleRepo.find.mockResolvedValue([]);
+      groupStudentRepo.findOne.mockResolvedValue({ student: { user_id: 'u-1' } });
+
+      // استخدام mockImplementation لضمان الاستجابة الصحيحة بغض النظر عن عدد الاستدعاءات
+      memberRepo.findOne.mockImplementation(async (query: any) => {
+        if (query && query.relations) {
+          // الاستجابة النهائية عند جلب الغرفة مع العلاقات
+          return { 
+            room_id: 'room-g', 
+            user_id: 'u-1', 
+            is_banned: false, 
+            room: { id: 'room-g', members: [] } 
+          };
+        }
+        // الاستجابات الأولية (التحقق من عدم وجود العضوية مسبقاً)
+        return null;
+      });
+
+      const room = await service.getRoom('room-g', 'u-1');
+      expect(memberRepo.save).toHaveBeenCalled();
+      expect(room.id).toBe('room-g');
     });
   });
 });

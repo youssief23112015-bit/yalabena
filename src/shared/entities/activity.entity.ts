@@ -1,35 +1,48 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Branch } from './branch.entity';
-import { User } from './user.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { ActivityEventType } from '../../common/enums/activity-event-type.enum';
 import { ActivityStatus } from '../../common/enums/activity-status.enum';
+import { Branch } from './branch.entity';
+import { ActivityRegistration } from './activity-registration.entity';
+import { ActivityPhoto } from './activity-photo.entity';
 
 @Entity('activities')
 export class Activity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 200 })
-  name: string;
-
+@Column({ name: 'name', type: 'varchar', length: 200 })
+  title: string;
+  
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'enum', enum: ActivityEventType })
   type: ActivityEventType;
 
+  @Index()
   @Column({ type: 'date' })
-  date: Date;
+  date: string;
 
-  @Column({ type: 'time', nullable: true })
-  start_time: string;
+  @Column({ type: 'varchar', length: 5, nullable: true })
+  start_time: string | null;
 
-  @Column({ type: 'time', nullable: true })
-  end_time: string;
+  @Column({ type: 'varchar', length: 5, nullable: true })
+  end_time: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  location: string;
+  location: string | null;
 
+  @Index()
   @Column({ type: 'uuid' })
   branch_id: string;
 
@@ -44,10 +57,10 @@ export class Activity {
   fee: number;
 
   @Column({ type: 'jsonb', nullable: true })
-  target_levels: any;
+  target_levels: string[] | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  target_groups: any;
+  target_groups: string[] | null;
 
   @Column({ type: 'boolean', default: false })
   is_open_to_all: boolean;
@@ -56,11 +69,13 @@ export class Activity {
   status: ActivityStatus;
 
   @Column({ type: 'uuid', nullable: true })
-  created_by: string;
+  created_by: string | null;
 
-  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'created_by' })
-  creator: User;
+  @OneToMany(() => ActivityRegistration, (r) => r.activity, { cascade: true })
+  registrations: ActivityRegistration[];
+
+  @OneToMany(() => ActivityPhoto, (p) => p.activity, { cascade: true })
+  photos: ActivityPhoto[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;

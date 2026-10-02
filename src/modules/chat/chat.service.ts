@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ChatRoom } from '../../shared/entities/chat-room.entity';
 import { ChatRoomMember } from '../../shared/entities/chat-room-member.entity';
 import { ChatMessage } from '../../shared/entities/chat-message.entity';
@@ -15,6 +15,7 @@ import { CreateRoomDto } from './dto/create-room.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ModerateUserDto } from './dto/moderate-user.dto';
 import { ViolationQueryDto } from './dto/violation-query.dto';
+import { ChatRoomType } from '../../common/enums/chat-room-type.enum';
 import { ChatMessageType } from '../../common/enums/chat-message-type.enum';
 import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
 import { ViolationAction } from '../../common/enums/violation-action.enum';
@@ -39,6 +40,8 @@ export interface ChatAuditRow {
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   /**
    * FIX (Room Access): role slugs that may enter ANY chat room without an
    * enrollment check. Matches the slugs produced by JwtStrategy and seeded
@@ -91,23 +94,143 @@ export class ChatService {
     return this.roomRepo.findOne({ where: { id: saved.id }, relations: ['members', 'members.user'] });
   }
 
+  /**
+   * Automatic group chat rooms: whenever a study Group exists, exactly one
+   * GROUP-type ChatRoom is linked to it (chat_rooms.group_id is unique).
+   * Idempotent — safe to call on group create/update, student assignment,
+   * enrollment changes, or any chat access path.
+   */
+  async ensureGroupChatRoom(groupId: string): Promise<ChatRoom> {
+    const existing = await this.roomRepo.findOne({
+      where: { group_id: groupId, type: ChatRoomType.GROUP },
+    });
+    if (existing) return existing;
+
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) throw new NotFoundException(`Group ${groupId} not found`);
+
+    const saved = await this.roomRepo.save(
+      this.roomRepo.create({
+        type: ChatRoomType.GROUP,
+        group_id: group.id,
+        name: `${group.name} — Group Chat`,
+        created_by: group.teacher_id,
+      }),
+    );
+
+    // Teacher + substitute are room teachers (moderation-capable) from birth.
+    await this.upsertMember(saved.id, group.teacher_id, 'teacher');
+    if (group.substitute_teacher_id) {
+      await this.upsertMember(saved.id, group.substitute_teacher_id, 'teacher');
+    }
+
+    (saved as any).group = group; // lets role detection work for immediate joiners
+    return saved;
+  }
+
+  /**
+   * Full membership sync for a group's chat room: teacher + substitute +
+   * every ACTIVE group_student + every ACTIVE enrollment. Adds missing rows
+   * only — existing members keep their moderation state (bans/mutes) and
+   * any custom roles.
+   */
+  async syncGroupChatRoom(groupId: string): Promise<ChatRoom> {
+    const room = await this.ensureGroupChatRoom(groupId);
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    if (!group) return room;
+
+    const seats = new Map<string, 'teacher' | 'member'>();
+    if (group.teacher_id) seats.set(group.teacher_id, 'teacher');
+    if (group.substitute_teacher_id) seats.set(group.substitute_teacher_id, 'teacher');
+
+    const groupStudents = await this.groupStudentRepo.find({
+      where: { group_id: groupId, status: 'active' },
+      relations: ['student'],
+    });
+    for (const gs of groupStudents) {
+      if (gs.student?.user_id && !seats.has(gs.student.user_id)) seats.set(gs.student.user_id, 'member');
+    }
+
+    // enrollments.service writes 'ACTIVE' while EnrollmentStatus.ACTIVE is
+    // 'active' — match both so eligibility never silently fails.
+    const enrollments = await this.enrollmentRepo.find({
+      where: { group_id: groupId, status: In(['active', 'ACTIVE'] as any) },
+      relations: ['student'],
+    });
+    for (const e of enrollments) {
+      if (e.student?.user_id && !seats.has(e.student.user_id)) seats.set(e.student.user_id, 'member');
+    }
+
+    for (const [uid, role] of seats) await this.upsertMember(room.id, uid, role);
+    return room;
+  }
+
+  /** Staff-only helper for the controller: re-sync a room from its linked group. */
+  async syncRoomMembers(roomId: string): Promise<{ room_id: string; synced: boolean }> {
+    const room = await this.roomRepo.findOne({ where: { id: roomId } });
+    if (!room) throw new NotFoundException('Room not found');
+    if (!room.group_id) throw new BadRequestException('Room is not linked to a study group');
+    await this.syncGroupChatRoom(room.group_id);
+    return { room_id: roomId, synced: true };
+  }
+
   async findRooms(userId: string) {
+    const rooms = new Map<string, ChatRoom>();
+
+    // 1) Explicit memberships (previous behaviour).
     const memberships = await this.memberRepo.find({
       where: { user_id: userId, is_banned: false },
       relations: ['room'],
     });
-    return memberships.map((m) => m.room);
+    for (const m of memberships) if (m.room) rooms.set(m.room.id, m.room);
+
+    // 2) Automatic group rooms.
+    if (await this.isStaff(userId)) {
+      // Staff roles can view & participate in EVERY group chat room.
+      const groupRooms = await this.roomRepo.find({
+        where: { type: ChatRoomType.GROUP },
+        relations: ['group'],
+      });
+      for (const r of groupRooms) rooms.set(r.id, r);
+    } else {
+      const groupIds = await this.findEligibleGroupIds(userId);
+      for (const gid of groupIds) {
+        const room = await this.ensureGroupChatRoom(gid); // creates the room if the group has none yet
+        await this.autoJoinEligibleUser(room, userId);    // seamless self-provisioning
+        rooms.set(room.id, room);
+      }
+    }
+
+    return [...rooms.values()];
   }
 
-  async getRoom(roomId: string, userId: string) {
-    const membership = await this.memberRepo.findOne({
+ async getRoom(roomId: string, userId: string) {
+    // 1. التحقق من وجود العضوية مسبقاً
+    let membership = await this.memberRepo.findOne({
+      where: { room_id: roomId, user_id: userId },
+    });
+
+    // 2. إذا لم يكن عضواً، نحاول إتمامه تلقائياً (Auto-provision / Join) إذا كان مؤهلاً
+    if (!membership) {
+      try {
+        await this.joinRoom(roomId, userId);
+      } catch {
+        // إذا لم يكن مؤهلاً للدخول، سيتم تجاهل الخطأ هنا ليتم التعامل معه عبر فحص العضوية أدناه
+      }
+    }
+
+    // 3. جلب العضوية مع العلاقات المطلوبة
+    membership = await this.memberRepo.findOne({
       where: { room_id: roomId, user_id: userId },
       relations: ['room', 'room.members', 'room.members.user'],
     });
-    if (!membership || membership.is_banned) throw new ForbiddenException('Access denied');
+
+    if (!membership || membership.is_banned) {
+      throw new ForbiddenException('Access denied');
+    }
+
     return membership.room;
   }
-
   // ─── MESSAGES ───
 
   /**
@@ -167,9 +290,17 @@ export class ChatService {
   }
 
   async getMessages(roomId: string, userId: string, offset = 0, limit = 50) {
-    const membership = await this.memberRepo.findOne({
+    let membership = await this.memberRepo.findOne({
       where: { room_id: roomId, user_id: userId, is_banned: false },
     });
+    if (!membership) {
+      // Automatic group rooms: provision eligible users on first access.
+      const room = await this.roomRepo.findOne({ where: { id: roomId }, relations: ['group'] });
+      if (room) await this.autoJoinEligibleUser(room, userId);
+      membership = await this.memberRepo.findOne({
+        where: { room_id: roomId, user_id: userId, is_banned: false },
+      });
+    }
     if (!membership) throw new ForbiddenException('Access denied');
 
     const safeOffset = Number.isFinite(offset) && offset >= 0 ? Math.trunc(offset) : 0;
@@ -482,7 +613,7 @@ export class ChatService {
     const { canonical, squashed } = normalizeChatMessage(body);
     const targets = [canonical, squashed];
 
- const rules: Array<{ name: string; pattern: RegExp; action: ViolationAction }> = [
+    const rules: Array<{ name: string; pattern: RegExp; action: ViolationAction }> = [
       { name: 'phone_egyptian', pattern: /01[0125]\d{8}/, action: ViolationAction.BLOCKED },
       { name: 'phone_egyptian_intl', pattern: /(\+?20|0020)1[0125]\d{8}/, action: ViolationAction.BLOCKED },
       { name: 'phone_generic', pattern: /\d{10,15}/, action: ViolationAction.BLOCKED },
@@ -503,20 +634,39 @@ export class ChatService {
     return null;
   }
 
-  // ─── MEMBERSHIP (FIX: enrollment / room-access check) ───
+  // ─── MEMBERSHIP (FIX: enrollment / room-access check + automatic group rooms) ───
 
   async joinRoom(roomId: string, userId: string) {
     const room = await this.roomRepo.findOne({ where: { id: roomId }, relations: ['group'] });
     if (!room) throw new NotFoundException('Room not found');
 
     const exists = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
-    if (exists) return exists; // idempotent for current members
+    if (exists) {
+      if (exists.is_banned) throw new ForbiddenException('You are banned from this room');
+      return exists; // idempotent for current members
+    }
 
+    // Automatic group rooms: provision the requesting user seamlessly when
+    // eligible (active group_student / enrollment, teacher, substitute, staff).
+    await this.autoJoinEligibleUser(room, userId);
+
+    let membership = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
+    if (membership) return membership;
+
+    // Not seated by the lazy provisioner → check eligibility for a precise error.
     await this.assertCanJoinRoom(userId, room);
-
-    const member = this.memberRepo.create({ room_id: roomId, user_id: userId, role: 'member' });
-    return this.memberRepo.save(member);
+    membership = this.memberRepo.create({ room_id: roomId, user_id: userId, role: 'member' });
+    return this.memberRepo.save(membership);
   }
+
+  async leaveRoom(roomId: string, userId: string) {
+    const member = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
+    if (!member) throw new NotFoundException('Not a member');
+    await this.memberRepo.remove(member);
+    return { success: true };
+  }
+
+  // ─── Group-room access helpers ───
 
   private async getUserRoleSlugs(userId: string): Promise<string[]> {
     const userRoles = await this.userRoleRepo.find({
@@ -526,43 +676,98 @@ export class ChatService {
     return [...new Set(userRoles.map((ur) => ur.role?.slug).filter(Boolean))];
   }
 
-  private async assertCanJoinRoom(userId: string, room: ChatRoom): Promise<void> {
-    // 1) Staff bypass
+  private async isStaff(userId: string): Promise<boolean> {
     const slugs = await this.getUserRoleSlugs(userId);
-    if (slugs.some((s) => this.STAFF_ROLE_SLUGS.includes(s))) return;
+    return slugs.some((s) => this.STAFF_ROLE_SLUGS.includes(s));
+  }
 
-    // 2) Group-linked rooms → enrollment check
-    if (room.group_id && room.group) {
-      const group = room.group;
+  /** Idempotent membership insert — existing rows (incl. bans/mutes/custom roles) are never touched. */
+  private async upsertMember(
+    roomId: string,
+    userId: string,
+    role: 'admin' | 'moderator' | 'member' | 'teacher',
+  ): Promise<ChatRoomMember> {
+    const existing = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
+    if (existing) return existing;
+    return this.memberRepo.save(this.memberRepo.create({ room_id: roomId, user_id: userId, role }));
+  }
 
-      // Teacher of the group (or its substitute)
-      if (group.teacher_id === userId || group.substitute_teacher_id === userId) return;
+  /**
+   * FIX: the previous implementation looked up the FIRST active row in
+   * group_students / enrollments and compared THAT student to the caller —
+   * so only one arbitrary student per group could ever join. These queries
+   * filter by the requesting user's own student record.
+   */
+  private async isEligibleGroupParticipant(group: Group, userId: string): Promise<boolean> {
+    // Teacher of the group (or its substitute)
+    if (group.teacher_id === userId || group.substitute_teacher_id === userId) return true;
 
-      // Enrolled via group_students (active)
-      const groupStudent = await this.groupStudentRepo.findOne({
-        where: { group_id: group.id, status: 'active' },
-        relations: ['student'],
-      });
-      if (groupStudent?.student?.user_id === userId) return;
+    // Enrolled via group_students (active)
+    const groupStudent = await this.groupStudentRepo.findOne({
+      where: { group_id: group.id, status: 'active', student: { user_id: userId } },
+      relations: ['student'],
+    });
+    if (groupStudent?.student?.user_id === userId) return true;
 
-      // Enrolled via enrollments (active)
-      const enrollment = await this.enrollmentRepo.findOne({
-        where: { group_id: group.id, status: EnrollmentStatus.ACTIVE },
-        relations: ['student'],
-      });
-      if (enrollment?.student?.user_id === userId) return;
+    // Enrolled via enrollments (active — both casings, see syncGroupChatRoom)
+    const enrollment = await this.enrollmentRepo.findOne({
+      where: { group_id: group.id, status: In(['active', 'ACTIVE'] as any), student: { user_id: userId } },
+      relations: ['student'],
+    });
+    return enrollment?.student?.user_id === userId;
+  }
 
-      throw new ForbiddenException('You are not enrolled in the group linked to this chat room');
-    }
+  private async canAccessRoom(userId: string, room: ChatRoom): Promise<boolean> {
+    if (await this.isStaff(userId)) return true;
+    if (!room.group_id) return false;
+    const group = room.group ?? (await this.groupRepo.findOne({ where: { id: room.group_id } }));
+    if (!group) return false;
+    return this.isEligibleGroupParticipant(group, userId);
+  }
 
-    // 3) Non-group rooms: only existing members may be here
+  private async assertCanJoinRoom(userId: string, room: ChatRoom): Promise<void> {
+    if (await this.canAccessRoom(userId, room)) return;
+    if (room.group_id) throw new ForbiddenException('You are not enrolled in the group linked to this chat room');
     throw new ForbiddenException('You are not a member of this chat room');
   }
 
-  async leaveRoom(roomId: string, userId: string) {
-    const member = await this.memberRepo.findOne({ where: { room_id: roomId, user_id: userId } });
-    if (!member) throw new NotFoundException('Not a member');
-    await this.memberRepo.remove(member);
-    return { success: true };
+  /**
+   * Seamless access: when a group-linked room exists and the caller is an
+   * eligible participant (student via group_students/enrollments, teacher,
+   * substitute, or staff), a membership row is created on first access —
+   * no manual join step required.
+   */
+  private async autoJoinEligibleUser(room: ChatRoom, userId: string): Promise<ChatRoomMember | null> {
+    if (!room.group_id) return null;
+    const existing = await this.memberRepo.findOne({ where: { room_id: room.id, user_id: userId } });
+    if (existing) return existing;
+    if (!(await this.canAccessRoom(userId, room))) return null;
+    const isTeacher =
+      !!room.group && (room.group.teacher_id === userId || room.group.substitute_teacher_id === userId);
+    return this.upsertMember(room.id, userId, isTeacher ? 'teacher' : 'member');
+  }
+
+  /** All groups the user participates in (teacher/substitute, ACTIVE group_student or enrollment). */
+  private async findEligibleGroupIds(userId: string): Promise<string[]> {
+    const ids = new Set<string>();
+
+    const taught = await this.groupRepo.find({
+      where: [{ teacher_id: userId }, { substitute_teacher_id: userId }],
+    });
+    for (const g of taught) ids.add(g.id);
+
+    const groupStudents = await this.groupStudentRepo.find({
+      where: { status: 'active', student: { user_id: userId } },
+      relations: ['student'],
+    });
+    for (const gs of groupStudents) if (gs.group_id) ids.add(gs.group_id);
+
+    const enrollments = await this.enrollmentRepo.find({
+      where: { status: In(['active'] as any), student: { user_id: userId } },
+      relations: ['student'],
+    });
+    for (const e of enrollments) if (e.group_id) ids.add(e.group_id);
+
+    return [...ids];
   }
 }

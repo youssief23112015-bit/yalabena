@@ -437,3 +437,88 @@ export interface StoredFileInfo {
   kind: string;
 }
 
+// ─── Activities (SRS 4.11) ───
+
+export type ActivityEventType =
+  | "movie_night"
+  | "conversation_club"
+  | "trip"
+  | "contest"
+  | "workshop"
+  | "other";
+
+export type ActivityStatusValue = "upcoming" | "open" | "full" | "completed" | "cancelled";
+
+export type ActivityRegistrationStatus = "registered" | "attended" | "no_show" | "cancelled";
+
+export interface ActivityPhoto {
+  id: string;
+  activity_id: string;
+  file_url: string;
+  caption?: string | null;
+  uploaded_by?: string | null;
+  created_at: string;
+}
+
+export interface ActivityRegistration {
+  id: string;
+  activity_id: string;
+  student_id: string;
+  student?: Student;
+  registered_at: string;
+  status: ActivityRegistrationStatus;
+  paid_amount: number;
+  payment_id?: string | null;
+  created_at?: string;
+}
+
+export interface Activity {
+  id: string;
+  title: string;
+  description?: string | null;
+  type: ActivityEventType;
+  date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  location?: string | null;
+  branch_id: string;
+  branch?: Branch;
+  capacity: number;
+  fee: number;
+  target_levels?: string[] | null;
+  target_groups?: string[] | null;
+  is_open_to_all: boolean;
+  status: ActivityStatusValue;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  /** Derived server-side: registrations excluding cancelled ones. */
+  registered_count?: number;
+  registrations?: ActivityRegistration[];
+  photos?: ActivityPhoto[];
+}
+
+export interface ActivityAttendanceSummary {
+  registered: number;
+  attended: number;
+  no_show: number;
+  cancelled: number;
+  total: number;
+}
+
+export interface ActivityAttendanceResponse {
+  activity_id: string;
+  title: string;
+  capacity: number;
+  records: {
+    registration_id: string;
+    student_id: string;
+    student?: Student;
+    status: ActivityRegistrationStatus;
+    paid_amount: number;
+    registered_at: string;
+  }[];
+  summary: ActivityAttendanceSummary;
+}
+
+

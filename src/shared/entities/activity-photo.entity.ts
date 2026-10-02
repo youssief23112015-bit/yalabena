@@ -1,16 +1,24 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Activity } from './activity.entity';
-import { User } from './user.entity';
 
 @Entity('activity_photos')
 export class ActivityPhoto {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @Column({ type: 'uuid' })
   activity_id: string;
 
-  @ManyToOne(() => Activity, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Activity, (a) => a.photos, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'activity_id' })
   activity: Activity;
 
@@ -18,14 +26,10 @@ export class ActivityPhoto {
   file_url: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  caption: string;
+  caption: string | null;
 
   @Column({ type: 'uuid', nullable: true })
-  uploaded_by: string;
-
-  @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'uploaded_by' })
-  uploader: User;
+  uploaded_by: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;

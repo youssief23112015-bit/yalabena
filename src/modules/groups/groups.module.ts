@@ -4,9 +4,10 @@ import { Group } from '../../shared/entities/group.entity';
 import { GroupSchedule } from '../../shared/entities/group-schedule.entity';
 import { GroupsController } from './groups.controller';
 import { GroupsService } from './groups.service';
+import { ChatModule } from '../chat/chat.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Group, GroupSchedule])],
+  imports: [TypeOrmModule.forFeature([Group, GroupSchedule]), ChatModule],
   controllers: [GroupsController],
   providers: [GroupsService],
   exports: [GroupsService],

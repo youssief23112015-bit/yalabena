@@ -94,8 +94,23 @@ export class ChatController {
   @ApiResponse({ status: 404, description: 'Room not found.' })
   getRoom(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.chatService.getRoom(id, user.userId);
+    
+  }
+  @Post('rooms/:id/join')
+  @ApiOperation({ summary: 'Join a chat room (group rooms auto-join eligible students, teachers & staff)' })
+  @ApiParam({ name: 'id', description: 'Chat Room UUID' })
+  @ApiResponse({ status: 201, description: 'Membership returned (idempotent for existing members).' })
+  joinRoom(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    return this.chatService.joinRoom(id, user.userId);
   }
 
+  @Post('rooms/:id/sync-members')
+  @Roles('super_admin', 'admin', 'moderator')
+  @ApiOperation({ summary: 'Re-sync a group chat room membership from its linked study group (staff only)' })
+  @ApiParam({ name: 'id', description: 'Chat Room UUID' })
+  syncRoomMembers(@Param('id', ParseUUIDPipe) id: string) {
+    return this.chatService.syncRoomMembers(id);
+  }
   @Get('rooms/:id/messages')
   @ApiOperation({ summary: 'Get room messages' })
   @ApiParam({ name: 'id', description: 'Chat Room UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
