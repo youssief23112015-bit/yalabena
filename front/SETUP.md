@@ -39,7 +39,7 @@ npm run dev
 
 Frontend will be available at: `http://localhost:5173`
 
-The Vite dev server proxies `/api` requests to `http://localhost:3000`.
+The Vite dev server proxies `/api/v1` and Socket.IO transport requests (`/socket.io/`) to `http://localhost:3000`. The chat namespace is `/chat`; do not proxy only `/chat`, because Socket.IO uses `/socket.io/` as its transport path.
 
 ### 5. Production Build
 
@@ -119,6 +119,15 @@ Backend URLs:
 1. Verify backend is running: `curl http://localhost:3000/api/v1/health`
 2. Check `vite.config.ts` proxy target matches backend port
 3. Ensure `VITE_API_BASE_URL=/api/v1` (not `http://localhost:3000/api/v1` in dev)
+
+### Chat page loads but rooms/messages or live updates do not work
+
+**Fix:**
+1. Confirm `front/.env` has `VITE_API_BASE_URL=/api/v1`.
+2. Restart Vite after changing `.env`.
+3. In DevTools → Network, verify `/api/v1/chat/consent` and `/api/v1/chat/rooms` are sent to the backend.
+4. Verify `/socket.io/?EIO=4...` is proxied to port 3000. The namespace is `/chat`, but the transport path is `/socket.io/`.
+5. Confirm the backend is running, the access token is valid, and the signed-in user is eligible for at least one chat room.
 
 ### 401 Unauthorized on every request
 

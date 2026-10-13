@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { User } from './user.entity';
 import { Classroom } from './classroom.entity';
-import { InventoryItem } from './inventory-item.entity'; // تأكد إن مسار الاستيراد مظبوط حسب مكان الملف
 import { UserStatus } from '../../common/enums/user-status.enum';
 
 @Entity('branches')
@@ -45,8 +44,4 @@ export class Branch {
 
   @OneToMany(() => Classroom, (c) => c.branch)
   classrooms: Classroom[];
-
-  // أضفنا العلاقة دي هنا عشان الـ Inventory تتصل بالـ Branch صح بدون أخطاء
-  @OneToMany(() => InventoryItem, (item) => item.branch)
-  inventoryItems: InventoryItem[];
 }

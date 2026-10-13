@@ -1,36 +1,26 @@
-import { IsUUID, IsEnum, IsDateString, IsInt, Min, IsString, IsOptional } from 'class-validator';
+import { IsUUID, IsEnum, IsDateString, IsString, IsOptional, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { LeaveType } from '../../../common/enums/leave-type.enum';
 
 export class RequestLeaveDto {
-  @ApiProperty()
-  @IsUUID()
-  employee_id: string;
+  @ApiPropertyOptional({ description: 'HR / admin only. Everyone else always requests for themselves.' })
+  @IsOptional() @IsUUID()
+  employee_id?: string;
 
-  @ApiProperty({ enum: LeaveType })
-  @IsEnum(LeaveType)
+  @ApiProperty({ enum: LeaveType }) @IsEnum(LeaveType)
   type: LeaveType;
 
-  @ApiProperty({ format: 'date' })
-  @IsDateString()
+  @ApiProperty({ format: 'date' }) @IsDateString()
   start_date: string;
 
-  @ApiProperty({ format: 'date' })
-  @IsDateString()
+  @ApiProperty({ format: 'date' }) @IsDateString()
   end_date: string;
 
-  @ApiProperty()
-  @IsInt()
-  @Min(1)
-  days_count: number;
+  // days_count is computed server-side (inclusive calendar days); any client value is ignored.
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(2000)
   reason?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500)
   attachment_url?: string;
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -10,6 +10,17 @@ import { UserStatus } from '../../common/enums/user-status.enum';
 
 export interface FindAllUsersFilter {
   branchId?: string;
+}
+
+/** Profile fields a client may edit through PUT /users/:id. */
+export interface UpdateUserProfile {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  branch_id?: string;
+  status?: string;
+  role_id?: string;
 }
 
 @Injectable()
@@ -89,5 +100,77 @@ export class UsersService {
     });
 
     return this.findOne(id);
+  }
+
+  // ─── Profile update / delete / status / password (admin panel) ───
+
+  /**
+   * Update profile fields; optionally swaps the role in the same call
+   * (the frontend edit form sends role_id alongside the name/email fields).
+   */
+  async update(id: string, dto: UpdateUserProfile): Promise<User> {
+    const user = await this.findOne(id);
+
+    if (dto.email && dto.email !== user.email) {
+      const duplicate = await this.userRepo.findOne({ where: { email: dto.email } });
+      if (duplicate) throw new ConflictException('Email already exists');
+    }
+    if (dto.phone && dto.phone !== user.phone) {
+      const duplicate = await this.userRepo.findOne({ where: { phone: dto.phone } });
+      if (duplicate) throw new ConflictException('Phone already exists');
+    }
+
+    const patch: Partial<User> = {};
+    if (dto.first_name !== undefined) patch.first_name = dto.first_name;
+    if (dto.last_name !== undefined) patch.last_name = dto.last_name;
+    if (dto.email !== undefined) patch.email = dto.email;
+    if (dto.phone !== undefined) patch.phone = dto.phone;
+    if (dto.branch_id !== undefined) patch.branch_id = dto.branch_id || (null as unknown as string);
+    if (dto.status !== undefined) patch.status = dto.status as UserStatus;
+
+    if (Object.keys(patch).length > 0) {
+      await this.userRepo.update(id, patch);
+    }
+
+    if (dto.role_id) {
+      await this.updateRole(id, dto.role_id, id);
+    }
+
+    return this.findOne(id);
+  }
+
+  async updateStatus(id: string, status: string): Promise<User> {
+    await this.findOne(id);
+    const allowed = Object.values(UserStatus) as string[];
+    if (!allowed.includes(status)) {
+      throw new ConflictException(`Invalid status: ${status}`);
+    }
+    await this.userRepo.update(id, { status: status as UserStatus });
+    return this.findOne(id);
+  }
+
+  async resetPassword(id: string, newPassword: string): Promise<{ id: string; reset: true }> {
+    await this.findOne(id);
+    if (!newPassword || newPassword.length < 6) {
+      throw new ConflictException('Password must be at least 6 characters');
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await this.userRepo.update(id, { password_hash: hash });
+    return { id, reset: true };
+  }
+
+  async remove(id: string): Promise<{ id: string; deleted: true }> {
+    const user = await this.findOne(id);
+    // Link-check: refuse if the user still has HR/academic dependents.
+    const employeeCount = await this.userRepo.manager
+      .getRepository('Employee')
+      .count({ where: { user_id: user.id } })
+      .catch(() => 0);
+    if (employeeCount > 0) {
+      throw new ForbiddenException('User has an employee record — terminate it from HR first');
+    }
+    await this.userRoleRepo.delete({ user_id: id });
+    await this.userRepo.remove(user);
+    return { id, deleted: true };
   }
 }

@@ -23,7 +23,7 @@ export class StockMove {
   @JoinColumn({ name: 'branch_id' })
   branch: Branch;
 
-  @Column({ type: 'enum', enum: StockMoveType })
+  @Column({ type: 'enum', enum: StockMoveType, enumName: 'stock_move_type' })
   type: StockMoveType;
 
   @Column({ type: 'int' })

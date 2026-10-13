@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Enrollment } from '../../shared/entities/enrollment.entity';
@@ -77,7 +77,7 @@ export class EnrollmentsService {
       course_id: group.course_id,
       branch_id: branchId,
       amount: fee,
-      description: `Enrollment — ${group.course?.name ?? 'Course'} (${group.name})`,
+      description: `Enrollment â€” ${group.course?.name ?? 'Course'} (${group.name})`,
       promo_code: dto.promo_code,
       manual_discount: dto.discount_amount,
       installments_count: dto.installments_count,
@@ -125,8 +125,9 @@ export class EnrollmentsService {
 
   async updateStatus(id: string, dto: UpdateEnrollmentStatusDto, user: AuthUser) {
     const e = await this.findOne(id, user);
-    e.status = dto.status as EnrollmentStatus;
-    if (dto.status === 'DROPPED') {
+    const normalizedStatus = String(dto.status).toLowerCase();
+    e.status = normalizedStatus as EnrollmentStatus;
+    if (normalizedStatus === 'dropped') {
       e.dropped_at = new Date();
       e.drop_reason = dto.reason ?? null;
     }
@@ -134,8 +135,8 @@ export class EnrollmentsService {
     await this.syncChatRoomSafely(e.group_id);
     return saved;
   }
-
   async drop(id: string, reason: string | undefined, user: AuthUser) {
     return this.updateStatus(id, { status: 'DROPPED', reason }, user);
   }
 }
+

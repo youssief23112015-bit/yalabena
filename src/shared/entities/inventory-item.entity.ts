@@ -1,21 +1,26 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { InventoryCategory } from '../../common/enums/inventory-category.enum';
 import { InventoryStatus } from '../../common/enums/inventory-status.enum';
-import { Branch } from './branch.entity'; // تأكد من مسار الـ Branch entity عندك
 
+/**
+ * Master catalog of training materials (SRS 4.12).
+ * Matches `inventory_items` in database/speakup_tms_full_schema.sql:
+ * the table has NO branch_id (stock is per branch in `stock_levels`)
+ * and the price column is `sale_price`.
+ */
 @Entity('inventory_items')
 export class InventoryItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'varchar', length: 50, unique: true, nullable: true })
-  sku: string;
+  sku: string | null;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'enum', enum: InventoryCategory })
   category: InventoryCategory;
@@ -24,20 +29,13 @@ export class InventoryItem {
   unit_cost: number;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  unit_price: number; // أو sale_price حسب اللي شغال عندك
+  sale_price: number;
 
   @Column({ type: 'varchar', length: 20, default: 'piece' })
   unit_of_measure: string;
 
   @Column({ type: 'int', default: 10 })
   reorder_level: number;
-
-  @Column({ type: 'uuid', name: 'branch_id' })
-  branch_id: string;
-
-  @ManyToOne(() => Branch, (branch) => branch.inventoryItems, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'branch_id' })
-  branch: Branch;
 
   @Column({ type: 'enum', enum: InventoryStatus, default: InventoryStatus.ACTIVE })
   status: InventoryStatus;

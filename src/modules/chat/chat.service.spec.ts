@@ -463,4 +463,109 @@ describe('ChatService — messaging, moderation & strikes', () => {
       expect(room.id).toBe('room-g');
     });
   });
+
+  describe('getMyChatGroups & broadcastToGroups (group directory + broadcast)', () => {
+    const taughtGroups = [
+      { id: 'g-1', name: 'A1 — Section 1', teacher_id: 'u-1', substitute_teacher_id: null, course: { name: 'English A1' } },
+      { id: 'g-2', name: 'A1 — Section 2', teacher_id: 'u-1', substitute_teacher_id: null, course: { name: 'English A1' } },
+    ];
+
+    beforeEach(() => {
+      // Default mocks for a teacher ('u-1') who teaches groups g-1 & g-2.
+      userRoleRepo.find.mockResolvedValue([]); // non-staff
+      groupRepo.find.mockImplementation(async (opts?: any) => {
+        if (!opts?.where) return taughtGroups; // staff: all groups
+        return taughtGroups; // taught-filter query (u-1 teaches both)
+      });
+      groupRepo.findOne.mockImplementation(async (opts: any) =>
+        taughtGroups.find((g: any) => g.id === opts.where.id) ?? null,
+      );
+      roomRepo.findOne.mockImplementation(async (opts: any) => {
+        const gid = opts?.where?.group_id;
+        if (gid) return { id: `room-${gid}`, group_id: gid, type: 'group' };
+        return null;
+      });
+      memberRepo.findOne.mockImplementation(async (opts: any) => ({
+        room_id: opts.where.room_id,
+        user_id: opts.where.user_id,
+        is_banned: false,
+        is_muted: false,
+        role: opts.where.user_id === 'u-1' ? 'teacher' : 'member',
+      }));
+      memberRepo.count = jest.fn(async () => 4);
+      groupStudentRepo.find.mockResolvedValue([]);
+      enrollmentRepo.find.mockResolvedValue([]);
+      messageRepo.findOne = jest.fn(async () => ({ id: 'msg-1', sender: { id: 'u-1' } }));
+    });
+
+    it('getMyChatGroups returns taught groups with room id + live member count', async () => {
+      const rows = await service.getMyChatGroups('u-1');
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({
+        id: 'g-1',
+        name: 'A1 — Section 1',
+        course_name: 'English A1',
+        room_id: 'room-g-1',
+        member_count: 4,
+        my_role: 'teacher',
+      });
+    });
+
+    it('broadcastToGroups sends one message per selected group and emits new_message to sockets', async () => {
+      const emit = jest.fn();
+      service.registerGatewayServer({ to: jest.fn(() => ({ emit })) } as any);
+
+      const result = await service.broadcastToGroups('u-1', 'Class starts at 6pm today', ['g-1', 'g-2']);
+
+      expect(result).toMatchObject({ sent: 2, total: 2, failed: [] });
+      expect(messageRepo.save).toHaveBeenCalledTimes(2);
+      expect(emit).toHaveBeenCalledTimes(2);
+      expect(emit.mock.calls[0][0]).toBe('new_message');
+    });
+
+    it('broadcastToGroups defaults to every group the teacher teaches', async () => {
+      const emit = jest.fn();
+      service.registerGatewayServer({ to: jest.fn(() => ({ emit })) } as any);
+
+      const result = await service.broadcastToGroups('u-1', 'Reminder: homework due Friday', undefined);
+      expect(result).toMatchObject({ sent: 2, total: 2 });
+    });
+
+    it('broadcastToGroups rejects groups the teacher does not teach', async () => {
+      await expect(
+        service.broadcastToGroups('u-1', 'hello', ['g-other']),
+      ).rejects.toThrow(ForbiddenException);
+      expect(messageRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('broadcastToGroups rejects an empty body', async () => {
+      await expect(service.broadcastToGroups('u-1', '   ')).rejects.toThrow(BadRequestException);
+    });
+
+    it('broadcastToGroups blocks contact-info BEFORE any send (single violation, zero fan-out)', async () => {
+      await expect(
+        service.broadcastToGroups('u-1', 'call me on 01012345678', ['g-1', 'g-2']),
+      ).rejects.toThrow(ForbiddenException);
+      expect(messageRepo.save).not.toHaveBeenCalled(); // nothing sent to any room
+      expect(violationRepo.save).toHaveBeenCalledTimes(1); // exactly one violation/strike
+    });
+
+    it('syncSectionChatRoom seats everyone in the section and emits room_members_updated', async () => {
+      const emit = jest.fn();
+      service.registerGatewayServer({ to: jest.fn(() => ({ emit })) } as any);
+
+      const result = await service.syncSectionChatRoom('g-1');
+
+      expect(result).toMatchObject({ section_id: 'g-1', room_id: 'room-g-1', member_count: 4 });
+      expect(emit).toHaveBeenCalledWith(
+        'room_members_updated',
+        expect.objectContaining({ room_id: 'room-g-1', group_id: 'g-1', member_count: 4 }),
+      );
+    });
+
+    it('syncSectionChatRoom rejects unknown sections', async () => {
+      groupRepo.findOne.mockResolvedValue(null);
+      await expect(service.syncSectionChatRoom('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
 });

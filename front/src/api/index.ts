@@ -1,4 +1,4 @@
-﻿export { leadsApi } from "./leads";
+export { leadsApi } from "./leads";
 export { studentsApi } from "./students";
 export { coursesApi } from "./courses";
 export { groupsApi } from "./groups";
@@ -7,3 +7,6 @@ export { branchesApi } from "./branches";
 export { usersApi } from "./users";
 export { rolesApi } from "./roles";
 export { dashboardApi } from "./dashboard";
+
+export { kbApi } from "./kb";
+export { reportsApi } from "./reports";

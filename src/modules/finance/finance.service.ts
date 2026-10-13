@@ -243,7 +243,7 @@ export class FinanceService {
 
   // ─── REFUNDS ───
 
-  async requestRefund(dto: CreateRefundDto, userId: string) {
+  async requestRefund(dto: CreateRefundDto, userId: string): Promise<Refund> {
     const payment = await this.paymentRepo.findOne({ where: { id: dto.payment_id } });
     if (!payment) throw new NotFoundException('Payment not found');
 
@@ -263,7 +263,7 @@ export class FinanceService {
       ...dto,
       invoice_id: payment.invoice_id,
       status: RefundStatus.PENDING,
-    } as any);
+    } as unknown as Partial<Refund>);
     return this.refundRepo.save(refund);
   }
 

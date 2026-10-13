@@ -37,6 +37,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
   ) {}
 
+  /**
+   * Hand the Socket.IO server to ChatService so REST-initiated broadcasts
+   * (POST /chat/broadcast) can emit `new_message` to every connected member
+   * of the target rooms. Kept here (not injected in ChatService) to avoid a
+   * circular provider dependency.
+   */
+  afterInit(server: Server) {
+    this.chatService.registerGatewayServer(server);
+  }
+
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
     // Connection-level Consent enforcement (SRS §6.6): an authenticated
@@ -154,7 +164,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     const userId = client.data.user?.userId;
-    if (!userId) return;
+    if (!userId || !data?.room_id || typeof data.is_typing !== 'boolean') return;
+
+    // Do not allow an authenticated client to broadcast typing events into an
+    // arbitrary room by supplying its ID. The REST/service access check is the
+    // same source of truth used for room history and membership.
+    try {
+      await this.chatService.getRoom(data.room_id, userId);
+    } catch {
+      return;
+    }
+
     client.to(data.room_id).emit('typing', { user_id: userId, is_typing: data.is_typing });
   }
 

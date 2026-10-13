@@ -48,6 +48,7 @@ import { CreateQuizDto } from './dto/create-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { CreateGradebookCategoryDto } from './dto/create-gradebook-category.dto';
 import { CreateGradebookEntryDto } from './dto/create-gradebook-entry.dto';
+import { LmsLessonProgress } from '../../shared/entities/lms-lesson-progress.entity';
 
 @Injectable()
 export class LmsService {
@@ -879,5 +880,61 @@ async getEvaluations(groupId: string, studentId?: string): Promise<TeacherEvalua
     return this.surveyRepo.save(
       this.surveyRepo.create(dto as Partial<StudentSurvey>),
     );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // LESSON COMPLETION & EVALUATION SUBMIT (frontend Lms.tsx)
+  // ═══════════════════════════════════════════════════
+
+  /**
+   * Toggle a lesson's completed flag for the current user. Uses the entity
+   * manager rather than a constructor-injected repo so the existing DI-based
+   * spec keeps working unchanged.
+   */
+  async toggleLessonCompletion(
+    lessonId: string,
+    completed: boolean,
+    userId: string,
+  ): Promise<{ lesson_id: string; completed: boolean }> {
+    const lesson = await this.lessonRepo.findOne({ where: { id: lessonId } });
+    if (!lesson) throw new NotFoundException('Lesson not found');
+
+    const progressRepo = this.moduleRepo.manager.getRepository(LmsLessonProgress);
+    let progress = await progressRepo.findOne({
+      where: { lesson_id: lessonId, user_id: userId },
+    });
+    if (progress) {
+      progress.completed = completed;
+    } else {
+      progress = progressRepo.create({
+        lesson_id: lessonId,
+        user_id: userId,
+        completed,
+      });
+    }
+    await progressRepo.save(progress);
+    return { lesson_id: lessonId, completed };
+  }
+
+  /**
+   * Student submits a rating/comments response to an evaluation or survey.
+   * The response is stored in the evaluation's form_data JSONB so teachers
+   * can review it later.
+   */
+  async submitEvaluationResponse(
+    evaluationId: string,
+    dto: { rating?: number; comments?: string },
+  ): Promise<TeacherEvaluation> {
+    const evaluation = await this.evalRepo.findOne({
+      where: { id: evaluationId },
+    });
+    if (!evaluation) throw new NotFoundException('Evaluation not found');
+
+    const formData = (evaluation.form_data as Record<string, unknown>) ?? {};
+    formData['student_rating'] = dto.rating;
+    formData['student_comments'] = dto.comments;
+    formData['responded_at'] = new Date().toISOString();
+    evaluation.form_data = formData;
+    return this.evalRepo.save(evaluation);
   }
 }

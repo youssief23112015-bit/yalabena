@@ -30,9 +30,30 @@ import NotificationsPage from '@/pages/Notifications';
 import AuditLogsPage from '@/pages/AuditLogs';
 import SecuritySettingsPage from '@/pages/SecuritySettings';
 import LmsPage from '@/pages/Lms';
+import CoursePage from '@/pages/student/CoursePage';
+import QuizPage from '@/pages/student/QuizPage';
+import QuestionBankPage from '@/pages/instructor/QuestionBankPage';
 import NotFoundPage from '@/pages/NotFound';
 import ChatPage from '@/pages/Chat';
 import LandingPage from '@/pages/public/LandingPage';
+import PublicCoursesPage from '@/pages/public/CoursesPage';
+import CourseDetailPage from '@/pages/public/CourseDetailPage';
+import BlogPage from '@/pages/public/BlogPage';
+import BlogPostPage from '@/pages/public/BlogPostPage';
+import PlacementBookingPage from '@/pages/public/PlacementBookingPage';
+import VerifyCertificatePage from '@/pages/public/VerifyCertificatePage';
+import RegisterOnlinePage from '@/pages/public/RegisterOnlinePage';
+import InventoryPage from '@/pages/inventory/InventoryPage';
+import KnowledgeBasePage from '@/pages/KnowledgeBase';
+import ReportsPage from '@/pages/Reports';
+import ActivityAttendancePage from '@/pages/activities/ActivityAttendancePage';
+import HrLayout from '@/pages/hr/HrLayout';
+import EmployeesPage from '@/pages/hr/EmployeesPage';
+import EmployeeDetailsPage from '@/pages/hr/EmployeeDetailsPage';
+import LeavesPage from '@/pages/hr/LeavesPage';
+import MyHrPage from '@/pages/hr/MyHrPage';
+import PayrollPage from '@/pages/hr/PayrollPage';
+
 
 // استيراد صفحات الـ Activities الجديدة
 import ActivitiesListPage from '@/pages/activities/ActivitiesListPage';
@@ -66,6 +87,13 @@ function App() {
           }
         />
         <Route path="/welcome" element={<LandingPage />} />
+        <Route path="/catalog" element={<PublicCoursesPage />} />
+        <Route path="/catalog/:id" element={<CourseDetailPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
+        <Route path="/placement-booking" element={<PlacementBookingPage />} />
+        <Route path="/verify-certificate" element={<VerifyCertificatePage />} />
+        <Route path="/register-online" element={<RegisterOnlinePage />} />
 
         <Route
           path="/register"
@@ -93,6 +121,22 @@ function App() {
             <Route
               path="/lms/*"
               element={<LmsPage />}
+            />
+
+            {/* Student course content + quiz taking (linked from Lms page & CoursePage) */}
+            <Route
+              path="/student/courses/:groupId"
+              element={roleGate(['student', 'teacher', 'academic'], <CoursePage />)}
+            />
+            <Route
+              path="/student/quiz/:quizId"
+              element={roleGate(['student'], <QuizPage />)}
+            />
+
+            {/* Instructor question bank (backend: GET/POST /lms/questions/bank) */}
+            <Route
+              path="/instructor/question-bank"
+              element={roleGate(['academic', 'teacher'], <QuestionBankPage />)}
             />
 
             <Route
@@ -174,6 +218,13 @@ function App() {
               )}
             />
             <Route
+              path="/activities/:id/attendance"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic', 'teacher'],
+                <ActivityAttendancePage />,
+              )}
+            />
+            <Route
               path="/activities/:id"
               element={roleGate(
                 ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
@@ -213,7 +264,37 @@ function App() {
               )}
             />
 
+            <Route
+              path="/hr"
+              element={roleGate(['super_admin', 'hr', 'branch_manager', 'teacher', 'finance'], <HrLayout />)}
+            >
+              <Route index element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeesPage />)} />
+              <Route path="employees/:id" element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeeDetailsPage />)} />
+              <Route path="leaves" element={roleGate(['super_admin', 'hr', 'branch_manager'], <LeavesPage />)} />
+              <Route path="my" element={roleGate(['super_admin', 'hr', 'teacher'], <MyHrPage />)} />
+              <Route path="payroll" element={roleGate(['super_admin', 'hr', 'finance'], <PayrollPage />)} />
+            </Route>
+
+            <Route
+              path="/inventory"
+              element={roleGate(['super_admin', 'branch_manager', 'sales', 'finance', 'auditor'], <InventoryPage />)}
+            />
             <Route path="/notifications" element={<NotificationsPage />} />
+
+            <Route
+              path="/knowledge-base"
+              element={roleGate(
+                ['super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance'],
+                <KnowledgeBasePage />,
+              )}
+            />
+            <Route
+              path="/reports"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'sales', 'academic', 'finance', 'hr', 'teacher'],
+                <ReportsPage />,
+              )}
+            />
 
             <Route
               path="/enrollments"
@@ -265,10 +346,10 @@ function App() {
 
             <Route
               path="/audit"
-              element={roleGate(['super_admin'], <AuditLogsPage />)}
+              element={roleGate(['super_admin', 'auditor'], <AuditLogsPage />)}
             />
 
-            <Route path="/security" element={<SecuritySettingsPage />} />
+            <Route path="/security" element={roleGate(['super_admin'], <SecuritySettingsPage />)} />
           </Route>
         </Route>
 

@@ -1,0 +1,14 @@
+﻿import { useEffect,useState } from "react";
+import { hrApi } from "@/api/hr";
+import type { Employee, LeaveRequest, LeaveStatus } from "@/types/hr";
+import { useUserRoles, hasAnyRole } from "@/lib/rbac";
+import LeavesTable from "./LeavesTable";
+import { LeaveDecisionDialog } from "@/components/hr/LeaveDecisionDialog";
+export default function LeavesPage(){
+ const roles=useUserRoles();const canDecide=hasAnyRole(roles,["super_admin","hr","branch_manager"]);const[items,setItems]=useState<LeaveRequest[]>([]);const[employees,setEmployees]=useState<Employee[]>([]);const[status,setStatus]=useState("");const[employee,setEmployee]=useState("");const[decision,setDecision]=useState<{id:string;action:"approve"|"reject"}|null>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState("");
+ async function load(){setLoading(true);try{const [l,e]=await Promise.all([hrApi.leaves({status:status ? status as LeaveStatus : undefined,employee_id:employee||undefined}),hrApi.employees()]);setItems(l);setEmployees(e);setError("")}catch(e){setError(e instanceof Error?e.message:"Unable to load leaves")}finally{setLoading(false)}}useEffect(()=>{void load()},[status,employee]);
+ return <div className="space-y-5"><div><h1 className="text-2xl font-bold">Leave management</h1><p className="text-sm text-muted-foreground">Review and approve employee leave requests.</p></div><div className="flex flex-wrap gap-3"><select className="rounded border bg-background p-2" value={status} onChange={e=>setStatus(e.target.value)}><option value="">All statuses</option>{["pending","approved","rejected","cancelled"].map(x=><option key={x}>{x}</option>)}</select><select className="rounded border bg-background p-2" value={employee} onChange={e=>setEmployee(e.target.value)}><option value="">All employees</option>{employees.map(e=><option key={e.id} value={e.id}>{e.user?`${e.user.first_name} ${e.user.last_name}`:e.id.slice(0,8)}</option>)}</select></div>{error&&<p className="text-destructive">{error}</p>}{loading?<p>Loading...</p>:<LeavesTable items={items} canDecide={canDecide} onApprove={id=>setDecision({id,action:"approve"})} onReject={id=>setDecision({id,action:"reject"})}/>}<LeaveDecisionDialog open={!!decision} id={decision?.id} action={decision?.action??"approve"} onClose={()=>setDecision(null)} onSaved={()=>void load()}/></div>
+}
+
+
+

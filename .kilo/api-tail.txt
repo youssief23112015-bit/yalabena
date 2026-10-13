@@ -1,0 +1,4 @@
+﻿#15 exporting attestation manifest sha256:5bc664735c622affe7d91d6a0d45949f23f54d9dc78f09832d4c696505c4698d 0.1s done
+#15 exporting manifest list sha256:6b70e5b5974732a50e7a5395a3644700238dea0174b9bca6598e9e9c8dcfbba8 0.0s done
+#15 naming to docker.io/library/yalabena-main-app:latest 0.0s done
+#15 unpacking to docker.io/library/yalabena-main-app:latest

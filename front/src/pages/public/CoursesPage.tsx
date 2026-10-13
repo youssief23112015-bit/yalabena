@@ -79,7 +79,7 @@ export default function CoursesPage() {
                 <div className="border-t p-6 pt-4 flex items-center justify-between bg-muted/20">
                   <span className="text-xl font-bold text-primary">{course.default_price} {t("public.courses.egp", "EGP")}</span>
                   <Button asChild size="sm">
-                    <Link to={`/courses/${course.id}`}>{t("public.courses.viewDetails", "Details")}</Link>
+                    <Link to={`/catalog/${course.id}`}>{t("public.courses.viewDetails", "Details")}</Link>
                   </Button>
                 </div>
               </Card>

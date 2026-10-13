@@ -27,7 +27,8 @@ export function PublicLayout({ children }: PublicLayoutProps) {
 
   const navLinks = [
     { to: "/", label: t("public.nav.home", "Home") },
-    { to: "/courses", label: t("public.nav.courses", "Courses") },
+    { to: "/catalog", label: t("public.nav.courses", "Courses") },
+    { to: "/blog", label: t("public.nav.blog", "Blog") },
     { to: "/placement-booking", label: t("public.nav.placement", "Placement Test") },
     { to: "/verify-certificate", label: t("public.nav.verify", "Verify Certificate") },
   ];

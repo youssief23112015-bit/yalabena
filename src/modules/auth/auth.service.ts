@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { authenticator } from 'otplib';
+import * as QRCode from 'qrcode';
 import { User } from '../../shared/entities/user.entity';
 import { UserRole } from '../../shared/entities/user-role.entity';
 import { Role } from '../../shared/entities/role.entity';
@@ -10,6 +12,7 @@ import { UserStatus } from '../../common/enums/user-status.enum';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { TwoFactorLoginDto } from './dto/two-factor.dto';
 
 @Injectable()
 export class AuthService {
@@ -58,11 +61,26 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepo.findOne({ where: { email: dto.email } });
+    // Query builder (not findOne) so password_hash + two_factor_enabled are
+    // selected for the 2FA gate below.
+    const user = await this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.password_hash')
+      .where('user.email = :email', { email: dto.email })
+      .getOne();
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(dto.password, user.password_hash);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
+
+    // 2FA gate (SRS 7.2): password OK, but a valid TOTP is still required.
+    if (user.two_factor_enabled) {
+      const temp_token = this.jwtService.sign(
+        { sub: user.id, purpose: '2fa' },
+        { expiresIn: '5m' },
+      );
+      return { requires_2fa: true, temp_token };
+    }
 
     await this.userRepo.update(user.id, { last_login_at: new Date() });
 
@@ -138,5 +156,99 @@ export class AuthService {
         permissions,
       },
     };
+  }
+
+  // ─── Two-factor authentication (SRS 7.2) ─────────────────────
+
+  /** Load a user (with the TOTP secret selected) for 2FA operations. */
+  private async findUserFor2fa(userId: string): Promise<User | null> {
+    return this.userRepo
+      .createQueryBuilder('user')
+      .addSelect('user.two_factor_secret')
+      .where('user.id = :id', { id: userId })
+      .getOne();
+  }
+
+  /**
+   * Generate a pending TOTP secret, persist it (not yet active), and return
+   * the otpauth URL + QR data URL for the authenticator app.
+   */
+  async setup2fa(userId: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+    if (user.two_factor_enabled) {
+      throw new BadRequestException('Two-factor authentication is already enabled');
+    }
+
+    const secret = authenticator.generateSecret();
+    await this.userRepo.update(userId, { two_factor_secret: secret });
+
+    const otpauth_url = authenticator.keyuri(user.email, 'SpeakUp Academy', secret);
+    const qr_code_data_url = await QRCode.toDataURL(otpauth_url);
+
+    return { secret, otpauth_url, qr_code_data_url };
+  }
+
+  /** Confirm the pending secret with a valid TOTP code and switch 2FA on. */
+  async enable2fa(userId: string, code: string) {
+    const user = await this.findUserFor2fa(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+    if (!user.two_factor_secret) {
+      throw new BadRequestException('Run 2FA setup first');
+    }
+    if (!authenticator.check(code, user.two_factor_secret)) {
+      throw new UnauthorizedException('Invalid authentication code');
+    }
+
+    await this.userRepo.update(userId, { two_factor_enabled: true });
+    return { two_factor_enabled: true };
+  }
+
+  /** Verify a code against the active secret, then wipe it and switch 2FA off. */
+  async disable2fa(userId: string, code: string) {
+    const user = await this.findUserFor2fa(userId);
+    if (!user) throw new UnauthorizedException('User not found');
+    if (!user.two_factor_secret) {
+      throw new BadRequestException('Two-factor authentication is not enabled');
+    }
+    if (!authenticator.check(code, user.two_factor_secret)) {
+      throw new UnauthorizedException('Invalid authentication code');
+    }
+
+    await this.userRepo.update(userId, {
+      two_factor_enabled: false,
+      two_factor_secret: null as unknown as string,
+    });
+    return { two_factor_enabled: false };
+  }
+
+  /**
+   * Complete a 2FA-gated login: validate the short-lived temp token (purpose
+   * must be '2fa'), check the TOTP code, then issue the normal token pair.
+   */
+  async verify2fa(dto: TwoFactorLoginDto) {
+    let payload: { sub?: string; purpose?: string };
+    try {
+      payload = this.jwtService.verify(dto.temp_token);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired 2FA token');
+    }
+    if (payload.purpose !== '2fa' || !payload.sub) {
+      throw new UnauthorizedException('Invalid or expired 2FA token');
+    }
+
+    const user = await this.findUserFor2fa(payload.sub);
+    if (!user || !user.two_factor_enabled || !user.two_factor_secret) {
+      throw new UnauthorizedException('Two-factor authentication is not enabled');
+    }
+    if (!authenticator.check(dto.code, user.two_factor_secret)) {
+      throw new UnauthorizedException('Invalid authentication code');
+    }
+
+    await this.userRepo.update(user.id, { last_login_at: new Date() });
+
+    const roles = await this.getUserRoles(user.id);
+    const permissions = await this.getUserPermissions(user.id);
+    return this.buildAuthResponse(user, roles, permissions);
   }
 }

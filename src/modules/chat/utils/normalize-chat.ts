@@ -37,6 +37,12 @@ export interface NormalizedChat {
   canonical: string;
   /** canonical with ALL separators stripped — catches "0 1 0 1 2 3 4 5 6 7 8" and "010-1234-5678" */
   squashed: string;
+  /**
+   * canonical with whitespace only (dots/punctuation kept) — catches
+   * "a h m e d @ g m a i l . c o m". `squashed` cannot catch it because it
+   * also strips the dot that the email TLD rule needs.
+   */
+  compact: string;
 }
 
 export function normalizeChatMessage(raw: string): NormalizedChat {
@@ -65,8 +71,10 @@ export function normalizeChatMessage(raw: string): NormalizedChat {
   const canonical = s;
   // 5. Squashed: strip spaces, dots, dashes, parens between everything
   const squashed = s.replace(/[\s.\-()_]+/g, '');
+  // 6. Compact: strip whitespace only, keep punctuation (email TLD dot etc.)
+  const compact = s.replace(/\s+/g, '');
 
-  return { canonical, squashed };
+  return { canonical, squashed, compact };
   
   
 }

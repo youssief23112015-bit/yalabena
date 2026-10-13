@@ -1,0 +1,68 @@
+﻿ M .kilo/compose-up.txt
+ M front/src/App.tsx
+ M front/src/api/public.ts
+ M front/src/components/chat/ChatLayout.tsx
+ M front/src/components/public/PublicLayout.tsx
+ M front/src/locales/ar/common.json
+ M front/src/locales/en/common.json
+ D front/src/pages/Attendance.tsx.before-fix
+ M front/src/pages/Chat.tsx
+ D front/src/pages/Dashboard.tsx.before-dashboard-attendance-fix
+ M front/src/pages/public/CoursesPage.tsx
+ M front/src/pages/public/LandingPage.tsx
+ M front/src/types/chat.ts
+ M front/tsconfig.node.tsbuildinfo
+ M front/tsconfig.tsbuildinfo
+ M front/vite.config.js
+ M front/vite.config.ts
+ M src/modules/attendance/attendance.module.ts
+ M src/modules/attendance/attendance.service.ts
+ M src/modules/chat/chat.controller.ts
+ M src/modules/chat/chat.gateway.ts
+ M src/modules/chat/chat.service.spec.ts
+ M src/modules/chat/chat.service.ts
+?? .kilo/api-build.txt
+?? .kilo/api-build2.txt
+?? .kilo/api-prog.txt
+?? .kilo/api-tail.txt
+?? .kilo/app-boot.txt
+?? .kilo/attendance-service.txt
+?? .kilo/build-api.txt
+?? .kilo/build-front.txt
+?? .kilo/chat-service.txt
+?? .kilo/chat-test.txt
+?? .kilo/chat-test2.txt
+?? .kilo/chat-tree.txt
+?? .kilo/compose-files.txt
+?? .kilo/compose-ls.txt
+?? .kilo/dockerignore.txt
+?? .kilo/dockerps-now.txt
+?? .kilo/done-markers.txt
+?? .kilo/final-markers.txt
+?? .kilo/front-build.txt
+?? .kilo/front-build2.txt
+?? .kilo/front-build4.txt
+?? .kilo/front-prog.txt
+?? .kilo/front-tail.txt
+?? .kilo/front-tree.txt
+?? .kilo/front-tsc.txt
+?? .kilo/front-tsc2.txt
+?? .kilo/front-tsc3.txt
+?? .kilo/front-tsc4.txt
+?? .kilo/front-tsc5.txt
+?? .kilo/front-tsc6.txt
+?? .kilo/front-tsc7.txt
+?? .kilo/frontdirs.txt
+?? .kilo/gitstatus.txt
+?? .kilo/inspect-api.txt
+?? .kilo/inspect-front.txt
+?? .kilo/netinfo.txt
+?? .kilo/procs.txt
+?? front/src/components/chat/BroadcastModal.tsx
+?? front/src/components/chat/MembersPanel.tsx
+?? front/src/pages/public/BlogPage.tsx
+?? front/src/pages/public/BlogPostPage.tsx
+?? front/src/pages/public/CourseDetailPage.tsx
+?? front/src/pages/public/PlacementBookingPage.tsx
+?? front/src/pages/public/RegisterOnlinePage.tsx
+?? front/src/pages/public/VerifyCertificatePage.tsx

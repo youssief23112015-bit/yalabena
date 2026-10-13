@@ -30,8 +30,28 @@ export interface ChatRoomMember {
 export interface ChatRoom {
   id: string;
   name: string;
+  type?: 'one_on_one' | 'group' | 'announcement';
+  group_id?: string | null;
   created_by: string;
   members?: ChatRoomMember[];
+}
+
+/** Row returned by GET /chat/my-groups — a group/section the caller belongs to. */
+export interface ChatGroupOption {
+  id: string;
+  name: string;
+  course_name: string | null;
+  member_count: number;
+  room_id: string;
+  my_role: 'teacher' | 'student' | 'staff';
+}
+
+/** Response returned by POST /chat/broadcast. */
+export interface BroadcastResult {
+  sent: number;
+  total: number;
+  room_ids: string[];
+  failed: Array<{ group_id: string; error: string }>;
 }
 
 export interface ChatMessage {
@@ -135,6 +155,8 @@ export interface ServerToClientEvents {
   user_left: (event: PresenceEvent) => void;
   typing: (event: TypingEvent) => void;
   chat_violations: (event: ChatViolationPushEvent) => void;
+  /** Emitted when the backend re-syncs a room's membership (e.g. after attendance is saved). */
+  room_members_updated: (event: { room_id: string; group_id?: string; member_count?: number }) => void;
 }
 
 export interface ClientToServerEvents {

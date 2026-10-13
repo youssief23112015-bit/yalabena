@@ -1,0 +1,2 @@
+﻿src/components/chat/BroadcastModal.tsx(82,9): error TS2322: Type '"success"' is not assignable to type '"error" | "info" | "violation"'.
+tsc-exit=2

@@ -154,6 +154,33 @@ export class ChatController {
     res.send(csv);
   }
 
+  // ─── GROUP DIRECTORY & BROADCAST (teacher ↔ group/section members) ───
+
+  @Get('my-groups')
+  @ApiOperation({ summary: 'List groups/sections I belong to (taught or enrolled) with chat member counts' })
+  @ApiResponse({ status: 200, description: 'Returns groups with their chat room id and live member count.' })
+  getMyGroups(@CurrentUser() user: any) {
+    return this.chatService.getMyChatGroups(user.userId);
+  }
+
+  @Post('broadcast')
+  @ApiOperation({ summary: 'Broadcast a message to every member of one or more groups/sections at once (teacher/staff)' })
+  @ApiResponse({ status: 201, description: 'Broadcast sent to the selected group chats.' })
+  @ApiResponse({ status: 403, description: 'Not allowed for this user or one of the selected groups.' })
+  broadcast(@Body() dto: { group_ids?: string[]; body: string }, @CurrentUser() user: any) {
+    return this.chatService.broadcastToGroups(user.userId, dto?.body, dto?.group_ids);
+  }
+
+  @Post('sections/:id/sync')
+  @Roles('super_admin', 'academic', 'teacher', 'branch_manager')
+  @ApiOperation({ summary: 'Sync the chat room of a section (= study group): seat teacher + all active students' })
+  @ApiParam({ name: 'id', description: 'Section / group UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiResponse({ status: 201, description: 'Section chat room synced and members broadcast over sockets.' })
+  @ApiResponse({ status: 404, description: 'Section not found.' })
+  syncSection(@Param('id', ParseUUIDPipe) id: string) {
+    return this.chatService.syncSectionChatRoom(id);
+  }
+
   @Post('messages')
   @ApiOperation({ summary: 'Send message (REST fallback)' })
   @ApiResponse({ status: 201, description: 'Message sent successfully.' })

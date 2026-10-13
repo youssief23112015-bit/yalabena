@@ -1,0 +1,10 @@
+LISTENERS:
+:: pid=7048
+0.0.0.0 pid=7048
+SERVICES:
+postgresql-x64-18 Running
+PROC7048:
+DOCKERPORTS:
+speakup-frontend 
+speakup-postgres 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+speakup-redis 0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp

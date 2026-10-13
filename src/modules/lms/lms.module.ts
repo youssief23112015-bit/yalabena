@@ -13,6 +13,7 @@ import { GradebookCategory } from '../../shared/entities/gradebook-category.enti
 import { GradebookEntry } from '../../shared/entities/gradebook-entry.entity';
 import { TeacherEvaluation } from '../../shared/entities/teacher-evaluation.entity';
 import { StudentSurvey } from '../../shared/entities/student-survey.entity';
+import { LmsLessonProgress } from '../../shared/entities/lms-lesson-progress.entity';
 import { Group } from '../../shared/entities/group.entity';
 import { Student } from '../../shared/entities/student.entity';
 import { Enrollment } from '../../shared/entities/enrollment.entity';
@@ -36,6 +37,7 @@ import { EnrollmentGuard } from './guards/enrollment.guard';
       GradebookEntry,
       TeacherEvaluation,
       StudentSurvey,
+      LmsLessonProgress,
       Group,
       Student,
       Enrollment,

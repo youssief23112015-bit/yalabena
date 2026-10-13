@@ -1,0 +1,7 @@
+﻿
+speakup-api Up 2 hours
+speakup-frontend Up 2 hours
+speakup-postgres Up 2 hours (healthy)
+speakup-redis Up 2 hours
+
+

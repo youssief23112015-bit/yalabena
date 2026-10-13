@@ -43,7 +43,7 @@ export class StudentItemIssue {
   @Column({ type: 'timestamptz', nullable: true })
   returned_at: Date;
 
-  @Column({ type: 'enum', enum: ItemCondition, nullable: true })
+  @Column({ type: 'enum', enum: ItemCondition, enumName: 'item_condition', nullable: true })
   condition_on_return: ItemCondition;
 
   @Column({ type: 'uuid', nullable: true })

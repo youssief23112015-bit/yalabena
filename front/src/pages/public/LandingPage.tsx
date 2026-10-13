@@ -137,7 +137,7 @@ export default function LandingPage() {
                         {course.default_price} {t("public.courses.egp", "EGP")}
                       </span>
                       <Button asChild variant="outline" size="sm">
-                        <Link to={`/courses/${course.id}`}>{t("public.courses.viewDetails", "Details")}</Link>
+                        <Link to={`/catalog/${course.id}`}>{t("public.courses.viewDetails", "Details")}</Link>
                       </Button>
                     </div>
                   </CardContent>
@@ -148,7 +148,7 @@ export default function LandingPage() {
 
           <div className="mt-10 text-center">
             <Button asChild variant="outline" size="lg">
-              <Link to="/courses">{t("public.courses.viewAll", "View All Courses")}</Link>
+              <Link to="/catalog">{t("public.courses.viewAll", "View All Courses")}</Link>
             </Button>
           </div>
         </div>

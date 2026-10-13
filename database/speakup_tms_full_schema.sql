@@ -2245,7 +2245,13 @@ COMMENT ON TABLE chat_messages IS 'Individual messages with soft-delete and edit
 
 CREATE TABLE chat_violations (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    message_id          UUID NOT NULL,
+    -- Nullable on purpose: a BLOCKED (contact-info) attempt is rejected before
+    -- the chat_messages row exists, but SRS §6.4/§6.5 still requires the attempt
+    -- to be logged. Keeping NOT NULL here made every blocked message crash with
+    -- a 500 instead of returning the compliance message. Matches the entity
+    -- (src/shared/entities/chat-violation.entity.ts) and the TypeORM migration
+    -- 1789000000000-CreateChatTables.ts.
+    message_id          UUID,
     room_id             UUID NOT NULL,
     sender_id           UUID NOT NULL,
     rule_matched        VARCHAR(100) NOT NULL,

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createHmac, timingSafeEqual } from 'crypto';
@@ -11,9 +11,12 @@ import { AttendanceStatus } from '../../common/enums/attendance-status.enum';
 import { CheckInMethod } from '../../common/enums/check-in-method.enum';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
 import { CheckInDto } from './dto/check-in.dto';
+import { ChatService } from '../chat/chat.service';
 
 @Injectable()
 export class AttendancesService {
+  private readonly logger = new Logger(AttendancesService.name);
+
   constructor(
     @InjectRepository(Attendance)
     private readonly repo: Repository<Attendance>,
@@ -24,12 +27,64 @@ export class AttendancesService {
     @InjectRepository(GroupStudent)
     private readonly groupStudentRepo: Repository<GroupStudent>,
     private readonly config: ConfigService,
+    private readonly chatService: ChatService,
   ) {}
+
+  /**
+   * CHAT sync: whenever attendance is saved for a session, the section's
+   * (= session's group's) chat room is re-synced so the teacher, the
+   * substitute and every ACTIVE student are seated — one call per save, even
+   * for bulk marking. Failures are logged but never break attendance
+   * operations (same policy as groups/enrollments chat sync).
+   */
+  private async syncSectionChatSafely(groupId: string): Promise<void> {
+    try {
+      await this.chatService.syncSectionChatRoom(groupId);
+    } catch (err: any) {
+      this.logger.warn(`Section chat sync failed for group ${groupId}: ${err?.message ?? err}`);
+    }
+  }
 
   // ---------- helpers ----------
 
+  /**
+   * Session dates are business-calendar dates, not UTC dates. Configure
+   * APP_TIME_ZONE for the academy (defaults to Africa/Cairo) so QR codes and
+   * same-day checks remain consistent around midnight.
+   */
+  private get timeZone(): string {
+    return this.config.get<string>('APP_TIME_ZONE', 'Africa/Cairo');
+  }
+
   private dateStr(d: Date): string {
-    return d.toISOString().slice(0, 10); // YYYY-MM-DD
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  }
+
+  private dateKey(value: Date | string): string {
+    // TypeORM/Postgres often returns a DATE column as a YYYY-MM-DD string.
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value.slice(0, 10);
+    }
+    return this.dateStr(value instanceof Date ? value : new Date(value));
+  }
+
+  private clockMinutes(d: Date): number {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: this.timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(d);
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+    const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+    return hour * 60 + minute;
   }
 
   /** Signed check-in code for a session on a given day (embedded in the QR card). */
@@ -46,11 +101,10 @@ export class AttendancesService {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
-  private minutesBetween(startTime: string, now: Date): number {
+  private minutesBetween(startTime: string, now: Date, sessionDate?: Date | string): number {
+    if (sessionDate && this.dateKey(sessionDate) !== this.dateStr(now)) return 0;
     const [h, m] = startTime.split(':').map(Number);
-    const start = new Date(now);
-    start.setHours(h, m, 0, 0);
-    return Math.max(0, Math.round((now.getTime() - start.getTime()) / 60000));
+    return Math.max(0, this.clockMinutes(now) - (h * 60 + m));
   }
 
   private async getSessionOrFail(sessionId: string): Promise<Session> {
@@ -82,11 +136,27 @@ export class AttendancesService {
     };
   }
 
-  async mark(sessionId: string, dto: MarkAttendanceDto, userId?: string): Promise<Attendance> {
+  async mark(
+    sessionId: string,
+    dto: MarkAttendanceDto,
+    userId?: string,
+    opts?: { skipChatSync?: boolean },
+  ): Promise<Attendance> {
     const session = await this.getSessionOrFail(sessionId);
+
+    if (session.cancelled_at) {
+      throw new BadRequestException('This session has been cancelled.');
+    }
 
     if (session.attendance_locked) {
       throw new BadRequestException('Attendance for this session is locked.');
+    }
+
+    const enrolled = await this.groupStudentRepo.findOne({
+      where: { group_id: session.group_id, student_id: dto.student_id, status: 'active' },
+    });
+    if (!enrolled) {
+      throw new BadRequestException('This student is not actively enrolled in the session group.');
     }
 
     let attendance = await this.repo.findOne({
@@ -95,7 +165,9 @@ export class AttendancesService {
 
     const minutesLate =
       dto.minutes_late ??
-      (dto.status === AttendanceStatus.LATE ? this.minutesBetween(session.start_time, new Date()) : 0);
+      (dto.status === AttendanceStatus.LATE
+        ? this.minutesBetween(session.start_time, new Date(), session.date)
+        : 0);
 
     if (attendance) {
       attendance.status = dto.status;
@@ -104,6 +176,8 @@ export class AttendancesService {
       attendance.created_by = userId ?? attendance.created_by;
       if (dto.status === AttendanceStatus.PRESENT || dto.status === AttendanceStatus.LATE) {
         attendance.check_in_time = attendance.check_in_time ?? new Date();
+      } else {
+        attendance.check_in_time = null;
       }
     } else {
       attendance = this.repo.create({
@@ -121,14 +195,23 @@ export class AttendancesService {
       });
     }
 
-    return this.repo.save(attendance);
+    const saved = await this.repo.save(attendance);
+    // CHAT sync: keep the section's chat roster fresh (skipped for bulkMark,
+    // which performs ONE sync for the whole batch below).
+    if (!opts?.skipChatSync) {
+      await this.syncSectionChatSafely(session.group_id);
+    }
+    return saved;
   }
 
   async bulkMark(sessionId: string, records: MarkAttendanceDto[], userId?: string) {
+    const session = await this.getSessionOrFail(sessionId);
     const results: Attendance[] = [];
     for (const record of records) {
-      results.push(await this.mark(sessionId, record, userId));
+      results.push(await this.mark(sessionId, record, userId, { skipChatSync: true }));
     }
+    // ONE chat-room sync for the whole attendance batch (section = group).
+    await this.syncSectionChatSafely(session.group_id);
     return { marked: results.length, attendances: results };
   }
 
@@ -145,7 +228,7 @@ export class AttendancesService {
       throw new BadRequestException('Invalid or expired check-in code.');
     }
 
-    if (this.dateStr(new Date(session.date as any)) !== this.dateStr(new Date())) {
+    if (this.dateKey(session.date as unknown as Date | string) !== this.dateStr(new Date())) {
       throw new BadRequestException('Check-in is only allowed on the session day.');
     }
 
@@ -162,7 +245,7 @@ export class AttendancesService {
     }
 
     const now = new Date();
-    const minutesLate = this.minutesBetween(session.start_time, now);
+    const minutesLate = this.minutesBetween(session.start_time, now, session.date);
 
     let attendance = await this.repo.findOne({
       where: { session_id: session.id, student_id: student.id },
@@ -203,12 +286,13 @@ export class AttendancesService {
 
   async getStudentReport(studentId: string, from?: Date, to?: Date) {
     const qb = this.repo.createQueryBuilder('attendance')
+      .innerJoin('attendance.session', 'session')
       .select('attendance.status', 'status')
       .addSelect('COUNT(attendance.id)', 'count')
       .where('attendance.student_id = :studentId', { studentId });
 
-    if (from) qb.andWhere('attendance.created_at >= :from', { from });
-    if (to) qb.andWhere('attendance.created_at <= :to', { to });
+    if (from) qb.andWhere('session.date >= :from', { from: this.dateKey(from) });
+    if (to) qb.andWhere('session.date <= :to', { to: this.dateKey(to) });
 
     const rows = await qb.groupBy('attendance.status').getRawMany();
     const summary: Record<string, number> = {};

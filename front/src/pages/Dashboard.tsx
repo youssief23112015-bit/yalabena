@@ -1,8 +1,9 @@
-import { useTranslation } from "react-i18next";
+﻿import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/store/authStore";
+import { dashboardApi } from "@/api/dashboard";
 import { leadsApi } from "@/api/leads";
 import { studentsApi } from "@/api/students";
 import { coursesApi } from "@/api/courses";
@@ -40,6 +41,14 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
   // Fetch all basic data in parallel and normalize responses
+  // Primary source: GET /dashboard/stats (branch-scoped server aggregation).
+  // Falls back to the client-side computation below if the endpoint errors.
+  const { data: serverStats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => dashboardApi.getStats(),
+    retry: false,
+    staleTime: 60_000,
+  });
   const { data: rawLeads, isLoading: leadsLoading } = useQuery({
     queryKey: ["dashboard-leads"],
     queryFn: () => leadsApi.findAll(),
@@ -75,41 +84,56 @@ export default function DashboardPage() {
     queryFn: () => sessionsApi.findAll(),
   });
   const sessions = normalizeArray<any>(rawSessions);
+  // Load saved attendance records for dashboard totals
+  const sessionIds = sessions
+    .map((s: any) => s?.id)
+    .filter(Boolean)
+    .sort();
+  const { data: attendanceRecords = [] } = useQuery({
+    queryKey: ["dashboard-attendance", sessionIds],
+    queryFn: async () => {
+      const results = await Promise.all(
+        sessionIds.map((id: string) => sessionsApi.getAttendance(id))
+      );
+      return results.flat();
+    },
+    enabled: !sessionsLoading && sessionIds.length > 0,
+  });
 
   const isLoading = leadsLoading || studentsLoading || coursesLoading || branchesLoading || groupsLoading || sessionsLoading;
 
   // Compute stats safely from normalized arrays
-  const totalLeads = leads.length;
-  const totalStudents = students.length;
-  const totalCourses = courses.length;
-  const totalBranches = branches.length;
-  const totalGroups = groups.length;
-  const totalSessions = sessions.length;
+  const totalLeads = serverStats?.total_leads ?? leads.length;
+  const totalStudents = serverStats?.total_students ?? students.length;
+  const totalCourses = serverStats?.total_courses ?? courses.length;
+  const totalBranches = serverStats?.total_branches ?? branches.length;
+  const totalGroups = serverStats?.total_groups ?? groups.length;
+  const totalSessions = serverStats?.total_sessions ?? sessions.length;
 
   // Conversion rate: enrolled leads / total leads
   const enrolledLeads = leads.filter((l) => l?.status === "enrolled").length;
-  const conversionRate = totalLeads > 0 ? Math.round((enrolledLeads / totalLeads) * 100) : 0;
+  const conversionRate = serverStats?.conversion_rate ?? (totalLeads > 0 ? Math.round((enrolledLeads / totalLeads) * 100) : 0);
 
   // Group fill rate
   const totalCapacity = groups.reduce((sum, g) => sum + (Number(g?.capacity) || 0), 0);
   const totalEnrolled = groups.reduce((sum, g) => sum + (Number(g?.student_count) || 0), 0);
-  const fillRate = totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0;
+  const fillRate = serverStats?.group_fill_rate ?? (totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0);
 
   // Recent leads (last 5)
-  const recentLeads = [...leads]
+  const recentLeads = (serverStats?.recent_leads as any[]) ?? [...leads]
     .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())
     .slice(0, 5);
 
   // Upcoming sessions (next 5 scheduled)
-  const upcomingSessions = [...sessions]
+  const upcomingSessions = (serverStats?.upcoming_sessions as any[]) ?? [...sessions]
     .filter((s) => s?.status === "scheduled" && s?.start_time && new Date(s.start_time) > new Date())
     .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
     .slice(0, 5);
 
-  // Attendance summary from sessions
-  const presentCount = sessions.reduce((sum, s) => sum + (Array.isArray(s?.attendance) ? s.attendance.filter((a: any) => a?.status === "present").length : 0), 0);
-  const absentCount = sessions.reduce((sum, s) => sum + (Array.isArray(s?.attendance) ? s.attendance.filter((a: any) => a?.status === "absent").length : 0), 0);
-  const lateCount = sessions.reduce((sum, s) => sum + (Array.isArray(s?.attendance) ? s.attendance.filter((a: any) => a?.status === "late").length : 0), 0);
+  // Attendance summary from saved records
+  const presentCount = serverStats?.attendance_summary?.present ?? attendanceRecords.filter((a: any) => a?.status === "present").length;
+  const absentCount = serverStats?.attendance_summary?.absent ?? attendanceRecords.filter((a: any) => a?.status === "absent").length;
+  const lateCount = serverStats?.attendance_summary?.late ?? attendanceRecords.filter((a: any) => a?.status === "late").length;
 
   const statCards = [
     { title: t("nav.leads"), value: totalLeads, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -237,7 +261,7 @@ export default function DashboardPage() {
                         <div>
                           <p className="text-sm font-medium">{session?.title}</p>
                           <p className="text-xs text-muted-foreground">
-                            {session?.start_time ? new Date(session.start_time).toLocaleString() : "—"}
+                            {session?.start_time ? new Date(session.start_time).toLocaleString() : "â€”"}
                           </p>
                         </div>
                         <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">

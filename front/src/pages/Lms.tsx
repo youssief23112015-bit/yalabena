@@ -1,4 +1,5 @@
 import  { useState, useEffect, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import {
   BookOpen,
@@ -601,6 +602,26 @@ export default function LmsPage() {
               ))
             )}
           </select>
+
+          {/* Entry points to the dedicated course-content & question-bank pages */}
+          {selectedGroupId && (
+            <Link
+              to={`/student/courses/${selectedGroupId}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium shadow-sm hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <Folder className="h-4 w-4" />
+              Course content
+            </Link>
+          )}
+          {isTeacherOrAdmin && (
+            <Link
+              to="/instructor/question-bank"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium shadow-sm hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <HelpCircle className="h-4 w-4" />
+              Question Bank
+            </Link>
+          )}
         </div>
       </div>
 

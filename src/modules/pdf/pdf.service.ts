@@ -4,17 +4,14 @@ import type { ChatAuditRow } from '../chat/chat.service';
 
 /**
  * NOTE: If a PdfService already exists in this module (the project's module
- * listing shows a `pdf` folder), do NOT replace the whole file with this —
- * merge `renderChatAuditPdf` into the existing class instead, so any other
- * PDF generation already in use (certificates, receipts, invoices per SRS
- * §4.8/§4.9) keeps working unchanged.
+ * listing shows a `pdf` folder), merge `renderChatAuditPdf` into the existing 
+ * class so other PDF generations (certificates, receipts, invoices) keep working.
  */
 @Injectable()
 export class PdfService {
   /**
    * CHAT-BE-10: renders a styled audit trail for a chat room as a PDF Buffer.
-   * Mirrors the columns used in exportRoomMessagesCsv so CSV and PDF exports
-   * stay in sync if one changes.
+   * Mirrors the columns used in exportRoomMessagesCsv.
    */
   async renderChatAuditPdf(roomId: string, rows: ChatAuditRow[]): Promise<Buffer> {
     return new Promise((resolve, reject) => {
@@ -61,6 +58,7 @@ export class PdfService {
         );
         y += Math.max(14, bodyHeight + 4);
 
+        // التصحيح هنا: إضافة علامة الناقص (-)
         if (y > doc.page.height - 60) {
           doc.addPage();
           y = doc.y;
@@ -68,6 +66,8 @@ export class PdfService {
       };
 
       drawRow('Time', 'Sender', 'Type', 'Flags', 'Body', { bold: true });
+      
+      // التصحيح هنا أيضاً: إضافة علامة الناقص (-)
       doc.moveTo(startX, y).lineTo(doc.page.width - 40, y).strokeColor('#ccc').stroke();
       y += 6;
 

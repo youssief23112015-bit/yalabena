@@ -1,14 +1,19 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, ParseUUIDPipe } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { Session } from '../../shared/entities/session.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AttendancesService } from '../attendance/attendance.service';
 
 @ApiTags('Sessions')
 @ApiBearerAuth('JWT')
 @Controller('sessions')
 export class SessionsController {
-  constructor(private readonly service: SessionsService) {}
+  constructor(
+    private readonly service: SessionsService,
+    private readonly attendances: AttendancesService,
+  ) {}
 
   @Post()
   @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
@@ -92,5 +97,69 @@ export class SessionsController {
   @ApiResponse({ status: 404, description: 'Session not found.' })
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(id);
+  }
+
+  // ─── Cancel / attendance / QR check-in (frontend Sessions page) ───
+
+  @Post(':id/cancel')
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @ApiOperation({ summary: 'Cancel a session with a reason' })
+  async cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.service.cancel(id, body?.reason);
+  }
+
+  @Post(':id/attendance')
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @ApiOperation({ summary: 'Bulk-save attendance for the session (upsert by student)' })
+  async recordAttendance(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { attendances: { student_id: string; status: any; notes?: string }[] },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.service.recordAttendance(id, body?.attendances ?? [], userId);
+  }
+
+  @Patch(':id/attendance/:attendanceId')
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @ApiOperation({ summary: 'Update one attendance record (status/notes)' })
+  async updateAttendance(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('attendanceId', ParseUUIDPipe) attendanceId: string,
+    @Body() body: { status?: any; notes?: string },
+  ) {
+    return this.service.updateAttendance(id, attendanceId, body ?? {});
+  }
+
+  @Post(':id/qr-code')
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @ApiOperation({ summary: "Generate today's signed check-in code for the session QR card" })
+  async generateQrCode(@Param('id', ParseUUIDPipe) id: string) {
+    // The code is an HMAC of session+day; students scan/post it to self check-in.
+    const check_in_code = this.attendances.generateCheckInCode(id);
+    return { qr_code: check_in_code, check_in_code };
+  }
+
+  @Post(':id/check-in')
+  @Roles('student', 'super_admin', 'teacher')
+  @ApiOperation({ summary: 'Self check-in with the session QR code' })
+  async selfCheckIn(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { code: string },
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.attendances.selfCheckIn(
+      { session_id: id, code: body?.code },
+      userId,
+    );
+  }
+
+  @Post(':id/lock-attendance')
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @ApiOperation({ summary: 'Lock attendance for the session (no further edits)' })
+  async lockAttendance(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.lockAttendance(id);
   }
 }

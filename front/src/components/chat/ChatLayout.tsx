@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Users, Megaphone } from 'lucide-react';
 import { connectChatSocket } from '../../lib/chatSocket';
 import { apiFetch } from '../../lib/apiFetch';
 import type { ChatMessage, ChatRoom, ChatRoomMember, SendMessagePayload } from '../../types/chat';
@@ -8,12 +8,16 @@ import { MessageComposer } from './MessageComposer';
 import { TypingIndicator, PresenceDot, type TypingUser } from './TypingIndicator';
 import { ChatConsentModal } from './ChatConsentModal';
 import { RoomActions } from './RoomActions';
+import { MembersPanel } from './MembersPanel';
+import { BroadcastModal } from './BroadcastModal';
 import { ChatToastProvider, useChatToast } from '../../hooks/useChatToast';
 
 export interface ChatLayoutProps {
   apiBase: string;
   currentUserId: string;
   isModerator: boolean;
+  /** Teachers/staff see the "Broadcast to groups" action. */
+  canBroadcast?: boolean;
   authHeader: () => Record<string, string>;
 }
 
@@ -25,11 +29,17 @@ export function ChatLayout(props: ChatLayoutProps) {
   );
 }
 
-function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: ChatLayoutProps) {
+function ChatLayoutInner({ apiBase, currentUserId, isModerator, canBroadcast = false, authHeader }: ChatLayoutProps) {
   const { pushViolationToast, pushToast } = useChatToast();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoom, setActiveRoom] = useState<ChatRoom | null>(null);
   const [members, setMembers] = useState<ChatRoomMember[]>([]);
+  // The typing handler lives inside the socket effect; keep a ref so it can
+  // resolve display names from the latest member list without re-subscribing.
+  const membersRef = useRef(members);
+  useEffect(() => {
+    membersRef.current = members;
+  }, [members]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [typing, setTyping] = useState<Record<string, TypingUser>>({});
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
@@ -37,6 +47,8 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
   const activeRoomId = activeRoom?.id;
 
   const [consentAccepted, setConsentAccepted] = useState<boolean | null>(null);
+  const [showMembers, setShowMembers] = useState(true);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,13 +64,34 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
     };
   }, [apiBase, authHeader]);
 
-  // Rooms list fetch
-  useEffect(() => {
-    if (!consentAccepted) return;
+  const loadRooms = useCallback(() => {
     apiFetch<ChatRoom[]>(`${apiBase}/chat/rooms`, { headers: authHeader() })
       .then(setRooms)
       .catch(() => pushToast({ kind: 'error', message: 'Could not load conversations.' }));
-  }, [consentAccepted, apiBase, authHeader, pushToast]);
+  }, [apiBase, authHeader, pushToast]);
+
+  // Rooms list fetch
+  useEffect(() => {
+    if (!consentAccepted) return;
+    loadRooms();
+  }, [consentAccepted, loadRooms]);
+
+  // Refetch members + history of the open room (used after a broadcast so the
+  // sender immediately sees the delivered announcement in any open target room).
+  const refreshActiveRoom = useCallback(() => {
+    if (!activeRoomId) return;
+    apiFetch<ChatRoom>(`${apiBase}/chat/rooms/${activeRoomId}`, { headers: authHeader() })
+      .then((r) => setMembers(r.members ?? []))
+      .catch(() => undefined);
+    apiFetch<{ data: ChatMessage[] }>(`${apiBase}/chat/rooms/${activeRoomId}/messages`, { headers: authHeader() })
+      .then((r) => setMessages(r.data))
+      .catch(() => undefined);
+  }, [activeRoomId, apiBase, authHeader]);
+
+  const handleBroadcastSent = useCallback(() => {
+    loadRooms();
+    refreshActiveRoom();
+  }, [loadRooms, refreshActiveRoom]);
 
   // Active room: history + members + socket join
   useEffect(() => {
@@ -116,7 +149,11 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
       setTyping((prev) => {
         const next = { ...prev };
         if (e.is_typing) {
-          next[e.user_id] = { id: e.user_id, name: 'Someone' };
+          const member = membersRef.current.find((mm) => mm.user_id === e.user_id);
+          const name = member?.user
+            ? `${member.user.first_name} ${member.user.last_name}`.trim()
+            : 'Someone';
+          next[e.user_id] = { id: e.user_id, name };
         } else delete next[e.user_id];
         return next;
       });
@@ -134,10 +171,20 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
       });
     };
 
+    // Backend re-synced this room's membership (e.g. attendance saved → new
+    // students seated) — refresh the member list live.
+    const onMembersUpdated = (e: { room_id: string }) => {
+      if (e.room_id !== activeRoomId) return;
+      apiFetch<ChatRoom>(`${apiBase}/chat/rooms/${activeRoomId}`, { headers: authHeader() })
+        .then((r) => setMembers(r.members ?? []))
+        .catch(() => undefined);
+    };
+
     socket.on('new_message', onNew);
     socket.on('typing', onTyping);
     socket.on('user_joined', onJoined);
     socket.on('user_left', onLeft);
+    socket.on('room_members_updated', onMembersUpdated);
     socket.emit('mark_read', { room_id: activeRoomId });
 
     return () => {
@@ -145,6 +192,7 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
       socket.off('typing', onTyping);
       socket.off('user_joined', onJoined);
       socket.off('user_left', onLeft);
+      socket.off('room_members_updated', onMembersUpdated);
       socket.emit('leave_room', { room_id: activeRoomId });
     };
   }, [activeRoomId, consentAccepted, currentUserId, apiBase, authHeader, pushToast]);
@@ -274,6 +322,30 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
                   {onlineIds.size > 0 ? `${onlineIds.size} online` : 'No one else online'}
                 </span>
               </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowMembers((v) => !v)}
+                  className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs ${
+                    showMembers
+                      ? 'border-indigo-200 bg-indigo-50 font-medium text-indigo-700'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Members ({members.length})
+                </button>
+                {canBroadcast && (
+                  <button
+                    type="button"
+                    onClick={() => setBroadcastOpen(true)}
+                    className="flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                  >
+                    <Megaphone className="h-3.5 w-3.5" />
+                    Broadcast
+                  </button>
+                )}
+              </div>
               <RoomActions
                 roomId={activeRoom.id}
                 roomName={activeRoom.name}
@@ -311,6 +383,24 @@ function ChatLayoutInner({ apiBase, currentUserId, isModerator, authHeader }: Ch
           </>
         )}
       </section>
+
+      {activeRoom && showMembers && (
+        <MembersPanel
+          members={members}
+          onlineIds={onlineIds}
+          currentUserId={currentUserId}
+          roomType={activeRoom.type}
+          onClose={() => setShowMembers(false)}
+        />
+      )}
+
+      <BroadcastModal
+        open={broadcastOpen}
+        onClose={() => setBroadcastOpen(false)}
+        apiBase={apiBase}
+        authHeader={authHeader}
+        onSent={handleBroadcastSent}
+      />
     </div>
   );
 }

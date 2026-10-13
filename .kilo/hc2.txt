@@ -1,0 +1,2 @@
+﻿http://localhost:3000/health -> 404
+http://localhost:3000/api/v1/health -> 200 {"success":true,"data":{"status":"ok","timestamp":"2026-10-11T18:57:06.557Z"},"timestamp":"2026-10-11T18:57:06.562Z","path":"/api/v1/health"}

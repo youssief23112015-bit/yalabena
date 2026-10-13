@@ -1,0 +1,45 @@
+﻿Activities.tsx:577: placeholder="Title or description…"
+Activities.tsx:597: <Input {...register("title")} placeholder="e.g. October Movie Night" />
+Activities.tsx:605: className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+Activities.tsx:606: placeholder="What is this activity about?"
+Activities.tsx:637: <Input {...register("location")} placeholder="Main Hall" />
+Activities.tsx:661: <Input {...register("branch_id")} readOnly placeholder="Your branch" />
+Activities.tsx:1093: placeholder="Students at the conversation club"
+Attendance.tsx:168: <Input value={checkInForm.session_id} onChange={(e) => setCheckInForm({ ...checkInForm, session_id: e.target.value })} placeholder="session uuid" />
+Attendance.tsx:172: <Input value={checkInForm.code} onChange={(e) => setCheckInForm({ ...checkInForm, code: e.target.value })} placeholder="8-char code" />
+AuditLogs.tsx:89: placeholder="auth"
+AuditLogs.tsx:97: placeholder="POST /auth/login"
+Certificates.tsx:272: placeholder="<h1>Certificate of Completion</h1><p>{{student_name}}</p>"
+Certificates.tsx:311: <Input value={verifyCode} onChange={(e) => setVerifyCode(e.target.value)} placeholder="SU-XXXXXXXXXX" className="w-64" />
+Courses.tsx:319: <Input placeholder="Search courses..." value={prereqSearch} onChange={(e) => setPrereqSearch(e.target.value)} />
+Courses.tsx:483: <Input {...register("level")} placeholder="e.g. A1, B2, Advanced" />
+Courses.tsx:517: <Textarea {...register("syllabus")} rows={4} placeholder="Enter course syllabus..." />
+Enrollments.tsx:173: placeholder="defaults to course price" />
+Finance.tsx:183: <Input value={payForm.invoice_id} onChange={(e) => setPayForm({ ...payForm, invoice_id: e.target.value })} placeholder="invoice uuid" />
+Finance.tsx:311: <Input value={refundForm.payment_id} onChange={(e) => setRefundForm({ ...refundForm, payment_id: e.target.value })} placeholder="payment uuid" />
+Finance.tsx:319: <Input value={refundForm.reason_code} onChange={(e) => setRefundForm({ ...refundForm, reason_code: e.target.value })} placeholder="duplicate_payment" />
+Inventory.tsx:135: <div className="relative"><Search className="absolute start-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input className="ps-9" placeholder={t("inventory.searchPlaceholder")} value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+KnowledgeBase.tsx:78: <div className="relative flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" placeholder="Search article titles and content…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+Leads.tsx:528: placeholder="Enter activity description..."
+Leads.tsx:619: <Input placeholder="Name, phone, email..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" onKeyDown={(e) => e.key === "Enter" && handleSearch()} />
+Leads.tsx:688: <Input {...(editingId ? registerUpdate("level_interest") : registerCreate("level_interest"))} placeholder="e.g. A1, B2" />
+Leads.tsx:718: <Input {...(editingId ? registerUpdate("tags") : registerCreate("tags"))} placeholder="e.g. urgent, callback, vip" />
+Lms.tsx:1119: placeholder="Type your response to send to backend API..."
+Lms.tsx:1217: placeholder="Feedback comments..."
+Lms.tsx:1248: placeholder="File title"
+Login.tsx:111: placeholder="123456"
+Login.tsx:157: placeholder="name@speakup.com"
+PlacementTests.tsx:242: <Input {...register("assigned_level")} placeholder="e.g. A1, A2, B1" />
+Reports.tsx:91: {activeReport.needsStudent && <label className="block max-w-xl space-y-1 text-sm"><span className="text-muted-foreground">Student ID (UUID)</span><Input placeholder="Enter the student's ID" value={studentId} onChange={(e) => setStudentId(e.target.value.trim())} /></label>}
+Reports.tsx:92: {activeReport.needsGroup && <label className="block max-w-xl space-y-1 text-sm"><span className="text-muted-foreground">Group ID (UUID)</span><Input placeholder="Enter the group's ID" value={groupId} onChange={(e) => setGroupId(e.target.value.trim())} /></label>}
+Roles.tsx:359: <Input {...register("slug")} placeholder="e.g. sales_manager" disabled={!!editingId} />
+SecuritySettings.tsx:95: placeholder="123456"
+SecuritySettings.tsx:129: placeholder="123456"
+Sessions.tsx:371: <Textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Enter cancellation reason..." />
+Sessions.tsx:454: placeholder="Notes..."
+Sessions.tsx:597: <Input {...register("meeting_link")} placeholder="Zoom/OnMeet URL" />
+Students.tsx:964: placeholder="e.g. A1, B2"
+Students.tsx:1754: placeholder="Search by name, email, or phone..."
+Users.tsx:308: <Input placeholder="Name, email, phone..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" onKeyDown={(e) => e.key === "Enter" && handleSearch()} />
+Waitlists.tsx:132: <Input value={filters.level} onChange={(e) => setFilters({ ...filters, level: e.target.value })} placeholder="e.g. B1" className="w-32" />
+certificates.ts:7: placeholders?: Record<string, unknown>; background_url?: string; is_default?: boolean;

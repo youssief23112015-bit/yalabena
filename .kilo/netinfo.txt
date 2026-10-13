@@ -1,0 +1,5 @@
+﻿fe-net=[yalabena-main_default]
+fe-img=[speakup-frontend:local]
+fe-proj=[]
+fe-svc=[]
+api-net=[yalabena-main_default]

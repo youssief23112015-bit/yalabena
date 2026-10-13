@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Paperclip, Send, Smile, X } from 'lucide-react';
+import { unwrapApiResponse } from '../../lib/apiFetch';
 
 // Small, dependency-free emoji set. Swap for a full picker library later if
 // the product wants one — kept minimal here since none was listed as an
@@ -96,9 +97,14 @@ export function MessageComposer({
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || `Upload failed (${res.status})`);
+        // HttpExceptionFilter returns { message }; keep .error as a fallback.
+        throw new Error(body?.message || body?.error || `Upload failed (${res.status})`);
       }
-      const data = await res.json();
+      // Every REST response is wrapped as { success, data: {...} } by the
+      // global TransformInterceptor — unwrap before reading `url`, otherwise
+      // attachments were always sent with file_url: undefined.
+      const data = unwrapApiResponse<{ url?: string }>(await res.json());
+      if (!data?.url) throw new Error('Upload failed: no URL returned by the server');
       return { url: data.url, name: pending.file.name, isImage: pending.file.type.startsWith('image/') };
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');

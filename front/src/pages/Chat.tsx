@@ -6,16 +6,27 @@ import { useAuthStore } from '../store/authStore';
 
 // ─── API base ───
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || '/api';
+const API_BASE =
+  (import.meta as any).env?.VITE_API_URL ||
+  (import.meta as any).env?.VITE_API_BASE_URL ||
+  '/api/v1';
 
 // ─── Role helpers ───
 
 const MODERATOR_ROLES = new Set(['moderator', 'super_admin']);
+// Teachers (and staff) may broadcast one announcement to all members of their
+// groups/sections at once (POST /chat/broadcast).
+const BROADCAST_ROLES = new Set(['teacher', 'super_admin', 'admin', 'academic', 'moderator']);
 
 function isModeratorRole(roles?: string[], role?: string): boolean {
   if (roles?.includes('super_admin')) return true;
   if (role && MODERATOR_ROLES.has(role)) return true;
   return roles?.some((r) => MODERATOR_ROLES.has(r)) ?? false;
+}
+
+function canBroadcastRole(roles?: string[], role?: string): boolean {
+  if (role && BROADCAST_ROLES.has(role)) return true;
+  return roles?.some((r) => BROADCAST_ROLES.has(r)) ?? false;
 }
 
 // ─── Page component ───
@@ -94,6 +105,7 @@ export default function ChatPage() {
             apiBase={API_BASE}
             currentUserId={user.id}
             isModerator={moderator}
+            canBroadcast={canBroadcastRole(user.roles, user.role)}
             authHeader={authHeader}
           />
         )}

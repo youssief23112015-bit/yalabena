@@ -1,0 +1,4 @@
+﻿7a5457d4b656 speakup-api Up 2 hours
+68fb08095b67 speakup-frontend Exited (0) 28 seconds ago
+6134982c7a48 speakup-postgres Up 2 hours (healthy)
+495e9d26e149 speakup-redis Up 2 hours

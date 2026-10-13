@@ -1,0 +1,104 @@
+﻿docker : #0 building with "desktop-linux" instance using docker driver
+At line:1 char:1
++ docker build -t speakup-frontend:local . *>&1 | Out-File -FilePath C: ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (#0 building wit...g docker driver:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 30B 0.2s
+#1 transferring dockerfile: 343B 0.6s done
+#1 DONE 0.9s
+
+#2 [internal] load metadata for docker.io/library/nginx:alpine
+#2 ...
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 2.7s
+
+#2 [internal] load metadata for docker.io/library/nginx:alpine
+#2 DONE 3.3s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 133B 0.0s done
+#4 DONE 0.1s
+
+#5 [builder 1/6] FROM 
+docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#5 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 
+0.1s done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 ...
+
+#7 [stage-1 1/3] FROM 
+docker.io/library/nginx:alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
+#7 resolve docker.io/library/nginx:alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2 0.3s 
+done
+#7 DONE 0.3s
+
+#6 [internal] load build context
+#6 transferring context: 201.92kB 0.4s done
+#6 DONE 0.4s
+
+#8 [builder 2/6] WORKDIR /app
+#8 CACHED
+
+#9 [builder 3/6] COPY package*.json ./
+#9 CACHED
+
+#10 [builder 4/6] RUN npm ci
+#10 CACHED
+
+#11 [builder 5/6] COPY . .
+#11 DONE 1.6s
+
+#12 [builder 6/6] RUN npm run build
+#12 30.91 
+#12 30.91 > speakup-frontend@1.0.0 build
+#12 30.91 > tsc -b && vite build
+#12 30.91 
+#12 437.2 vite v5.4.21 building for production...
+#12 445.5 transforming...
+#12 644.5 Γ£ô 1954 modules transformed.
+#12 660.9 rendering chunks...
+#12 668.2 computing gzip size...
+#12 668.7 dist/index.html                   0.78 kB Γöé gzip:   0.38 kB
+#12 668.7 dist/assets/index-KmWSHjSJ.css   57.73 kB Γöé gzip:  10.41 kB
+#12 668.7 dist/assets/react-Dey-IXE2.js     0.06 kB Γöé gzip:   0.07 kB
+#12 668.7 dist/assets/icons-B2qhP2Cf.js    45.32 kB Γöé gzip:   8.17 kB
+#12 668.7 dist/assets/query-CkfeFQZP.js    48.91 kB Γöé gzip:  14.86 kB
+#12 668.7 dist/assets/forms-DYmeikyg.js    84.17 kB Γöé gzip:  23.29 kB
+#12 668.7 dist/assets/router-DJtF_JGC.js  157.15 kB Γöé gzip:  51.45 kB
+#12 668.7 dist/assets/index-D2G2zIPd.js   794.13 kB Γöé gzip: 208.55 kB
+#12 668.7 
+#12 668.7 (!) Some chunks are larger than 500 kB after minification. Consider:
+#12 668.7 - Using dynamic import() to code-split the application
+#12 668.7 - Use build.rollupOptions.output.manualChunks to improve chunking: 
+https://rollupjs.org/configuration-options/#output-manualchunks
+#12 668.7 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+#12 668.7 Γ£ô built in 3m 44s
+#12 DONE 672.3s
+
+#13 [stage-1 2/3] COPY nginx.conf /etc/nginx/conf.d/default.conf
+#13 CACHED
+
+#14 [stage-1 3/3] COPY --from=builder /app/dist /usr/share/nginx/html
+#14 DONE 0.3s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 13.9s done
+#15 exporting manifest sha256:5ce3d80f9a3d523741bf9086f15ec5313f2a69eaa528a774a5b6b5f5b8aca249
+#15 exporting manifest sha256:5ce3d80f9a3d523741bf9086f15ec5313f2a69eaa528a774a5b6b5f5b8aca249 1.3s done
+#15 exporting config sha256:486c8684691edc3ace3162e0b53025bb864f601142ce271f4a75b63cfeeaeec8
+#15 exporting config sha256:486c8684691edc3ace3162e0b53025bb864f601142ce271f4a75b63cfeeaeec8 0.6s done
+#15 exporting attestation manifest sha256:dc8959730b3615a31803c71dc192c8595726d6d9dbad41dea9353d5b8e9a2bf1
+#15 exporting attestation manifest sha256:dc8959730b3615a31803c71dc192c8595726d6d9dbad41dea9353d5b8e9a2bf1 0.8s done
+#15 exporting manifest list sha256:8767781e1ca04b7af95c4bd2e603d5425f5330668a771d4f400018529284ba97 0.1s done
+#15 naming to docker.io/library/speakup-frontend:local 0.1s done
+#15 unpacking to docker.io/library/speakup-frontend:local
+#15 unpacking to docker.io/library/speakup-frontend:local 1.6s done
+#15 DONE 20.2s

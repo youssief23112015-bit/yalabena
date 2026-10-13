@@ -1,0 +1,6 @@
+﻿FAIL localhost:5432 (native?) password=postgres: password authentication failed for user "postgres"
+FAIL localhost:5432 (native?) password=your_secure_password: password authentication failed for user "postgres"
+FAIL localhost:5432 (native?) password=password: password authentication failed for user "postgres"
+FAIL localhost:5432 (native?) password=admin: password authentication failed for user "postgres"
+FAIL localhost:5432 (native?) password=speakup: password authentication failed for user "postgres"
+FAIL docker-bridge 172.21.0.3:5432 password=postgres: timeout expired

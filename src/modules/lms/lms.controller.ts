@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -197,6 +198,18 @@ export class LmsController {
   @ApiOperation({ summary: 'Delete lesson' })
   deleteLesson(@Param('id', ParseUUIDPipe) id: string) {
     return this.lmsService.deleteLesson(id);
+  }
+
+  @Patch('lessons/:id/toggle-completion')
+  @Roles('student', 'super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Toggle lesson completion for the current user' })
+  toggleLessonCompletion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { completed: boolean },
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    return this.lmsService.toggleLessonCompletion(id, !!body?.completed, userId);
   }
 
   // ═══════════════════════════════════════════════════
@@ -557,5 +570,15 @@ export class LmsController {
   })
   createSurvey(@Body() dto: any) {
     return this.lmsService.createSurvey(dto);
+  }
+
+  @Post('evaluations/:id/submit')
+  @Roles('student', 'super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Submit a rating/comments response to an evaluation' })
+  submitEvaluationResponse(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { rating?: number; comments?: string },
+  ) {
+    return this.lmsService.submitEvaluationResponse(id, body ?? {});
   }
 }

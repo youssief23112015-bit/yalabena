@@ -58,8 +58,7 @@ export const studentsApi = {
     const { data } = await apiClient.get<LevelHistory[]>(`/students/${id}/level-history`);
     return data;
   },
-  enrollInGroup: async (id: string, groupId: string): Promise<Student> => {
-    const { data } = await apiClient.post<Student>(`/students/${id}/enroll`, { group_id: groupId });
-    return data;
-  },
+  // NOTE: enrollInGroup (POST /students/:id/enroll) was removed — it was never
+  // called anywhere and the backend has no such route. Enrollment creation goes
+  // through enrollmentsApi.create (POST /enrollments), which the Enrollments page uses.
 };

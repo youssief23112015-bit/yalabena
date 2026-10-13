@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody, ApiParam } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/public.decorator';
 import { CoursesService } from './courses.service';
 import { Course } from '../../shared/entities/course.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -32,6 +33,7 @@ export class CoursesController {
     return this.service.create(createData);
   }
 
+  @Public() // public course catalog (SRS 4.14)
   @Get()
   @ApiOperation({ summary: 'Get course catalog' })
   @ApiResponse({ status: 200, description: 'Returns all courses.' })
@@ -39,6 +41,7 @@ export class CoursesController {
     return this.service.findAll();
   }
 
+  @Public() // public course detail (SRS 4.14)
   @Get(':id')
   @ApiOperation({ summary: 'Get course details including prerequisites and materials' })
   @ApiParam({ name: 'id', description: 'Course UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
@@ -118,5 +121,69 @@ export class CoursesController {
     @Param('prerequisiteId') prerequisiteId: string,
   ): Promise<Course> {
     return this.service.removePrerequisite(id, prerequisiteId);
+  }
+
+  // ==================== Materials Endpoints ====================
+
+  @Get(':id/materials')
+  @ApiOperation({ summary: 'List inventory materials linked to a course' })
+  @ApiParam({ name: 'id', description: 'Course UUID' })
+  listMaterials(@Param('id') id: string) {
+    return this.service.listMaterials(id);
+  }
+
+  @Post(':id/materials')
+  @Roles('super_admin', 'academic', 'branch_manager')
+  @ApiOperation({ summary: 'Link an inventory item as course material' })
+  @ApiParam({ name: 'id', description: 'Course UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['inventory_item_id'],
+      properties: {
+        inventory_item_id: { type: 'string', format: 'uuid' },
+        quantity: { type: 'number', example: 1 },
+        required: { type: 'boolean', example: true },
+      },
+    },
+  })
+  addMaterial(@Param('id') id: string, @Body() body: { inventory_item_id: string; quantity?: number; required?: boolean }) {
+    return this.service.addMaterial(id, body);
+  }
+
+  @Delete(':id/materials/:materialId')
+  @Roles('super_admin', 'academic', 'branch_manager')
+  @ApiOperation({ summary: 'Unlink a material from a course' })
+  @ApiParam({ name: 'id', description: 'Course UUID' })
+  @ApiParam({ name: 'materialId', description: 'CourseMaterial UUID' })
+  removeMaterial(@Param('id') id: string, @Param('materialId') materialId: string) {
+    return this.service.removeMaterial(id, materialId);
+  }
+
+  // ==================== Branch Pricing Endpoints ====================
+
+  @Get(':id/branch-pricing')
+  @ApiOperation({ summary: 'Per-branch price overrides for a course' })
+  @ApiParam({ name: 'id', description: 'Course UUID' })
+  listBranchPricing(@Param('id') id: string) {
+    return this.service.listBranchPricing(id);
+  }
+
+  @Post(':id/branch-pricing')
+  @Roles('super_admin', 'academic', 'branch_manager')
+  @ApiOperation({ summary: 'Create or update a branch price override' })
+  @ApiParam({ name: 'id', description: 'Course UUID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['branch_id', 'price'],
+      properties: {
+        branch_id: { type: 'string', format: 'uuid' },
+        price: { type: 'number', example: 1500 },
+      },
+    },
+  })
+  setBranchPricing(@Param('id') id: string, @Body() body: { branch_id: string; price: number }) {
+    return this.service.setBranchPricing(id, body);
   }
 }

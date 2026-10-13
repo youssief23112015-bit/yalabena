@@ -1,0 +1,5 @@
+﻿
+> speakup-tms-backend@1.0.0 build
+> nest build
+
+build-exit=0

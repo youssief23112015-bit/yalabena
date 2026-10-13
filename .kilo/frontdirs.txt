@@ -1,0 +1,5 @@
+﻿dist
+hr-typecheck-backup-20261008-202152
+node_modules
+public
+src

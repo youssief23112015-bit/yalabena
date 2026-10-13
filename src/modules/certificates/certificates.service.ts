@@ -86,7 +86,7 @@ export class CertificatesService {
     if (!course) throw new NotFoundException('Course not found');
 
     const dup = await this.certs.findOne({
-      where: { student_id: dto.student_id, course_id: dto.course_id, status: 'ACTIVE' as any },
+      where: { student_id: dto.student_id, course_id: dto.course_id, status: 'active' as any },
     });
     if (dup) throw new BadRequestException(`Certificate already issued (code ${dup.code})`);
 
@@ -99,7 +99,7 @@ export class CertificatesService {
         template_id: template?.id ?? null,
         code: await this.genCode(),
         issue_date: new Date(),
-        status: 'ACTIVE' as any,
+        status: 'active' as any,
         issued_by: user?.id ?? null,
         is_auto_issued: isAuto,
       }),
@@ -147,7 +147,7 @@ export class CertificatesService {
         continue;
       }
       const dup = await this.certs.findOne({
-        where: { student_id: m.student_id, course_id: group.course_id, status: 'ACTIVE' as any },
+        where: { student_id: m.student_id, course_id: group.course_id, status: 'active' as any },
       });
       if (dup) {
         results.push({ student_id: m.student_id, name, score, issued: false, reason: `already issued (${dup.code})` });
@@ -165,7 +165,7 @@ export class CertificatesService {
 
   async revoke(id: string, reason: string, user: AuthUser) {
     const c = await this.getOne(id, user);
-    c.status = 'REVOKED' as any;
+    c.status = 'revoked' as any;
     c.revoked_at = new Date();
     c.revoke_reason = reason ?? null;
     return this.certs.save(c);
@@ -205,7 +205,7 @@ export class CertificatesService {
       where: { code: code.trim().toUpperCase() },
       relations: ['student', 'student.user', 'course'],
     });
-    if (!c || c.status !== ('ACTIVE' as any)) {
+    if (!c || c.status !== ('active' as any)) {
       return { valid: false, code: code.toUpperCase() };
     }
     return {

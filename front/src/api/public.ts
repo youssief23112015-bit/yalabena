@@ -152,3 +152,62 @@ export async function fetchPublicTestimonials(): Promise<PublicTestimonial[]> {
     return [];
   }
 }
+
+/* ── Blog (public, SRS 4.14) ─────────────────────────────────────────── */
+
+export interface PublicBlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string | null;
+  featured_image?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  published_at?: string | null;
+  author?: { id: string; first_name?: string; last_name?: string } | null;
+  view_count?: number;
+  created_at?: string;
+}
+
+export interface PublicBlogListMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PublicBlogListResult {
+  data: PublicBlogPost[];
+  meta: PublicBlogListMeta;
+}
+
+export async function fetchPublishedBlogs(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+} = {}): Promise<PublicBlogListResult> {
+  const { data } = await apiClient.get<PublicBlogListResult>("/public/blogs", {
+    params: {
+      page: params.page ?? 1,
+      limit: params.limit ?? 9,
+      ...(params.search ? { search: params.search } : {}),
+    },
+  });
+  return {
+    data: Array.isArray(data?.data) ? data.data : [],
+    meta: data?.meta ?? {
+      total: 0,
+      page: params.page ?? 1,
+      limit: params.limit ?? 9,
+      totalPages: 0,
+    },
+  };
+}
+
+export async function fetchBlogPostBySlug(slug: string): Promise<PublicBlogPost> {
+  const { data } = await apiClient.get<PublicBlogPost>(
+    `/public/blogs/${encodeURIComponent(slug)}`,
+  );
+  return data;
+}

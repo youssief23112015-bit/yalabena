@@ -28,6 +28,7 @@ import { HrModule } from './modules/hr/hr.module';
 import { ActivitiesModule } from './modules/activities/activities.module';
 import { KbModule } from './modules/kb/kb.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -64,6 +65,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ActivitiesModule,
     KbModule,
     ReportsModule,
+    DashboardModule,
     ChatModule,
   ],
   providers: [

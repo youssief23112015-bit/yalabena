@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAttemptResults, useQuizzes, useStartAttempt, useSubmitAttempt } from "@/hooks/use-lms";
-import { useAuth } from "@/lib/auth-context";
+// FIX: this app never mounts AuthProvider from lib/auth-context — using it here
+// threw "useAuth must be used within AuthProvider" as soon as the quiz page opened.
+// The zustand-backed hook below is the auth source of truth used everywhere else.
+import { useAuth } from "@/hooks/use-auth";
 import type { QuizAttempt, QuizQuestion } from "@/lib/types";
 import { QuestionRenderer } from "@/components/quiz/question-renderer";
 import { Badge } from "@/components/ui/badge";

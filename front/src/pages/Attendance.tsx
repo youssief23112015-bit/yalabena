@@ -64,12 +64,6 @@ export default function AttendancePage() {
     onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
   });
 
-  const markOneMutation = useMutation({
-    mutationFn: (dto: MarkOneDto) => attendanceApi.markOne(sessionId, dto),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["roster", sessionId] }),
-    onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
-  });
-
   const checkInMutation = useMutation({
     mutationFn: () => attendanceApi.selfCheckIn(checkInForm),
     onSuccess: () => {
@@ -90,7 +84,11 @@ export default function AttendancePage() {
         <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Group filter</Label>
-            <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}
+            <select value={groupFilter} onChange={(e) => {
+              setGroupFilter(e.target.value);
+              setSessionId("");
+              setDraft({});
+            }}
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
               <option value="">{t("common.all")}</option>
               {(groups ?? []).map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -114,9 +112,15 @@ export default function AttendancePage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Roster ({roster?.students?.length ?? 0})</CardTitle>
                 {Object.keys(draft).length > 0 && (
-                  <Button size="sm" onClick={() => bulkMutation.mutate()} disabled={bulkMutation.isPending}>
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Save all ({Object.keys(draft).length})
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Unsaved changes</span>
+                    <Button size="sm" onClick={() => bulkMutation.mutate()} disabled={bulkMutation.isPending}>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> {bulkMutation.isPending ? "Saving…" : `Save all (${Object.keys(draft).length})`}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setDraft({})} disabled={bulkMutation.isPending}>
+                      Discard
+                    </Button>
+                  </div>
                 )}
               </CardHeader>
               <CardContent>
@@ -143,7 +147,6 @@ export default function AttendancePage() {
                             onClick={() => {
                               const dto: MarkOneDto = { student_id: st.id, status: s };
                               setDraft((d) => ({ ...d, [st.id]: dto }));
-                              markOneMutation.mutate(dto);
                             }}>{s}</Button>
                         ))}
                       </div>

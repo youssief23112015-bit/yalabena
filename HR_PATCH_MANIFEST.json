@@ -1,0 +1,75 @@
+{
+  "name": "YALABENA HR Complete Patch",
+  "source_project": "yalabena-main (3).zip",
+  "status": "HR frontend/backend completion patch",
+  "important_note": "The uploaded project ZIP did not contain Claude's latest HR page files. The files in this patch are final replacement/addition versions based on the actual uploaded project and the Claude work previously provided in chat. Same-named Claude pages are superseded by these versions.",
+  "included_files": [
+    "front/src/types/hr.ts",
+    "front/src/api/hr.ts",
+    "front/src/lib/rbac.ts",
+    "front/src/components/hr/EmployeeFormDialog.tsx",
+    "front/src/components/hr/TerminateDialog.tsx",
+    "front/src/components/hr/LeaveDecisionDialog.tsx",
+    "front/src/components/hr/LeaveRequestDialog.tsx",
+    "front/src/components/hr/AvailabilityPanel.tsx",
+    "front/src/pages/hr/HrLayout.tsx",
+    "front/src/pages/hr/EmployeesPage.tsx",
+    "front/src/pages/hr/LeavesTable.tsx",
+    "front/src/pages/hr/LeavesPage.tsx",
+    "front/src/pages/hr/MyHrPage.tsx",
+    "front/src/pages/hr/EmployeeDetailsPage.tsx",
+    "front/src/pages/hr/PayrollPage.tsx",
+    "front/src/App.tsx",
+    "front/src/lib/i18n.ts",
+    "front/src/locales/en/hr.json",
+    "front/src/locales/ar/hr.json",
+    "src/modules/hr/hr.controller.ts",
+    "src/modules/hr/hr.service.ts"
+  ],
+  "frontend_added": [
+    "front/src/api/hr.ts",
+    "front/src/types/hr.ts",
+    "front/src/lib/rbac.ts",
+    "front/src/components/hr/EmployeeFormDialog.tsx",
+    "front/src/components/hr/TerminateDialog.tsx",
+    "front/src/components/hr/LeaveDecisionDialog.tsx",
+    "front/src/components/hr/LeaveRequestDialog.tsx",
+    "front/src/components/hr/AvailabilityPanel.tsx",
+    "front/src/pages/hr/HrLayout.tsx",
+    "front/src/pages/hr/EmployeesPage.tsx",
+    "front/src/pages/hr/LeavesTable.tsx",
+    "front/src/pages/hr/LeavesPage.tsx",
+    "front/src/pages/hr/MyHrPage.tsx",
+    "front/src/pages/hr/EmployeeDetailsPage.tsx",
+    "front/src/pages/hr/PayrollPage.tsx"
+  ],
+  "frontend_replaced": [
+    "front/src/App.tsx",
+    "front/src/lib/i18n.ts",
+    "front/src/locales/en/hr.json",
+    "front/src/locales/ar/hr.json"
+  ],
+  "backend_replaced": [
+    "src/modules/hr/hr.controller.ts",
+    "src/modules/hr/hr.service.ts"
+  ],
+  "features": [
+    "employee CRUD UI",
+    "employee details",
+    "HR document upload through /files/upload?kind=hr",
+    "teacher availability create/update/delete",
+    "employee leave review",
+    "teacher self-service leave requests and cancellation",
+    "teacher self-service employee record",
+    "payroll periods",
+    "teacher payroll calculation",
+    "CSV payroll export",
+    "active routing and RBAC",
+    "Arabic/English i18n resources and document direction"
+  ],
+  "verification": {
+    "archive_paths_checked": true,
+    "full_build": "NOT VERIFIED in this environment because dependency installation timed out before node_modules was available",
+    "static_import_check": "local project imports inspected; no missing HR component imports found"
+  }
+}
