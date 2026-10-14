@@ -26,7 +26,7 @@ export class AuditLog {
   @Column({ type: 'varchar', length: 50 })
   target_type: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   target_id: string;
 
   @Column({ type: 'jsonb', nullable: true })

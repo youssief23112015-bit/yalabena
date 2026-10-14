@@ -219,6 +219,13 @@ export default function StudentsPage() {
         status:
           appliedStatus || undefined,
       }),
+
+    // Self-registrations happen in other sessions: treat this list as always
+    // stale so a freshly mounted /students view refetches immediately, and
+    // refresh when the admin tabs back to this page (the global default is a
+    // 5-minute staleTime with focus-refetch disabled).
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   /* =========================================================

@@ -3,7 +3,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useCreateQuestion, useQuestionBank } from "@/hooks/use-lms";
-import { QuestionType } from "@/lib/types";
+import { QuestionType, type QuizQuestion } from "@/lib/types";
+import { toSafeArray } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +54,13 @@ export default function QuestionBankPage() {
     defaultValues: { type: QuestionType.MCQ, points: 10 },
   });
   const qType = form.watch("type");
+
+  // Defense in depth: bank.data MAY be the raw { success, data } envelope (an
+  // Object) instead of an array, because @/lib/axios has no unwrap
+  // interceptor. toSafeArray unwraps data/items/results envelopes, drops
+  // non-object entries and ALWAYS returns an array — so .map() below can
+  // never throw ".map is not a function" / white-screen the page again.
+  const questions = toSafeArray<QuizQuestion>(bank.data);
 
   const onSubmit = form.handleSubmit(async (values) => {
     await create.mutateAsync({
@@ -173,24 +181,29 @@ export default function QuestionBankPage() {
       )}
 
       <div className="space-y-2">
-        {(bank.data ?? []).map((q) => (
-          <Card key={q.id}>
+        {bank.isError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            {(bank.error as Error)?.message ?? "Could not load the question bank."}
+          </div>
+        )}
+        {questions.map((q) => (
+          <Card key={q?.id}>
             <CardContent className="flex items-start justify-between gap-4 p-4">
               <div className="space-y-1">
-                <p className="text-sm font-medium">{q.question_text}</p>
+                <p className="text-sm font-medium">{q?.question_text}</p>
                 <div className="flex gap-1.5">
-                  <Badge variant="secondary">{q.type.replace(/_/g, " ")}</Badge>
-                  <Badge variant="outline">{q.points} pts</Badge>
-                  {q.topic_tag && <Badge variant="outline">{q.topic_tag}</Badge>}
-                  {q.difficulty && <Badge variant="default">{q.difficulty}</Badge>}
+                  <Badge variant="secondary">{q?.type?.replace(/_/g, " ")}</Badge>
+                  <Badge variant="outline">{q?.points} pts</Badge>
+                  {q?.topic_tag && <Badge variant="outline">{q.topic_tag}</Badge>}
+                  {q?.difficulty && <Badge variant="default">{q.difficulty}</Badge>}
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
-        {(bank.data ?? []).length === 0 && (
+        {!bank.isError && questions.length === 0 && (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            No questions match your filters.
+            {bank.isLoading ? "Loading…" : "No questions match your filters."}
           </p>
         )}
       </div>

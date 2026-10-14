@@ -64,15 +64,26 @@ export class CertificatesController {
     return this.service.list(user, { student_id, course_id, group_id, status, branch_id });
   }
 
+  /**
+   * Certificates of the currently logged-in student (self-service).
+   * MUST be declared before `@Get(':id')` so the literal path wins over the param route.
+   */
+  @Get('my')
+  @Roles('student')
+  myCertificates(@CurrentUser() user: AuthUser) {
+    return this.service.myCertificates(user);
+  }
+
   @Get(':id')
-  @Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher', 'student')
   getOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
     return this.service.getOne(id, user);
   }
 
   @Get(':id/pdf')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
   async pdf(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser, @Res() res: Response) {
+    // CertificatesService.getOne enforces ownership for self-service students.
     const buf = await this.service.generatePdf(id, user);
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="certificate-${id}.pdf"` });
     res.send(buf);

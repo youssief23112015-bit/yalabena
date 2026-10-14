@@ -85,6 +85,17 @@ export class AuditService {
     if (q.date_to) qb.andWhere('a.created_at <= :to', { to: q.date_to });
 
     const [items, total] = await qb.getManyAndCount();
-    return { data: items, meta: { total, page, limit, pages: Math.ceil(total / limit) } };
+    const pages = Math.ceil(total / limit);
+    return {
+      // Shape consumed by the frontend (PaginatedAuditLogs): data.items
+      items,
+      total,
+      page,
+      limit,
+      pages,
+      // Kept for backwards compatibility with existing consumers/specs.
+      data: items,
+      meta: { total, page, limit, pages },
+    };
   }
 }

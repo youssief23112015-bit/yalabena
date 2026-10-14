@@ -97,4 +97,31 @@ describe('AuditService (SRS 7.2)', () => {
     await service.findAll({ limit: 9999 });
     expect(qb.take).toHaveBeenCalledWith(100);
   });
+
+  it('findAll returns the frontend PaginatedAuditLogs shape (items/total/page/limit)', async () => {
+    const qb: any = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[{ id: 'l1' }, { id: 'l2' }], 12]),
+    };
+    repo.createQueryBuilder.mockReturnValue(qb);
+
+    const res = await service.findAll({ limit: 50, page: 3 });
+
+    expect(res).toEqual(
+      expect.objectContaining({
+        items: [{ id: 'l1' }, { id: 'l2' }],
+        total: 12,
+        page: 3,
+        limit: 50,
+      }),
+    );
+    // Backwards-compatible aliases kept for older consumers.
+    expect(res.data).toEqual(res.items);
+    expect(res.meta).toEqual({ total: 12, page: 3, limit: 50, pages: 1 });
+    expect(qb.skip).toHaveBeenCalledWith(100);
+  });
 });

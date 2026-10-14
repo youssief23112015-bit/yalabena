@@ -60,6 +60,7 @@ const navItems: NavItem[] = [
   { to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "branch_manager", "sales", "finance", "academic"] },
   { to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance", "branch_manager"] },
   { to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "branch_manager", "academic", "finance", "teacher"] },
+  { to: "/my-certificates", label: "nav.myCertificates", icon: Award, roles: ["student"] },
   { to: "/lms", label: "nav.lms", icon: BookMarked, roles: ["super_admin", "academic", "teacher", "student"] },
   { to: "/instructor/question-bank", label: "nav.questionBank", icon: HelpCircle, roles: ["academic", "teacher"] },
   { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "branch_manager", "teacher", "finance"] },

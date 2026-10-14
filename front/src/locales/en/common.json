@@ -14,6 +14,7 @@
     "enrollments": "Enrollments",
     "finance": "Finance",
     "certificates": "Certificates",
+    "myCertificates": "My Certificates",
     "lms": "LMS",
     "hr": "HR",
     "activities": "Activities",
@@ -33,6 +34,34 @@
     "title": "Notifications",
     "empty": "No notifications yet",
     "markAllRead": "Mark all read"
+  },
+  "myCertificates": {
+    "title": "My Certificates",
+    "subtitle": "Certificates you have earned upon completing your courses.",
+    "empty": "You don't have any certificates yet",
+    "emptyHint": "Certificates appear here automatically once they are issued after you complete a course.",
+    "loadError": "Could not load your certificates.",
+    "issuedOn": "Issued on",
+    "level": "Level",
+    "unknownCourse": "Course",
+    "downloadPdf": "Download certificate PDF",
+    "downloading": "Preparing PDF…",
+    "downloadError": "Could not download the certificate PDF.",
+    "copyCode": "Copy verification code",
+    "codeCopied": "Verification code copied"
+  },
+  "audit": {
+    "title": "Audit Log",
+    "time": "Time",
+    "action": "Action",
+    "module": "Module",
+    "actor": "Actor",
+    "anonymous": "Anonymous",
+    "target": "Target",
+    "ip": "IP address",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "empty": "No audit entries match these filters."
   },
   "security": {
     "2faTitle": "Two-factor authentication",

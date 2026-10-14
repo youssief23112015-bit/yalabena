@@ -32,6 +32,7 @@ import SecuritySettingsPage from '@/pages/SecuritySettings';
 import LmsPage from '@/pages/Lms';
 import CoursePage from '@/pages/student/CoursePage';
 import QuizPage from '@/pages/student/QuizPage';
+import MyCertificatesPage from '@/pages/student/MyCertificates';
 import QuestionBankPage from '@/pages/instructor/QuestionBankPage';
 import NotFoundPage from '@/pages/NotFound';
 import ChatPage from '@/pages/Chat';
@@ -131,6 +132,12 @@ function App() {
             <Route
               path="/student/quiz/:quizId"
               element={roleGate(['student'], <QuizPage />)}
+            />
+
+            {/* Student self-service certificates (backend: GET /certificates/my) */}
+            <Route
+              path="/my-certificates"
+              element={roleGate(['student'], <MyCertificatesPage />)}
             />
 
             {/* Instructor question bank (backend: GET/POST /lms/questions/bank) */}

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
+import { toSafeArray } from "@/lib/utils";
 import type {
   Assignment,
   GradebookEntry,
@@ -101,8 +102,15 @@ export function useAttemptResults(attemptId: string | null) {
 export function useQuestionBank(filters: { topic_tag?: string; difficulty?: string }) {
   return useQuery({
     queryKey: qk.questionBank(filters),
-    queryFn: async () =>
-      (await api.get<QuizQuestion[]>("/lms/questions/bank", { params: filters })).data,
+    queryFn: async () => {
+      const { data } = await api.get<unknown>("/lms/questions/bank", {
+        params: filters,
+      });
+      // @/lib/axios does NOT unwrap the backend's { success, data } envelope,
+      // so `data` may be an object — normalize it here so consumers always
+      // receive a real QuizQuestion[] and can .map() safely.
+      return toSafeArray<QuizQuestion>(data);
+    },
   });
 }
 

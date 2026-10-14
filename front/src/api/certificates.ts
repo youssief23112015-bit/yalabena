@@ -33,6 +33,11 @@ export const certificatesApi = {
     const { data } = await apiClient.get("/certificates", { params });
     return Array.isArray(data) ? data : data?.items ?? [];
   },
+  /** Certificates of the currently logged-in student (GET /certificates/my). */
+  my: async (): Promise<any[]> => {
+    const { data } = await apiClient.get("/certificates/my");
+    return Array.isArray(data) ? data : data?.items ?? [];
+  },
   getOne: async (id: string): Promise<any> => {
     const { data } = await apiClient.get(`/certificates/${id}`);
     return data;

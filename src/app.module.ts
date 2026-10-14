@@ -30,6 +30,7 @@ import { KbModule } from './modules/kb/kb.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -67,6 +68,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ReportsModule,
     DashboardModule,
     ChatModule,
+    // Global audit trail (SRS 7.2) — registers AuditController (/api/v1/audit-logs)
+    // and the global AuditInterceptor via APP_INTERCEPTOR.
+    AuditModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
