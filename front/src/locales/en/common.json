@@ -92,7 +92,12 @@
     "email": "Email",
     "emailInvalid": "Invalid email address",
     "password": "Password",
-    "passwordMin": "Password must be at least 6 characters",
+    "passwordMin": "Password must be at least 8 characters",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordNeedsUppercase": "Password must contain at least one uppercase letter (A-Z)",
+    "passwordNeedsLowercase": "Password must contain at least one lowercase letter (a-z)",
+    "passwordNeedsNumber": "Password must contain at least one number (0-9)",
+    "passwordNeedsSpecialChar": "Password must contain at least one special character (@$!%*?&)",
     "confirmPassword": "Confirm Password",
     "firstName": "First Name",
     "lastName": "Last Name",
@@ -101,9 +106,30 @@
     "registerSuccess": "Registration successful",
     "invalidCredentials": "Invalid email or password",
     "passwordMismatch": "Passwords do not match",
-    "noAccount": "Don't have an account yet?",
+    "passwordComplexity": "Password must be at least 8 characters, include uppercase, lowercase, number and special character.",
+    "passwordReset": "Password Reset",
+    "passwordResetSuccess": "Your password has been reset successfully. You can now login with your new password.",
+    "somethingWentWrong": "Something went wrong",
+    "tokenMissing": "No reset token provided",
+    "resetPasswordDescription": "Enter a new password below. Your previous password will be replaced.",
+    "enterNewPassword": "Enter your new password",
+    "newPassword": "New Password",
+    "sendResetLink": "Send Reset Link",
+    "resetLinkSent": "Reset link sent to your email",
+    "pleaseCheckInbox": "Please check your inbox and click the reset link we sent you.",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "socialLoginSuccess": "Successfully authenticated with {{provider}}",
+    "socialAuthProcessing": "Completing secure sign-in...",
+    "socialAuthError": "Social authentication failed",
+    "socialAuthInvalidState": "Invalid authentication state. Please try again.",
+    "socialAuthMissingTokens": "Authentication tokens were not received. Please try again.",
+    "noAccount": "Don't have an account?",
     "hasAccount": "Already have an account?",
-    "required": "This field is required"
+    "required": "This field is required",
+    "orSocial": "Or sign in with",
+    "google": "Google",
+    "facebook": "Facebook"
   },
   "common": {
     "search": "Search",
@@ -191,6 +217,124 @@
     "adjustment": "Adjustment (+/-)",
     "adjustmentHint": "Use a positive number to add stock and a negative number to remove stock",
     "saveMovement": "Save movement"
+  },
+  "studentDashboard": {
+    "title": "Student Dashboard",
+    "subtitle": "Your sessions, active courses and next steps — all in one place.",
+    "greeting": "Welcome back, {{name}}",
+    "loadError": "Could not load your dashboard data.",
+    "stats": {
+      "done": "Done",
+      "doneHint": "Sessions already completed",
+      "scheduled": "Scheduled",
+      "scheduledHint": "Upcoming sessions",
+      "unscheduled": "Unscheduled",
+      "unscheduledHint": "Courses without a schedule",
+      "canceled": "Canceled",
+      "canceledHint": "Cancelled sessions"
+    },
+    "upcoming": {
+      "title": "Upcoming Sessions",
+      "empty": "No upcoming sessions yet.",
+      "timezoneNote": "Times shown in {{tz}}",
+      "fallbackTitle": "Study session"
+    },
+    "courses": {
+      "title": "Active Courses",
+      "progress": "Progress",
+      "noProgress": "Not started",
+      "noSchedule": "Schedule not set",
+      "openCourse": "Open course",
+      "empty": "You are not enrolled in an active course yet.",
+      "browseCatalog": "Browse catalog"
+    },
+    "actions": {
+      "bookCourse": "Book your next Course",
+      "allCourses": "Go to all courses page"
+    }
+  },
+  "teacherDashboard": {
+    "title": "Teacher Dashboard",
+    "subtitle": "Today's schedule, assigned groups and your teaching load.",
+    "greeting": "Welcome back, {{name}}",
+    "loadError": "Could not load your schedule data.",
+    "stats": {
+      "today": "Today's Sessions",
+      "todayHint": "Scheduled for today",
+      "groups": "Assigned Groups",
+      "groupsHint": "Groups you are teaching",
+      "courses": "Courses Taught",
+      "coursesHint": "Active courses you teach",
+      "week": "Sessions This Week",
+      "weekHint": "Next 7 days"
+    },
+    "schedule": {
+      "title": "Today's Schedule",
+      "empty": "No sessions scheduled for today.",
+      "timezoneNote": "Times shown in {{tz}}",
+      "fallbackTitle": "Study session",
+      "inPerson": "in person"
+    },
+    "load": {
+      "title": "Teaching Load",
+      "groupsCount": "{{count}} group(s)",
+      "active": "Active",
+      "empty": "No active courses assigned yet.",
+      "unknownCourse": "Unassigned course"
+    },
+    "groups": {
+      "title": "Assigned Groups",
+      "empty": "No groups assigned to you yet.",
+      "capacity": "Capacity",
+      "open": "Open groups",
+      "unknownStatus": "unknown"
+    },
+    "quick": {
+      "attendance": "Mark Attendance",
+      "questionBank": "Question Bank"
+    }
+  },
+  "hrDashboard": {
+    "title": "HR Dashboard",
+    "subtitle": "Employees, leave requests and payroll — one click away.",
+    "loadError": "Could not load HR data.",
+    "stats": {
+      "employees": "Total Employees",
+      "employeesHint": "All employee records",
+      "active": "Active",
+      "activeHint": "Active contracts today",
+      "onLeave": "On Leave Today",
+      "onLeaveHint": "Approved leave covering today",
+      "pending": "Pending Leaves",
+      "pendingHint": "Awaiting your decision"
+    },
+    "pendingLeaves": {
+      "title": "Pending Leave Requests",
+      "viewAll": "View all",
+      "empty": "No pending leave requests.",
+      "days": "{{count}} day(s)"
+    },
+    "snapshot": {
+      "title": "Employee Attendance Snapshot",
+      "present": "At work",
+      "onLeave": "On leave",
+      "pending": "Pending",
+      "hint": "At work = active employees without approved leave today (derived from leave records covering today)."
+    },
+    "departments": {
+      "title": "Headcount by Department",
+      "unknown": "Unassigned"
+    },
+    "quick": {
+      "employees": "All Employees",
+      "leaves": "Leave Requests",
+      "payroll": "Payroll"
+    }
+  },
+  "forbidden": {
+    "title": "403 — Access Denied",
+    "message": "You don't have permission to view this page. If you believe this is a mistake, please contact your administrator.",
+    "backToDashboard": "Back to Dashboard"
   },
   "public": {
     "nav": {

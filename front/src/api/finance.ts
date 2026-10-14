@@ -8,6 +8,47 @@ export interface InvoiceItemInput {
   unit_price: number;
 }
 
+/** Normalized revenue summary consumed by FinanceDashboard. */
+export interface RevenueReport {
+  totalRevenue: number;
+  timeline: { total?: string | number; type?: string; month?: string }[];
+  byMethod: Record<string, number>;
+  byBranch: Record<string, number>;
+}
+
+/** Raw invoice entity fields used by the receivables adapter. */
+interface RawInvoice {
+  id: string;
+  invoice_number?: string;
+  total_amount?: number;
+  balance_due?: number;
+  due_date?: string;
+  student?: {
+    first_name?: string;
+    last_name?: string;
+    user?: { first_name?: string; last_name?: string };
+  };
+}
+
+/** One outstanding-invoice row rendered by FinanceDashboard's DataTable. */
+export interface OutstandingInvoiceRow {
+  id: string;
+  invoiceNumber: string;
+  studentName: string;
+  amount: number;
+  remaining: number;
+  dueDate: string;
+  daysOverdue: number;
+}
+
+/** Normalized receivables summary consumed by FinanceDashboard. */
+export interface OutstandingReceivables {
+  totalOutstanding: number;
+  byAging: { days30: number; days90: number };
+  invoices: OutstandingInvoiceRow[];
+}
+
+
 export const financeApi = {
   createInvoice: async (dto: {
     student_id: string; branch_id: string; enrollment_id?: string;
@@ -87,7 +128,86 @@ export const financeApi = {
     const { data } = await apiClient.get("/finance/receivables", { params: branch_id ? { branch_id } : {} });
     return data;
   },
+  /**
+   * GET /finance/ledger adapter (backend returns raw {total,type,month} rows).
+   * Normalized to the shape FinanceDashboard renders.
+   */
+  getRevenueReport: async (params?: {
+    startDate?: string;
+    endDate?: string;
+    branchId?: string;
+    groupBy?: string;
+  }): Promise<RevenueReport> => {
+    const { data } = await apiClient.get("/finance/ledger", {
+      params: {
+        from: params?.startDate,
+        to: params?.endDate,
+        branch_id: params?.branchId,
+      },
+    });
+    const rows: { total?: string | number; type?: string; month?: string }[] = Array.isArray(data)
+      ? data
+      : [];
+    const byType: Record<string, number> = {};
+    let totalRevenue = 0;
+    for (const row of rows) {
+      const amount = Number(row.total ?? 0) || 0;
+      totalRevenue += amount;
+      const type = row.type ?? "other";
+      byType[type] = (byType[type] ?? 0) + amount;
+    }
+    return {
+      totalRevenue,
+      timeline: rows,
+      byMethod: byType,
+      // The ledger endpoint is not branch-split for the caller's scope;
+      // the By-Branch panel stays empty rather than showing wrong numbers.
+      byBranch: {},
+    };
+  },
+  /**
+   * GET /finance/receivables adapter (backend returns Invoice entities).
+   * Normalized to the shape FinanceDashboard renders (aging buckets + rows).
+   */
+  getOutstandingReceivables: async (branchId?: string): Promise<OutstandingReceivables> => {
+    const { data } = await apiClient.get("/finance/receivables", {
+      params: branchId ? { branch_id: branchId } : {},
+    });
+    const invoices: RawInvoice[] = Array.isArray(data) ? data : [];
+    const now = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    let totalOutstanding = 0;
+    let days30 = 0;
+    let days90 = 0;
+    const rows: OutstandingInvoiceRow[] = invoices.map((invoice) => {
+      const remaining = Number(invoice.balance_due ?? invoice.total_amount ?? 0) || 0;
+      totalOutstanding += remaining;
+      const dueDate = invoice.due_date ? new Date(invoice.due_date) : null;
+      const overdueDays = dueDate ? Math.floor((now - dueDate.getTime()) / dayMs) : 0;
+      if (overdueDays > 0 && overdueDays <= 30) days30 += remaining;
+      else if (overdueDays > 30 && overdueDays <= 90) days90 += remaining;
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoice_number ?? "—",
+        studentName: [invoice.student?.user?.first_name, invoice.student?.user?.last_name]
+          .filter(Boolean)
+          .join(" ") ||
+          invoice.student?.first_name ||
+          "—",
+        amount: Number(invoice.total_amount ?? 0) || 0,
+        remaining,
+        dueDate: invoice.due_date ?? "",
+        daysOverdue: overdueDays > 0 ? overdueDays : 0,
+      };
+    });
+    return {
+      totalOutstanding,
+      byAging: { days30, days90 },
+      invoices: rows,
+    };
+  },
 };
+
 
 export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);

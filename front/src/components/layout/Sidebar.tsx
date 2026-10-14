@@ -47,7 +47,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: "/", label: "nav.dashboard", icon: LayoutDashboard, roles: [] },
+  { to: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard, roles: [] },
   { to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "branch_manager", "sales"] },
   { to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "branch_manager", "sales", "finance", "academic", "teacher"] },
   { to: "/courses", label: "nav.courses", icon: BookOpen, roles: ["super_admin", "branch_manager", "academic", "teacher"] },
@@ -87,6 +87,19 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
     (i) => i.roles.length === 0 || isSuper || i.roles.some((r) => roles.includes(r)),
   );
 
+  /**
+   * The HR landing page differs per role: managers land on the employee
+   * directory, teachers on their own HR self-service and finance on payroll —
+   * otherwise those roles were pushed straight into a 403 from /hr.
+   */
+  const resolveTarget = (to: string): string => {
+    if (to !== "/hr") return to;
+    if (roles.some((r) => ["super_admin", "hr", "branch_manager"].includes(r))) return "/hr";
+    if (roles.includes("teacher")) return "/hr/my";
+    if (roles.includes("finance")) return "/hr/payroll";
+    return "/hr";
+  };
+
   return (
     <aside
       className={cn(
@@ -116,12 +129,13 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {visible.map((item) => {
           const Icon = item.icon;
+          const target = resolveTarget(item.to);
           const isActive =
-            item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+            location.pathname === target || location.pathname.startsWith(`${target}/`);
           return (
             <NavLink
               key={item.to}
-              to={item.to}
+              to={target}
               title={item.label.startsWith("nav.") ? t(item.label) : item.label}
               onClick={isMobile ? onClose : undefined}
               className={cn(

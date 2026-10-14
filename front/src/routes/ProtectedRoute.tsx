@@ -27,7 +27,8 @@ export function ProtectedRoute({ roles }: ProtectedRouteProps) {
   if (roles?.length) {
     const userRoles = user?.roles ?? (user?.role ? [user.role] : []);
     if (!userRoles.includes('super_admin') && !userRoles.some((role) => roles.includes(role))) {
-      return <Navigate to="/dashboard" replace />;
+      // Unauthorized role → 403 fallback (never a silent data exposure).
+      return <Navigate to="/403" replace />;
     }
   }
 

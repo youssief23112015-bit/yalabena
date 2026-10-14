@@ -14,5 +14,6 @@ export function RequireRoles({ roles, children }: RequireRolesProps) {
   if (userRoles.includes('super_admin')) return <>{children}</>;
   if (userRoles.some((role) => roles.includes(role))) return <>{children}</>;
 
-  return <Navigate to="/dashboard" replace />;
+  // Role cannot access this URL (typed manually or stale link) → 403 fallback.
+  return <Navigate to="/403" replace />;
 }

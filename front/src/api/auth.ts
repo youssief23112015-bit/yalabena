@@ -49,4 +49,16 @@ export const authApi = {
     const { data } = await apiClient.post<{ disabled: boolean }>("/auth/2fa/disable", { code });
     return data;
   },
+
+  /** Request a password reset link to be sent to the user's email. */
+  requestPasswordReset: async (dto: { email: string }): Promise<void> => {
+    const { data } = await apiClient.post<void>("/auth/forgot-password", dto);
+    return data;
+  },
+
+  /** Reset the user's password using the token from the reset email. */
+  resetPassword: async (dto: { token: string; password: string }): Promise<AuthResponse> => {
+    const { data } = await apiClient.post<AuthResponse>("/auth/reset-password", dto);
+    return data;
+  },
 };

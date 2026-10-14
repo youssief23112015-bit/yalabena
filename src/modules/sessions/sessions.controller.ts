@@ -40,11 +40,17 @@ export class SessionsController {
   }
 
   @Get()
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
-  @ApiOperation({ summary: 'Get all sessions with optional group filter' })
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher', 'student')
+  @ApiOperation({
+    summary:
+      'Get all sessions with optional group filter (students: scoped to their own groups)',
+  })
   @ApiQuery({ name: 'groupId', required: false, description: 'Filter sessions by group' })
-  async findAll(@Query('groupId') groupId?: string) {
-    return this.service.findAll(groupId);
+  async findAll(
+    @Query('groupId') groupId?: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.service.findAll(groupId, user);
   }
 
   @Get(':id')

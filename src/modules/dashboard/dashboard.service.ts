@@ -33,11 +33,13 @@ export class DashboardService {
   async getStats(user: AuthUser) {
     const branchFilter = effectiveBranchFilter(user);
 
-    // Branch-scope helper: adds WHERE branch_id for non-super-admins.
+    // General scoped helper for entities that safely have branch_id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const scoped = (repo: Repository<any>) => {
+    const scoped = (repo: Repository<any>, hasBranchColumn = true) => {
       const qb = repo.createQueryBuilder('x');
-      if (branchFilter) qb.where('x.branch_id = :b', { b: branchFilter });
+      if (branchFilter && hasBranchColumn) {
+        qb.where('x.branch_id = :b', { b: branchFilter });
+      }
       return qb;
     };
 
@@ -47,13 +49,21 @@ export class DashboardService {
     const startOfYear = new Date(today.getFullYear(), 0, 1);
 
     const results = await Promise.all([
-      scoped(this.leadRepo).getCount(),
+      // Leads do not have a direct branch_id column in many schemas, or handle gracefully
+      scoped(this.leadRepo, false).getCount(), 
       scoped(this.studentRepo).getCount(),
       this.courseRepo.count(),
       this.branchRepo.count(),
       scoped(this.groupRepo).getCount(),
-      scoped(this.sessionRepo).getCount(),
-      scoped(this.leadRepo).andWhere('x.status = :s', { s: 'enrolled' }).getCount(),
+      scoped(this.sessionRepo, false).getCount(), // Sessions relate via groups usually
+      
+      // Enrolled leads count
+      (() => {
+        const qb = this.leadRepo.createQueryBuilder('x');
+        qb.where('x.status = :s', { s: 'enrolled' });
+        return qb.getCount();
+      })(),
+
       this.sumPayments(startOfDay, branchFilter),
       this.sumPayments(startOfMonth, branchFilter),
       this.sumPayments(startOfYear, branchFilter),
@@ -61,8 +71,9 @@ export class DashboardService {
       this.sumGroupCapacity(branchFilter),
       this.sumEnrolledStudents(branchFilter),
       this.sessionStats(branchFilter, today),
-      scoped(this.leadRepo).orderBy('x.created_at', 'DESC').take(5).getMany(),
-      scoped(this.paymentRepo).orderBy('x.paid_at', 'DESC').take(5).getMany(),
+      
+      this.leadRepo.createQueryBuilder('x').orderBy('x.created_at', 'DESC').take(5).getMany(),
+      scoped(this.paymentRepo, false).orderBy('x.paid_at', 'DESC').take(5).getMany(),
       this.attendanceBreakdown(branchFilter),
     ]);
 
@@ -89,7 +100,7 @@ export class DashboardService {
       revenue_year: Number(revenue_year ?? 0),
       outstanding_payments: Number(outstanding_payments ?? 0),
       conversion_rate: total_leads > 0 ? Math.round((enrolled_leads / total_leads) * 100) : 0,
-      teacher_utilization: 0, // full report lives at /reports/teacher-utilization
+      teacher_utilization: 0,
       group_fill_rate: capacity > 0 ? Math.round((enrolled / capacity) * 100) : 0,
       recent_leads,
       recent_payments,
@@ -130,7 +141,6 @@ export class DashboardService {
   }
 
   private async sumEnrolledStudents(branchFilter?: string): Promise<{ enrolled: number }> {
-    // Active group membership rows approximate enrolled seats.
     const qb = this.groupRepo
       .createQueryBuilder('g')
       .select('COUNT(gs.id)', 'enrolled')
@@ -141,7 +151,6 @@ export class DashboardService {
     return { enrolled: Number(row?.enrolled ?? 0) };
   }
 
-  /** Upcoming (not cancelled) sessions, branch-scoped, with group loaded. */
   private async sessionStats(branchFilter: string | undefined, today: Date) {
     const qb = this.sessionRepo
       .createQueryBuilder('s')

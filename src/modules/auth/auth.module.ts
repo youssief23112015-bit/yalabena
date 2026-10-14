@@ -10,6 +10,7 @@ import { User } from '../../shared/entities/user.entity';
 import { UserRole } from '../../shared/entities/user-role.entity';
 import { Role } from '../../shared/entities/role.entity';
 import { Permission } from '../../shared/entities/permission.entity';
+import { ResetToken } from '../../shared/entities/reset-token.entity';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { Permission } from '../../shared/entities/permission.entity';
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([User, UserRole, Role, Permission]),
+    TypeOrmModule.forFeature([User, UserRole, Role, Permission, ResetToken]),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

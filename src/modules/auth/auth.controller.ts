@@ -7,6 +7,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TwoFactorCodeDto, TwoFactorLoginDto } from './dto/two-factor.dto';
+import { ResetPasswordDto, ResetPasswordRequestDto } from './dto/password-reset.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -75,5 +76,23 @@ export class AuthController {
   @ApiResponse({ status: 200, description: '2FA disabled.' })
   disable2fa(@CurrentUser() user: { userId: string }, @Body() dto: TwoFactorCodeDto) {
     return this.authService.disable2fa(user.userId, dto.code);
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @ApiOperation({ summary: 'Request a password reset link' })
+  @ApiResponse({ status: 200, description: 'Reset link sent to email' })
+  @ApiResponse({ status: 400, description: 'Invalid email' })
+  forgotPassword(@Body() dto: ResetPasswordRequestDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  @Post('reset-password')
+  @Public()
+  @ApiOperation({ summary: 'Reset password with token' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.password);
   }
 }

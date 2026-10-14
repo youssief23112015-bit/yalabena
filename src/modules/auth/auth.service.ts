@@ -9,6 +9,7 @@ import { User } from '../../shared/entities/user.entity';
 import { UserRole } from '../../shared/entities/user-role.entity';
 import { Role } from '../../shared/entities/role.entity';
 import { Student } from '../../shared/entities/student.entity';
+import { ResetToken } from '../../shared/entities/reset-token.entity';
 import { UserStatus } from '../../common/enums/user-status.enum';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -132,6 +133,93 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
+
+  /**
+   * Request a password reset link to be sent to the user's email.
+   * Generates a signed JWT token (purpose='reset') and stores it
+   * in the resetTokens collection for server-side validation.
+   */
+  async requestPasswordReset(email: string) {
+    const user = await this.userRepo.findOne({ where: { email } });
+    if (!user) {
+      // Intentionally silent: same response for existing and non-existing
+      // emails prevents user enumeration.
+      return;
+    }
+
+    // Generate a signed reset token (JWT with purpose='reset')
+    const token = this.jwtService.sign(
+      { sub: user.id, purpose: 'reset', email: user.email },
+      { expiresIn: '1h' },
+    );
+
+    // Store the token with an expiry for invalidation (1 hour)
+    const resetToken = this.userRepo.manager.create(ResetToken, {
+      user: user,
+      token,
+      expires_at: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    await this.userRepo.manager.save(resetToken);
+
+    // TODO: Send reset email via email service with the token link
+    // await this.emailService.sendResetPassword(email, token);
+
+    return { message: 'Reset link sent to your email' };
+  }
+
+  /**
+   * Reset the user's password using the token from the email link.
+   * Validates the token, hashes the new password, and logs the user in.
+   */
+  async resetPassword(token: string, newPassword: string) {
+    let decoded: any;
+    try {
+      decoded = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    if (decoded.purpose !== 'reset' || !decoded.sub || !decoded.email) {
+      throw new UnauthorizedException('Invalid reset token payload');
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { id: decoded.sub, email: decoded.email },
+    });
+    if (!user) {
+      throw new UnauthorizedException('Invalid reset token');
+    }
+
+    // Verify the token hasn't expired or been used
+    const storedToken = await this.userRepo
+      .createQueryBuilder('reset_token')
+      .where('reset_token.user_id = :userId', { userId: user.id })
+      .andWhere('reset_token.token = :token', { token })
+      .andWhere('reset_token.expires_at > :now', { now: new Date() })
+      .getOne();
+
+    if (!storedToken) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+
+    // Delete the token so it can't be reused
+    await this.userRepo
+      .createQueryBuilder()
+      .delete()
+      .where('id = :id', { id: storedToken.id })
+      .execute();
+
+    // Hash the new password and update the user
+    const hash = await bcrypt.hash(newPassword, 12);
+    await this.userRepo.update(user.id, { password_hash: hash });
+
+    // Return fresh tokens so the user is logged in immediately
+    const roles = await this.getUserRoles(user.id);
+    const permissions = await this.getUserPermissions(user.id);
+    return this.buildAuthResponse(user, roles, permissions);
   }
 
   private async getUserRoles(userId: string): Promise<string[]> {

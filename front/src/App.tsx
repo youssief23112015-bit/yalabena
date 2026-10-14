@@ -8,6 +8,9 @@ import { Toaster } from '@/components/ui/toaster';
 
 import LoginPage from '@/pages/Login';
 import RegisterPage from '@/pages/Register';
+import ForgotPasswordPage from '@/pages/ForgotPasswordPage';
+import ResetPasswordPage from '@/pages/ResetPasswordPage';
+import AuthCallbackPage from '@/pages/AuthCallbackPage';
 import PlacementTestPage from '@/pages/PlacementTestPage';
 
 import DashboardPage from '@/pages/Dashboard';
@@ -35,6 +38,7 @@ import QuizPage from '@/pages/student/QuizPage';
 import MyCertificatesPage from '@/pages/student/MyCertificates';
 import QuestionBankPage from '@/pages/instructor/QuestionBankPage';
 import NotFoundPage from '@/pages/NotFound';
+import ForbiddenPage from '@/pages/Forbidden';
 import ChatPage from '@/pages/Chat';
 import LandingPage from '@/pages/public/LandingPage';
 import PublicCoursesPage from '@/pages/public/CoursesPage';
@@ -104,6 +108,22 @@ function App() {
           }
         />
 
+        {/* Password Reset Routes */}
+        <Route
+          path="/forgot-password"
+          element={<ForgotPasswordPage />}
+        />
+        <Route
+          path="/reset-password"
+          element={<ResetPasswordPage />}
+        />
+
+        {/* OAuth Callback Route - stores JWT pair into useAuthStore */}
+        <Route
+          path="/auth/callback"
+          element={<AuthCallbackPage />}
+        />
+
         {/* Public Placement Test */}
         <Route
           path="/placement-test"
@@ -118,9 +138,12 @@ function App() {
               element={<DashboardPage />}
             />
 
+            {/* 403 fallback for role-gated URLs (RequireRoles redirects here) */}
+            <Route path="/403" element={<ForbiddenPage />} />
+
             <Route
               path="/lms/*"
-              element={<LmsPage />}
+              element={roleGate(['super_admin', 'academic', 'teacher', 'student'], <LmsPage />)}
             />
 
             {/* Student course content + quiz taking */}
@@ -153,7 +176,13 @@ function App() {
               )}
             />
 
-            <Route path="/chat" element={<ChatPage />} />
+            <Route
+              path="/chat"
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'student', 'moderator'],
+                <ChatPage />,
+              )}
+            />
 
             <Route
               path="/students"
@@ -172,7 +201,10 @@ function App() {
 
             <Route
               path="/courses"
-              element={<CoursesPage />}
+              element={roleGate(
+                ['super_admin', 'branch_manager', 'academic', 'teacher'],
+                <CoursesPage />,
+              )}
             />
 
             <Route

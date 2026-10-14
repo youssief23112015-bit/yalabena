@@ -32,3 +32,33 @@ export function toSafeArray<T = unknown>(value: unknown, depth = 3): T[] {
   }
   return [];
 }
+
+/** Locale-aware currency label (defaults match academy fees, EGP). */
+export function formatCurrency(value: number, currency = "EGP", locale?: string): string {
+  const resolved =
+    locale ?? (typeof document !== "undefined" ? document.documentElement.lang || "en" : "en");
+  try {
+    return new Intl.NumberFormat(resolved, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(Number.isFinite(value) ? value : 0);
+  } catch {
+    return `${(Number.isFinite(value) ? value : 0).toFixed(2)} ${currency}`;
+  }
+}
+
+/** Locale-aware date label for Date | ISO string values. */
+export function formatDate(value: Date | string | number | null | undefined): string {
+  if (value == null || value === "") return "—";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const locale =
+    typeof document !== "undefined" ? document.documentElement.lang || "en" : "en";
+  return new Intl.DateTimeFormat(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+

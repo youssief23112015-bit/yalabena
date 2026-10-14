@@ -169,6 +169,10 @@ export interface Group {
   id: string;
   name: string;
   courseId?: string;
+  /** snake_case ids as serialized by the backend entities. */
+  course_id?: string;
+  teacher_id?: string;
+  branch_id?: string;
   course?: Course;
   branchId?: string;
   branch?: Branch;
@@ -205,7 +209,13 @@ export interface GroupSchedule {
 export interface SessionItem {
   id: string;
   groupId?: string;
+  /** snake_case ids as serialized by the backend entity. */
+  group_id?: string;
   group?: Group;
+  /** Business-calendar date (YYYY-MM-DD) of the session. */
+  date?: string;
+  /** Delivery mode (in_person / online / hybrid). */
+  mode?: string;
   title: string;
   topic?: string;
   notes?: string;

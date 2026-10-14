@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Session } from '../../shared/entities/session.entity';
 import { Group } from '../../shared/entities/group.entity';
+import { Student } from '../../shared/entities/student.entity';
 import { Attendance } from '../../shared/entities/attendance.entity';
 import { AttendanceStatus } from '../../common/enums/attendance-status.enum';
 import { GroupMode } from '../../common/enums/group-mode.enum';
@@ -211,12 +212,43 @@ export class SessionsService {
     }
   }
 
-  async findAll(groupId?: string): Promise<Session[]> {
+  async findAll(
+    groupId?: string,
+    user?: { id?: string; userId?: string; roles?: string[] },
+  ): Promise<Session[]> {
     const query = this.repo.createQueryBuilder('session')
       .leftJoinAndSelect('session.group', 'group');
 
     if (groupId) {
       query.andWhere('group.id = :groupId', { groupId });
+    }
+
+    // Students only see sessions of groups they belong to (membership via
+    // `group_students` or `enrollments`). Staff roles keep the full list —
+    // @Roles on the controller already guarantees which of these can arrive.
+    const roles = (user?.roles ?? []).map((role) => String(role).toLowerCase());
+    const isStaff = roles.some((role) =>
+      ['super_admin', 'academic', 'branch_manager', 'teacher'].includes(role),
+    );
+    if (user && !isStaff) {
+      const studentRepo = this.repo.manager.getRepository(Student);
+      const userId = user.id ?? user.userId;
+      const student = userId
+        ? await studentRepo.findOne({ where: { user_id: userId } })
+        : null;
+      if (!student) return [];
+
+      const rows: { groupId: string }[] = await this.repo.query(
+        `SELECT group_id AS "groupId" FROM group_students
+           WHERE student_id = $1 AND LOWER(status) = 'active'
+         UNION
+         SELECT group_id AS "groupId" FROM enrollments
+           WHERE student_id = $1 AND LOWER(status) = 'active'`,
+        [student.id],
+      );
+      const groupIds = rows.map((row) => row.groupId).filter(Boolean);
+      if (!groupIds.length) return [];
+      query.andWhere('group.id IN (:...groupIds)', { groupIds });
     }
 
     return query.getMany();

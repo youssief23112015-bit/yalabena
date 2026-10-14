@@ -1,0 +1,320 @@
+import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuthStore } from "@/store/authStore";
+import { dashboardApi } from "@/api/dashboard";
+import { leadsApi } from "@/api/leads";
+import { studentsApi } from "@/api/students";
+import { coursesApi } from "@/api/courses";
+import { branchesApi } from "@/api/branches";
+import { groupsApi } from "@/api/groups";
+import { sessionsApi } from "@/api/sessions";
+import {
+  Users,
+  BookOpen,
+  Building2,
+  CalendarDays,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  GraduationCap,
+  UserCheck,
+  Percent,
+} from "lucide-react";
+
+// Helper to normalize paginated or wrapped API responses into a flat array
+const normalizeArray = <T,>(res: any): T[] => {
+  if (Array.isArray(res)) return res;
+  if (res && Array.isArray(res.data)) return res.data;
+  if (res && Array.isArray(res.leads)) return res.leads;
+  if (res && Array.isArray(res.students)) return res.students;
+  if (res && Array.isArray(res.courses)) return res.courses;
+  if (res && Array.isArray(res.branches)) return res.branches;
+  if (res && Array.isArray(res.groups)) return res.groups;
+  if (res && Array.isArray(res.sessions)) return res.sessions;
+  return [];
+};
+
+/**
+ * Full administrative dashboard (Leads, students, courses, branches, groups,
+ * sessions, conversion / fill-rate KPIs, attendance summary).
+ *
+ * Rendered for: super_admin, branch_manager, sales, finance, academic
+ * (plus auditor / moderator / unknown roles) — see pages/Dashboard.tsx.
+ */
+export default function AdminDashboard() {
+  const { t } = useTranslation("common");
+  const user = useAuthStore((s) => s.user);
+
+  // Fetch all basic data in parallel and normalize responses
+  const { data: serverStats } = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: () => dashboardApi.getStats(),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const { data: rawLeads, isLoading: leadsLoading } = useQuery({
+    queryKey: ["dashboard-leads"],
+    queryFn: () => leadsApi.findAll(),
+  });
+  const leads = normalizeArray<any>(rawLeads);
+
+  const { data: rawStudents, isLoading: studentsLoading } = useQuery({
+    queryKey: ["dashboard-students"],
+    queryFn: () => studentsApi.findAll(),
+  });
+  const students = normalizeArray<any>(rawStudents);
+
+  const { data: rawCourses, isLoading: coursesLoading } = useQuery({
+    queryKey: ["dashboard-courses"],
+    queryFn: () => coursesApi.findAll(),
+  });
+  const courses = normalizeArray<any>(rawCourses);
+
+  const { data: rawBranches, isLoading: branchesLoading } = useQuery({
+    queryKey: ["dashboard-branches"],
+    queryFn: () => branchesApi.findAll(),
+  });
+  const branches = normalizeArray<any>(rawBranches);
+
+  const { data: rawGroups, isLoading: groupsLoading } = useQuery({
+    queryKey: ["dashboard-groups"],
+    queryFn: () => groupsApi.findAll(),
+  });
+  const groups = normalizeArray<any>(rawGroups);
+
+  const { data: rawSessions, isLoading: sessionsLoading } = useQuery({
+    queryKey: ["dashboard-sessions"],
+    queryFn: () => sessionsApi.findAll(),
+  });
+  const sessions = normalizeArray<any>(rawSessions);
+
+  // Load saved attendance records for dashboard totals
+  const sessionIds = sessions
+    .map((s: any) => s?.id)
+    .filter(Boolean)
+    .sort();
+  const { data: attendanceRecords = [] } = useQuery({
+    queryKey: ["dashboard-attendance", sessionIds],
+    queryFn: async () => {
+      const results = await Promise.all(
+        sessionIds.map((id: string) => sessionsApi.getAttendance(id))
+      );
+      return results.flat();
+    },
+    enabled: !sessionsLoading && sessionIds.length > 0,
+  });
+
+  const isLoading = leadsLoading || studentsLoading || coursesLoading || branchesLoading || groupsLoading || sessionsLoading;
+
+  // Compute stats safely from normalized arrays
+  const totalLeads = serverStats?.total_leads ?? leads.length;
+  const totalStudents = serverStats?.total_students ?? students.length;
+  const totalCourses = serverStats?.total_courses ?? courses.length;
+  const totalBranches = serverStats?.total_branches ?? branches.length;
+  const totalGroups = serverStats?.total_groups ?? groups.length;
+  const totalSessions = serverStats?.total_sessions ?? sessions.length;
+
+  // Conversion rate: enrolled leads / total leads
+  const enrolledLeads = leads.filter((l) => l?.status === "enrolled").length;
+  const conversionRate = serverStats?.conversion_rate ?? (totalLeads > 0 ? Math.round((enrolledLeads / totalLeads) * 100) : 0);
+
+  // Group fill rate
+  const totalCapacity = groups.reduce((sum, g) => sum + (Number(g?.capacity) || 0), 0);
+  const totalEnrolled = groups.reduce((sum, g) => sum + (Number(g?.student_count) || 0), 0);
+  const fillRate = serverStats?.group_fill_rate ?? (totalCapacity > 0 ? Math.round((totalEnrolled / totalCapacity) * 100) : 0);
+
+  // Recent leads (last 5)
+  const recentLeads = (serverStats?.recent_leads as any[]) ?? [...leads]
+    .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())
+    .slice(0, 5);
+
+  // Upcoming sessions (next 5 scheduled)
+  const upcomingSessions = (serverStats?.upcoming_sessions as any[]) ?? [...sessions]
+    .filter((s) => s?.status === "scheduled" && s?.start_time && new Date(s.start_time) > new Date())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+    .slice(0, 5);
+
+  // Attendance summary from saved records
+  const presentCount = serverStats?.attendance_summary?.present ?? attendanceRecords.filter((a: any) => a?.status === "present").length;
+  const absentCount = serverStats?.attendance_summary?.absent ?? attendanceRecords.filter((a: any) => a?.status === "absent").length;
+  const lateCount = serverStats?.attendance_summary?.late ?? attendanceRecords.filter((a: any) => a?.status === "late").length;
+
+  const statCards = [
+    { title: t("nav.leads"), value: totalLeads, icon: Users, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
+    { title: t("nav.students"), value: totalStudents, icon: GraduationCap, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
+    { title: t("nav.courses"), value: totalCourses, icon: BookOpen, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
+    { title: t("nav.branches"), value: totalBranches, icon: Building2, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10" },
+    { title: t("nav.groups"), value: totalGroups, icon: CalendarDays, color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10" },
+    { title: t("nav.sessions"), value: totalSessions, icon: Clock, color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
+  ];
+
+  const kpiCards = [
+    { title: t("inventory.valuation") || "Conversion Rate", value: `${conversionRate}%`, icon: Percent, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", sub: `${enrolledLeads} ${t("common.of")} ${totalLeads}` },
+    { title: "Group Fill Rate", value: `${fillRate}%`, icon: TrendingUp, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10", sub: `${totalEnrolled} ${t("common.of")} ${totalCapacity}` },
+  ];
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{t("nav.dashboard")}</h1>
+        <p className="text-muted-foreground mt-1">
+          {user ? `${t("auth.loginSuccess")} ${user.first_name}` : ""}
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="shadow-sm border-border/60">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4 rounded-full" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* Primary Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {statCards.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={stat.title} className="shadow-sm border-border/60 transition-all hover:shadow-md">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-semibold text-muted-foreground">{stat.title}</CardTitle>
+                    <div className={`rounded-lg p-2 ${stat.bg}`}>
+                      <Icon className={`h-4 w-4 ${stat.color}`} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* KPI Cards */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {kpiCards.map((kpi) => {
+              const Icon = kpi.icon;
+              return (
+                <Card key={kpi.title} className="shadow-sm border-border/60">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-semibold text-muted-foreground">{kpi.title}</CardTitle>
+                    <div className={`rounded-lg p-2 ${kpi.bg}`}>
+                      <Icon className={`h-4 w-4 ${kpi.color}`} />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{kpi.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Recent Activity */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Recent Leads */}
+            <Card className="shadow-sm border-border/60">
+              <CardHeader>
+                <CardTitle className="text-base font-bold">{t("nav.leads")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentLeads.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentLeads.map((lead) => (
+                      <div key={lead?.id || Math.random()} className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0">
+                        <div>
+                          <p className="text-sm font-medium">{lead?.first_name} {lead?.last_name}</p>
+                          <p className="text-xs text-muted-foreground">{lead?.phone}</p>
+                        </div>
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          lead?.status === "new" ? "bg-blue-500/10 text-blue-700 dark:text-blue-300" :
+                          lead?.status === "enrolled" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" :
+                          lead?.status === "lost" ? "bg-red-500/10 text-red-700 dark:text-red-300" :
+                          "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                        }`}>
+                          {(lead?.status || "unknown").replace("_", " ")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("common.empty")}</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Upcoming Sessions */}
+            <Card className="shadow-sm border-border/60">
+              <CardHeader>
+                <CardTitle className="text-base font-bold">{t("nav.sessions")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {upcomingSessions.length > 0 ? (
+                  <div className="space-y-3">
+                    {upcomingSessions.map((session) => (
+                      <div key={session?.id || Math.random()} className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0">
+                        <div>
+                          <p className="text-sm font-medium">{session?.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {session?.start_time ? new Date(session.start_time).toLocaleString() : "—"}
+                          </p>
+                        </div>
+                        <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                          {session?.status || "scheduled"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("common.empty")}</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Attendance Summary */}
+          <Card className="shadow-sm border-border/60">
+            <CardHeader>
+              <CardTitle className="text-base font-bold">{t("nav.attendance")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 p-4 border border-emerald-500/20">
+                  <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("common.active") || "Present"}</p>
+                    <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{presentCount}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-red-500/10 p-4 border border-red-500/20">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("common.failed") || "Absent"}</p>
+                    <p className="text-xl font-bold text-red-700 dark:text-red-300">{absentCount}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-amber-500/10 p-4 border border-amber-500/20">
+                  <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t("common.pending") || "Late"}</p>
+                    <p className="text-xl font-bold text-amber-700 dark:text-amber-300">{lateCount}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}
