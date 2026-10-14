@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 shadow-2xs",
   {
     variants: {
       variant: {
@@ -13,13 +13,13 @@ const badgeVariants = cva(
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
+        outline: "text-foreground border-input",
         success:
-          "border-transparent bg-green-100 text-green-800 hover:bg-green-100/80",
+          "border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 hover:bg-emerald-100/80",
         warning:
-          "border-transparent bg-yellow-100 text-yellow-800 hover:bg-yellow-100/80",
+          "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 hover:bg-amber-100/80",
         info:
-          "border-transparent bg-blue-100 text-blue-800 hover:bg-blue-100/80",
+          "border-transparent bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 hover:bg-sky-100/80",
       },
     },
     defaultVariants: {
@@ -38,4 +38,5 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
+{/* سحب التصميم من المصدر الأصلي للملف */}
 export { Badge, badgeVariants };

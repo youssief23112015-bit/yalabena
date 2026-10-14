@@ -11,11 +11,11 @@ export function PageWrapper({ titleKey, children }: PageWrapperProps) {
   const { t } = useTranslation("common");
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">{t(titleKey)}</h1>
+      <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{t(titleKey)}</h1>
       {children || (
-        <Card>
+        <Card className="shadow-sm border-border/60">
           <CardHeader>
-            <CardTitle>{t(titleKey)}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{t(titleKey)}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">{t("common.empty")}</p>

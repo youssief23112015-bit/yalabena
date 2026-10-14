@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export interface Column<T> {
@@ -96,9 +97,9 @@ export function DataTable<T>({
   if (isLoading) {
     return (
       <div className="space-y-3">
-        <div className="overflow-x-auto rounded-md border">
+        <div className="overflow-x-auto rounded-lg border shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-muted">
+            <thead className="bg-muted/60">
               <tr>
                 {columns.map((col) => (
                   <th key={col.key} className="px-4 py-3 text-left font-medium text-muted-foreground">
@@ -109,7 +110,7 @@ export function DataTable<T>({
             </thead>
             <tbody>
               {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-t">
+                <tr key={i} className="border-t border-border/60">
                   {columns.map((col) => (
                     <td key={col.key} className="px-4 py-3">
                       <Skeleton className="h-4 w-full" />
@@ -126,8 +127,8 @@ export function DataTable<T>({
 
   if (isError) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-md border bg-card">
-        <p className="text-destructive">{errorMessage || t("common.error")}</p>
+      <div className="flex h-64 flex-col items-center justify-center gap-4 rounded-lg border bg-card shadow-sm">
+        <p className="text-destructive font-medium">{errorMessage || t("common.error")}</p>
         {onRetry && (
           <Button variant="outline" size="sm" onClick={onRetry}>
             {t("common.retry")}
@@ -139,32 +140,32 @@ export function DataTable<T>({
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-md border bg-card text-muted-foreground">
+      <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border bg-card text-muted-foreground shadow-sm">
         <p>{emptyMessage || t("common.empty")}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-x-auto rounded-md border">
+    <div className="space-y-4">
+      <div className="overflow-x-auto rounded-lg border shadow-sm">
         <table className="w-full text-sm">
-          <thead className="bg-muted">
+          <thead className="bg-muted/60">
             <tr>
               {selectable && (
-                <th className="px-3 py-3">
+                <th className="px-3 py-3 w-10">
                   <input
                     type="checkbox"
                     checked={paginatedData.length > 0 && paginatedData.every((row) => selectedIds.includes(keyExtractor(row)))}
                     onChange={toggleSelectAll}
-                    className="h-4 w-4 rounded border-gray-300"
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                   />
                 </th>
               )}
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-4 py-3 text-left font-medium text-muted-foreground ${col.sortable ? "cursor-pointer select-none" : ""}`}
+                  className={`px-4 py-3 text-left font-semibold text-muted-foreground ${col.sortable ? "cursor-pointer select-none hover:text-foreground" : ""}`}
                   style={{ width: col.width }}
                   onClick={() => col.sortable && handleSort(col.key)}
                 >
@@ -188,7 +189,7 @@ export function DataTable<T>({
             {paginatedData.map((row) => (
               <tr
                 key={keyExtractor(row)}
-                className={`border-t transition-colors hover:bg-muted/50 ${onRowClick ? "cursor-pointer" : ""}`}
+                className={`border-t border-border/60 transition-colors hover:bg-muted/40 ${onRowClick ? "cursor-pointer" : ""}`}
                 onClick={() => onRowClick && onRowClick(row)}
               >
                 {selectable && (
@@ -197,7 +198,7 @@ export function DataTable<T>({
                       type="checkbox"
                       checked={selectedIds.includes(keyExtractor(row))}
                       onChange={() => toggleSelectRow(keyExtractor(row))}
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                     />
                   </td>
                 )}
@@ -216,7 +217,7 @@ export function DataTable<T>({
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
           <p className="text-sm text-muted-foreground">
-            Showing {startIndex + 1}-{Math.min(startIndex + pageSize, sortedData.length)} of {sortedData.length}
+            {t("common.showing") || "Showing"} {startIndex + 1}-{Math.min(startIndex + pageSize, sortedData.length)} {t("common.of") || "of"} {sortedData.length}
           </p>
           <div className="flex items-center gap-1">
             <Button
@@ -237,8 +238,8 @@ export function DataTable<T>({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="text-sm px-2">
-              Page {currentPage} of {totalPages}
+            <span className="text-sm px-2 font-medium">
+              {currentPage} / {totalPages}
             </span>
             <Button
               variant="outline"

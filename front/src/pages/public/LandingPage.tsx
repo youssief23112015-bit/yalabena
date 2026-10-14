@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Star, Users, Clock, Award } from "lucide-react";
+import { ArrowRight, Star, Users, Clock, Award, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +48,27 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background">
         <div className="container mx-auto px-4 py-20 md:py-32">
+          {/* Top Quick Auth Actions Bar inside Hero */}
+          <div className="mb-8 flex items-center justify-between border-b border-border/40 pb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-extrabold tracking-tight">Speak Up Academy</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button asChild variant="ghost" size="sm" className="gap-2 font-semibold">
+                <Link to="/login">
+                  <LogIn className="h-4 w-4" />
+                  {t("auth.login", "Login")}
+                </Link>
+              </Button>
+              <Button asChild size="sm" className="gap-2 font-semibold shadow-sm transition-all hover:scale-105 active:scale-95">
+                <Link to="/register">
+                  <UserPlus className="h-4 w-4" />
+                  {t("auth.register", "Register")}
+                </Link>
+              </Button>
+            </div>
+          </div>
+
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div>
               <Badge className="mb-4" variant="secondary">
@@ -62,7 +83,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <Button asChild size="lg">
-                  <Link to="/register-online">
+                  <Link to="/register">
                     {t("public.hero.ctaRegister", "Register Now")}
                     <ArrowRight className="ml-2 h-4 w-4 rtl:ml-0 rtl:mr-2 rtl:rotate-180" />
                   </Link>
@@ -88,7 +109,7 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-16">
         <div className="grid gap-8 md:grid-cols-3">
           {features.map((f) => (
-            <Card key={f.title} className="text-center">
+            <Card key={f.title} className="text-center transition-all hover:shadow-md border-border/60">
               <CardContent className="pt-6">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                   <f.icon className="h-6 w-6 text-primary" />
@@ -113,12 +134,12 @@ export default function LandingPage() {
 
           {coursesLoading ? (
             <div className="grid gap-6 md:grid-cols-3">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-64" />)}
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-64 rounded-xl" />)}
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-3">
               {(courses ?? []).slice(0, 6).map((course: Course) => (
-                <Card key={course.id} className="overflow-hidden transition-shadow hover:shadow-lg">
+                <Card key={course.id} className="overflow-hidden transition-all hover:shadow-lg border-border/60">
                   <CardContent className="p-6">
                     <div className="mb-3 flex items-center justify-between">
                       <Badge className={LEVEL_COLORS[course.level] ?? "bg-gray-100 text-gray-800"}>
@@ -162,7 +183,7 @@ export default function LandingPage() {
           </h2>
           <div className="grid gap-6 md:grid-cols-3">
             {testimonials.slice(0, 3).map((tm) => (
-              <Card key={tm.id}>
+              <Card key={tm.id} className="border-border/60">
                 <CardContent className="pt-6">
                   <div className="mb-3 flex gap-1">
                     {[...Array(tm.rating ?? 5)].map((_, i) => (

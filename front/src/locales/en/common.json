@@ -1,4 +1,8 @@
 {
+  "app": {
+    "name": "SpeakUp Academy",
+    "tagline": "SpeakUp Learning Platform"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "leads": "Leads",
@@ -64,18 +68,31 @@
     "empty": "No audit entries match these filters."
   },
   "security": {
+    "title": "Security Settings",
     "2faTitle": "Two-factor authentication",
     "2faLoginHint": "Enter the 6-digit code from your authenticator app",
     "enterCode": "Authentication code",
     "verify": "Verify",
-    "2faInvalidCode": "Invalid code, try again"
+    "2faInvalidCode": "Invalid code, try again",
+    "enable2fa": "Enable Two-Factor Authentication",
+    "enable2faHint": "Secure your account by linking it with an authenticator app",
+    "startSetup": "Start Setup",
+    "disable2fa": "Disable Two-Factor Authentication",
+    "disable2faHint": "To disable 2FA, please enter your current verification code",
+    "scanQr": "Scan the QR code above",
+    "confirmEnable": "Confirm Enable",
+    "confirmDisable": "Confirm Disable",
+    "2faEnabled": "Two-factor authentication enabled successfully",
+    "2faDisabled": "Two-factor authentication disabled successfully"
   },
   "auth": {
     "login": "Login",
     "register": "Register",
     "logout": "Logout",
     "email": "Email",
+    "emailInvalid": "Invalid email address",
     "password": "Password",
+    "passwordMin": "Password must be at least 6 characters",
     "confirmPassword": "Confirm Password",
     "firstName": "First Name",
     "lastName": "Last Name",
@@ -83,7 +100,10 @@
     "loginSuccess": "Welcome back,",
     "registerSuccess": "Registration successful",
     "invalidCredentials": "Invalid email or password",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "noAccount": "Don't have an account yet?",
+    "hasAccount": "Already have an account?",
+    "required": "This field is required"
   },
   "common": {
     "search": "Search",

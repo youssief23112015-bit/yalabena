@@ -9,10 +9,10 @@ export function SkeletonCard({ count = 4 }: SkeletonCardProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
-        <Card key={i}>
+        <Card key={i} className="shadow-sm border-border/60">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-4" />
+            <Skeleton className="h-4 w-4 rounded-full" />
           </CardHeader>
           <CardContent>
             <Skeleton className="h-8 w-16" />

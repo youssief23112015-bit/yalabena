@@ -29,7 +29,7 @@ import {
   LogOut,
   X,
   Calendar,
-  HelpCircle// <
+  HelpCircle
 } from "lucide-react";
 
 interface SidebarProps {
@@ -47,7 +47,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { to: "/", label: "nav.dashboard", icon: LayoutDashboard, roles: [] }, // متاح للجميع
+  { to: "/", label: "nav.dashboard", icon: LayoutDashboard, roles: [] },
   { to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "branch_manager", "sales"] },
   { to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "branch_manager", "sales", "finance", "academic", "teacher"] },
   { to: "/courses", label: "nav.courses", icon: BookOpen, roles: ["super_admin", "branch_manager", "academic", "teacher"] },
@@ -69,13 +69,14 @@ const navItems: NavItem[] = [
   { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "branch_manager", "academic", "teacher", "student", "moderator"] },
   { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
   { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance", "auditor"] },
-  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] }, // متاح للجميع (مستلم الإشعارات)
+  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] },
   { to: "/branches", label: "nav.branches", icon: Building2, roles: ["super_admin", "branch_manager"] },
   { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
   { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
-  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] }, // aligned with route access
+  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] },
   { to: "/security", label: "nav.security", icon: ShieldHalf, roles: ["super_admin"] },
 ];
+
 export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
   const { t } = useTranslation("common");
   const location = useLocation();
@@ -89,16 +90,16 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "group flex flex-col border-r bg-card transition-all duration-300 h-full",
+        "group flex flex-col border-r bg-card transition-all duration-300 h-full shadow-sm",
         isMobile
           ? cn("fixed inset-y-0 left-0 z-50 w-64", open ? "translate-x-0" : "-translate-x-full")
           : cn("w-16 hover:w-64", !open && "w-0 overflow-hidden border-r-0")
       )}
     >
       {/* Brand */}
-      <div className={cn("flex h-16 items-center border-b", isMobile ? "justify-between px-4" : "justify-center px-2 group-hover:justify-between group-hover:px-4")}>
+      <div className={cn("flex h-16 items-center border-b border-border/60", isMobile ? "justify-between px-4" : "justify-center px-2 group-hover:justify-between group-hover:px-4")}>
         <div className="flex items-center gap-2.5 min-w-0">
-          <img src="/logo.svg" alt="SpeakUp Academy" className="h-8 w-8 shrink-0 rounded-lg" />
+          <img src="/logo.svg" alt="SpeakUp Academy" className="h-8 w-8 shrink-0 rounded-lg shadow-sm" />
           <div className="hidden min-w-0 leading-tight group-hover:block">
             <p className="truncate text-base font-bold text-primary">SpeakUp</p>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Academy</p>
@@ -111,7 +112,7 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
         )}
       </div>
 
-      {/* Rail nav: icons always, labels on hover (desktop) */}
+      {/* Nav items */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {visible.map((item) => {
           const Icon = item.icon;
@@ -124,11 +125,11 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
               title={item.label.startsWith("nav.") ? t(item.label) : item.label}
               onClick={isMobile ? onClose : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors",
                 isMobile ? "px-3" : "justify-center px-0 group-hover:justify-start group-hover:px-3",
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />
@@ -141,12 +142,12 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
       </nav>
 
       {/* Logout */}
-      <div className="border-t p-2">
+      <div className="border-t border-border/60 p-2">
         <button
           onClick={onLogout}
           title={t("auth.logout")}
           className={cn(
-            "flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10",
+            "flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10",
             isMobile ? "px-3" : "justify-center px-0 group-hover:justify-start group-hover:px-3"
           )}
         >

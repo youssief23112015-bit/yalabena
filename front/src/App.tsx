@@ -55,7 +55,6 @@ import LeavesPage from '@/pages/hr/LeavesPage';
 import MyHrPage from '@/pages/hr/MyHrPage';
 import PayrollPage from '@/pages/hr/PayrollPage';
 
-
 // استيراد صفحات الـ Activities الجديدة
 import ActivitiesListPage from '@/pages/activities/ActivitiesListPage';
 import ActivityDetailsPage from '@/pages/activities/ActivityDetailsPage';
@@ -80,13 +79,8 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Public Routes */}
-        <Route
-          path="/login"
-          element={
-            isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
-          }
-        />
+        {/* Public Landing & Catalog Routes */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/welcome" element={<LandingPage />} />
         <Route path="/catalog" element={<PublicCoursesPage />} />
         <Route path="/catalog/:id" element={<CourseDetailPage />} />
@@ -96,10 +90,17 @@ function App() {
         <Route path="/verify-certificate" element={<VerifyCertificatePage />} />
         <Route path="/register-online" element={<RegisterOnlinePage />} />
 
+        {/* Public Auth Routes (Redirect to dashboard if already logged in) */}
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />
+          }
+        />
         <Route
           path="/register"
           element={
-            isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />
+            isAuthenticated ? <Navigate to="/dashboard" replace /> : <RegisterPage />
           }
         />
 
@@ -109,11 +110,9 @@ function App() {
           element={<PlacementTestPage />}
         />
 
-        {/* Protected Application Routes */}
+        {/* Protected Application Routes (Dashboard & Management) */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppShell />}>
-            <Route path="/" element={<DashboardPage />} />
-
             <Route
               path="/dashboard"
               element={<DashboardPage />}
@@ -124,7 +123,7 @@ function App() {
               element={<LmsPage />}
             />
 
-            {/* Student course content + quiz taking (linked from Lms page & CoursePage) */}
+            {/* Student course content + quiz taking */}
             <Route
               path="/student/courses/:groupId"
               element={roleGate(['student', 'teacher', 'academic'], <CoursePage />)}
@@ -134,13 +133,13 @@ function App() {
               element={roleGate(['student'], <QuizPage />)}
             />
 
-            {/* Student self-service certificates (backend: GET /certificates/my) */}
+            {/* Student self-service certificates */}
             <Route
               path="/my-certificates"
               element={roleGate(['student'], <MyCertificatesPage />)}
             />
 
-            {/* Instructor question bank (backend: GET/POST /lms/questions/bank) */}
+            {/* Instructor question bank */}
             <Route
               path="/instructor/question-bank"
               element={roleGate(['academic', 'teacher'], <QuestionBankPage />)}
@@ -202,7 +201,7 @@ function App() {
               )}
             />
 
-            {/* --- مسارات الـ Activities الجديدة --- */}
+            {/* --- مسارات الـ Activities --- */}
             <Route
               path="/activities"
               element={roleGate(

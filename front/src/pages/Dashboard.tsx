@@ -41,8 +41,6 @@ export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
   // Fetch all basic data in parallel and normalize responses
-  // Primary source: GET /dashboard/stats (branch-scoped server aggregation).
-  // Falls back to the client-side computation below if the endpoint errors.
   const { data: serverStats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: () => dashboardApi.getStats(),
@@ -84,6 +82,7 @@ export default function DashboardPage() {
     queryFn: () => sessionsApi.findAll(),
   });
   const sessions = normalizeArray<any>(rawSessions);
+
   // Load saved attendance records for dashboard totals
   const sessionIds = sessions
     .map((s: any) => s?.id)
@@ -145,15 +144,15 @@ export default function DashboardPage() {
   ];
 
   const kpiCards = [
-    { title: "Conversion Rate", value: `${conversionRate}%`, icon: Percent, color: "text-emerald-600", bg: "bg-emerald-50", sub: `${enrolledLeads} of ${totalLeads} leads` },
-    { title: "Group Fill Rate", value: `${fillRate}%`, icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50", sub: `${totalEnrolled} of ${totalCapacity} seats` },
+    { title: t("inventory.valuation") || "Conversion Rate", value: `${conversionRate}%`, icon: Percent, color: "text-emerald-600", bg: "bg-emerald-50", sub: `${enrolledLeads} ${t("common.of")} ${totalLeads}` },
+    { title: "Group Fill Rate", value: `${fillRate}%`, icon: TrendingUp, color: "text-indigo-600", bg: "bg-indigo-50", sub: `${totalEnrolled} ${t("common.of")} ${totalCapacity}` },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("nav.dashboard")}</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{t("nav.dashboard")}</h1>
+        <p className="text-muted-foreground mt-1">
           {user ? `${t("auth.loginSuccess")} ${user.first_name}` : ""}
         </p>
       </div>
@@ -161,10 +160,10 @@ export default function DashboardPage() {
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
+            <Card key={i} className="shadow-sm border-border/60">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-4" />
+                <Skeleton className="h-4 w-4 rounded-full" />
               </CardHeader>
               <CardContent>
                 <Skeleton className="h-8 w-16" />
@@ -179,10 +178,10 @@ export default function DashboardPage() {
             {statCards.map((stat) => {
               const Icon = stat.icon;
               return (
-                <Card key={stat.title}>
+                <Card key={stat.title} className="shadow-sm border-border/60 transition-all hover:shadow-md">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                    <div className={`rounded-md p-2 ${stat.bg}`}>
+                    <CardTitle className="text-sm font-semibold text-muted-foreground">{stat.title}</CardTitle>
+                    <div className={`rounded-lg p-2 ${stat.bg}`}>
                       <Icon className={`h-4 w-4 ${stat.color}`} />
                     </div>
                   </CardHeader>
@@ -199,10 +198,10 @@ export default function DashboardPage() {
             {kpiCards.map((kpi) => {
               const Icon = kpi.icon;
               return (
-                <Card key={kpi.title}>
+                <Card key={kpi.title} className="shadow-sm border-border/60">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.title}</CardTitle>
-                    <div className={`rounded-md p-2 ${kpi.bg}`}>
+                    <CardTitle className="text-sm font-semibold text-muted-foreground">{kpi.title}</CardTitle>
+                    <div className={`rounded-lg p-2 ${kpi.bg}`}>
                       <Icon className={`h-4 w-4 ${kpi.color}`} />
                     </div>
                   </CardHeader>
@@ -218,20 +217,20 @@ export default function DashboardPage() {
           {/* Recent Activity */}
           <div className="grid gap-4 lg:grid-cols-2">
             {/* Recent Leads */}
-            <Card>
+            <Card className="shadow-sm border-border/60">
               <CardHeader>
-                <CardTitle className="text-base">Recent Leads</CardTitle>
+                <CardTitle className="text-base font-bold">{t("nav.leads")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {recentLeads.length > 0 ? (
                   <div className="space-y-3">
                     {recentLeads.map((lead) => (
-                      <div key={lead?.id || Math.random()} className="flex items-center justify-between border-b pb-2 last:border-0">
+                      <div key={lead?.id || Math.random()} className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0">
                         <div>
                           <p className="text-sm font-medium">{lead?.first_name} {lead?.last_name}</p>
                           <p className="text-xs text-muted-foreground">{lead?.phone}</p>
                         </div>
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           lead?.status === "new" ? "bg-blue-100 text-blue-800" :
                           lead?.status === "enrolled" ? "bg-green-100 text-green-800" :
                           lead?.status === "lost" ? "bg-red-100 text-red-800" :
@@ -243,65 +242,65 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No leads yet</p>
+                  <p className="text-sm text-muted-foreground">{t("common.empty")}</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Upcoming Sessions */}
-            <Card>
+            <Card className="shadow-sm border-border/60">
               <CardHeader>
-                <CardTitle className="text-base">Upcoming Sessions</CardTitle>
+                <CardTitle className="text-base font-bold">{t("nav.sessions")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {upcomingSessions.length > 0 ? (
                   <div className="space-y-3">
                     {upcomingSessions.map((session) => (
-                      <div key={session?.id || Math.random()} className="flex items-center justify-between border-b pb-2 last:border-0">
+                      <div key={session?.id || Math.random()} className="flex items-center justify-between border-b border-border/60 pb-2 last:border-0">
                         <div>
                           <p className="text-sm font-medium">{session?.title}</p>
                           <p className="text-xs text-muted-foreground">
-                            {session?.start_time ? new Date(session.start_time).toLocaleString() : "â€”"}
+                            {session?.start_time ? new Date(session.start_time).toLocaleString() : "—"}
                           </p>
                         </div>
-                        <span className="inline-flex rounded-full px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-100 text-blue-800">
                           {session?.status || "scheduled"}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No upcoming sessions</p>
+                  <p className="text-sm text-muted-foreground">{t("common.empty")}</p>
                 )}
               </CardContent>
             </Card>
           </div>
 
           {/* Attendance Summary */}
-          <Card>
+          <Card className="shadow-sm border-border/60">
             <CardHeader>
-              <CardTitle className="text-base">Attendance Summary</CardTitle>
+              <CardTitle className="text-base font-bold">{t("nav.attendance")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-3">
-                <div className="flex items-center gap-3 rounded-lg bg-green-50 p-4">
+                <div className="flex items-center gap-3 rounded-lg bg-green-50 p-4 border border-green-100">
                   <UserCheck className="h-5 w-5 text-green-600" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Present</p>
+                    <p className="text-sm text-muted-foreground">{t("common.active") || "Present"}</p>
                     <p className="text-xl font-bold text-green-700">{presentCount}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-lg bg-red-50 p-4">
+                <div className="flex items-center gap-3 rounded-lg bg-red-50 p-4 border border-red-100">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Absent</p>
+                    <p className="text-sm text-muted-foreground">{t("common.failed") || "Absent"}</p>
                     <p className="text-xl font-bold text-red-700">{absentCount}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 rounded-lg bg-yellow-50 p-4">
+                <div className="flex items-center gap-3 rounded-lg bg-yellow-50 p-4 border border-yellow-100">
                   <Clock className="h-5 w-5 text-yellow-600" />
                   <div>
-                    <p className="text-sm text-muted-foreground">Late</p>
+                    <p className="text-sm text-muted-foreground">{t("common.pending") || "Late"}</p>
                     <p className="text-xl font-bold text-yellow-700">{lateCount}</p>
                   </div>
                 </div>

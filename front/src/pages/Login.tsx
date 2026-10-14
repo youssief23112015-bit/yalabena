@@ -95,7 +95,7 @@ export default function LoginPage() {
   if (challenge) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-md shadow-xl border-border/60 animate-in fade-in-50 zoom-in-95 duration-500">
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl font-bold">{t("security.2faTitle")}</CardTitle>
             <CardDescription>{t("security.2faLoginHint")}</CardDescription>
@@ -121,7 +121,7 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button
-              className="w-full"
+              className="w-full transition-all duration-200 active:scale-95"
               onClick={onVerify2fa}
               disabled={isSubmitting || totpCode.length !== 6}
             >
@@ -142,9 +142,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md shadow-xl border-border/60 animate-in fade-in-50 zoom-in-95 duration-500">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">{t("app.name")}</CardTitle>
+          <CardTitle className="text-2xl font-bold">Speak Up Academy</CardTitle>
           <CardDescription>{t("auth.login")}</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -174,13 +174,12 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full transition-all duration-200 active:scale-95" disabled={isSubmitting}>
               {isSubmitting ? t("common.loading") : t("auth.login")}
             </Button>
             <p className="text-sm text-muted-foreground">
-              {t("Don't have an account yet?")}{" "}
+              {t("auth.noAccount")}{" "}
               <Link to="/register" className="text-primary underline">
-              
                 {t("auth.register")}
               </Link>
             </p>

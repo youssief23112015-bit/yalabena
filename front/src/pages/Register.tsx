@@ -78,10 +78,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-8">
+      <Card className="w-full max-w-md shadow-xl border-border/60 animate-in fade-in slide-in-from-bottom-6 duration-700 ease-out">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">{t("app.name")}</CardTitle>
+          <CardTitle className="text-2xl font-bold">Speak Up Academy</CardTitle>
           <CardDescription>{t("auth.register")}</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -133,7 +133,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full transition-all duration-200 active:scale-95" disabled={isSubmitting}>
               {isSubmitting ? t("common.loading") : t("auth.register")}
             </Button>
             <p className="text-sm text-muted-foreground">
