@@ -66,7 +66,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
               </Button>
 
               <Button asChild className="hidden md:inline-flex">
-                <Link to="/register-online">{t("public.nav.register", "Register Now")}</Link>
+                <Link to="/register">{t("public.nav.register", "Register Now")}</Link>
               </Button>
 
               <Button

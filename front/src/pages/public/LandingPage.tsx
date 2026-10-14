@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Star, Users, Clock, Award, LogIn, UserPlus } from "lucide-react";
+import { ArrowRight, Star, Users, Clock, Award, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ const LEVEL_COLORS: Record<string, string> = {
 };
 
 export default function LandingPage() {
-  const { t } = useTranslation();
+  const { t } = useTranslation("common");
 
   const { data: courses, isLoading: coursesLoading } = useQuery({
     queryKey: ["public-courses"],
@@ -45,67 +45,75 @@ export default function LandingPage() {
       <title>{t("public.seo.homeTitle", "Speak Up Academy — Learn English with Confidence")}</title>
       <meta name="description" content={t("public.seo.homeDesc", "Join Speak Up Academy. English courses from A1 to C2, placement tests, certified teachers.")} />
 
-      {/* Hero */}
+      {/* Hero Header Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-background">
-        <div className="container mx-auto px-4 py-20 md:py-32">
-          {/* Top Quick Auth Actions Bar inside Hero */}
-          <div className="mb-8 flex items-center justify-between border-b border-border/40 pb-6">
+        <div className="container mx-auto px-4 py-12 md:py-20">
+          
+          {/* Top Bar inside Hero Section */}
+          <div className="mb-12 flex items-center justify-between border-b border-border/40 pb-6">
             <div className="flex items-center gap-2">
-              <span className="text-xl font-extrabold tracking-tight">Speak Up Academy</span>
+              <span className="text-2xl font-black tracking-tight text-primary">
+                {t("app.name", "Speak Up Academy")}
+              </span>
             </div>
+            
             <div className="flex items-center gap-3">
-              <Button asChild variant="ghost" size="sm" className="gap-2 font-semibold">
+              <Button asChild variant="outline" size="sm" className="gap-2 font-semibold shadow-sm">
                 <Link to="/login">
                   <LogIn className="h-4 w-4" />
                   {t("auth.login", "Login")}
                 </Link>
               </Button>
-              <Button asChild size="sm" className="gap-2 font-semibold shadow-sm transition-all hover:scale-105 active:scale-95">
-                <Link to="/register">
-                  <UserPlus className="h-4 w-4" />
-                  {t("auth.register", "Register")}
-                </Link>
-              </Button>
             </div>
           </div>
 
-          <div className="grid items-center gap-12 md:grid-cols-2">
+          <div className="grid items-center gap-12 lg:grid-cols-2">
+            {/* Left Content / Main Words */}
             <div>
               <Badge className="mb-4" variant="secondary">
                 {t("public.hero.badge", "Enrolling Now — All Levels")}
               </Badge>
+              
               <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl">
                 {t("public.hero.title", "Master English with")}
                 <span className="text-primary"> {t("public.hero.titleHighlight", "Confidence")}</span>
               </h1>
+              
               <p className="mt-6 max-w-lg text-lg text-muted-foreground">
                 {t("public.hero.subtitle", "From beginner to advanced, our certified teachers help you speak fluently. Join thousands of successful students.")}
               </p>
+              
+              {/* Single Main CTA Action Section */}
               <div className="mt-8 flex flex-wrap gap-4">
-                <Button asChild size="lg">
+                <Button asChild size="lg" className="px-8 py-6 text-base shadow-lg transition-all hover:scale-105 active:scale-95">
                   <Link to="/register">
                     {t("public.hero.ctaRegister", "Register Now")}
                     <ArrowRight className="ml-2 h-4 w-4 rtl:ml-0 rtl:mr-2 rtl:rotate-180" />
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg">
-                  <Link to="/placement-booking">{t("public.hero.ctaTest", "Book Free Placement Test")}</Link>
+                
+                <Button asChild variant="outline" size="lg" className="px-8 py-6 text-base border-border/80">
+                  <Link to="/placement-booking">
+                    {t("public.hero.ctaTest", "Book Free Placement Test")}
+                  </Link>
                 </Button>
               </div>
             </div>
-            <div className="hidden md:block">
+
+            {/* Right Side: Professional Photo */}
+            <div className="relative flex justify-center">
+              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary to-blue-600 opacity-25 blur-xl" />
               <img
-                src="/hero-illustration.svg"
-                alt=""
-                className="w-full max-w-lg rounded-2xl shadow-2xl"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop"
+                alt="Students learning together at Speak Up Academy"
+                className="relative z-10 w-full max-w-lg rounded-3xl object-cover shadow-2xl transition-transform duration-500 hover:scale-[1.02]"
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
+      {/* Features Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="grid gap-8 md:grid-cols-3">
           {features.map((f) => (
@@ -122,7 +130,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Courses preview */}
+      {/* Courses Preview */}
       <section className="bg-muted/40 py-16">
         <div className="container mx-auto px-4">
           <div className="mb-10 text-center">

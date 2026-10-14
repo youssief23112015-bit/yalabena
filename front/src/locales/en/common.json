@@ -200,6 +200,14 @@
       "placement": "Placement Test",
       "verify": "Verify Certificate",
       "register": "Register Now"
+    },
+    "hero": {
+      "badge": "Enrolling Now — All Levels",
+      "title": "Master English with",
+      "titleHighlight": "Confidence",
+      "subtitle": "From beginner to advanced, our certified teachers help you speak fluently. Join thousands of successful students.",
+      "ctaRegister": "Register Now",
+      "ctaTest": "Book Free Placement Test"
     }
   }
 }
