@@ -37,7 +37,25 @@
   "notifications": {
     "title": "Notifications",
     "empty": "No notifications yet",
-    "markAllRead": "Mark all read"
+    "markAllRead": "Mark all read",
+    "sendBroadcast": "Send Broadcast",
+    "modalTitle": "Send Broadcast Notification",
+    "modalDescription": "Send an in-app notification to all users or a specific audience.",
+    "titleLabel": "Title",
+    "titlePlaceholder": "e.g. Scheduled maintenance",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Write the announcement here…",
+    "targetAudience": "Target audience",
+    "allUsers": "All users",
+    "studentsOnly": "Students only",
+    "teachersOnly": "Teachers only",
+    "staffOnly": "Staff only",
+    "titleMin": "Title must be at least 3 characters",
+    "messageMin": "Message must be at least 5 characters",
+    "sending": "Sending…",
+    "sendSuccess": "Broadcast sent",
+    "sendSuccessDescription": "Delivered to {{count}} user(s).",
+    "sendError": "Could not send the broadcast"
   },
   "myCertificates": {
     "title": "My Certificates",
@@ -343,7 +361,11 @@
       "blog": "Blog",
       "placement": "Placement Test",
       "verify": "Verify Certificate",
-      "register": "Register Now"
+      "register": "Register Now",
+      "dashboard": "Dashboard"
+    },
+    "courseDetail": {
+      "book": "Book this Course"
     },
     "hero": {
       "badge": "Enrolling Now — All Levels",

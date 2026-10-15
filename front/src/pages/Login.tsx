@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap } from "lucide-react";
 import type { TwoFactorChallenge } from "@/types";
 import { loginSchema, type LoginForm } from "@/lib/authSchema";
@@ -123,7 +123,6 @@ export default function LoginPage() {
         <Card className="border-border/60 shadow-xl backdrop-blur-md bg-card/95">
           <CardHeader className="space-y-1 text-center">
             <CardTitle className="text-2xl font-bold">{t("auth.login")}</CardTitle>
-            <CardDescription>{t("app.tagline", "SpeakUp Learning Platform")}</CardDescription>
           </CardHeader>
 
           {challenge ? (

@@ -238,12 +238,23 @@ export class SessionsService {
         : null;
       if (!student) return [];
 
+      // Column/table qualifications matter here:
+      //  - `group_students.status` is a CHECK-constrained lowercase varchar →
+      //    a direct compare is exact and keeps idx_gs_status usable.
+      //  - `enrollments.status` is the Postgres ENUM `enrollment_status`.
+      //    LOWER() has no enum overload (only text), which produced
+      //    `function lower(enrollment_status) does not exist`. Compare on the
+      //    text projection instead; this also matches both casings that
+      //    circulate in this codebase ('active' from the TS enum vs 'ACTIVE'
+      //    written by enrollments.service.create — same rationale as
+      //    chat.service), whereas a raw enum-literal comparison would fail at
+      //    parse time whenever a label is absent from the live enum.
       const rows: { groupId: string }[] = await this.repo.query(
-        `SELECT group_id AS "groupId" FROM group_students
-           WHERE student_id = $1 AND LOWER(status) = 'active'
+        `SELECT gs.group_id AS "groupId" FROM group_students gs
+           WHERE gs.student_id = $1 AND gs.status = 'active'
          UNION
-         SELECT group_id AS "groupId" FROM enrollments
-           WHERE student_id = $1 AND LOWER(status) = 'active'`,
+         SELECT e.group_id AS "groupId" FROM enrollments e
+           WHERE e.student_id = $1 AND LOWER(CAST(e.status AS TEXT)) = 'active'`,
         [student.id],
       );
       const groupIds = rows.map((row) => row.groupId).filter(Boolean);

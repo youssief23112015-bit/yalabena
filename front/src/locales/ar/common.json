@@ -37,7 +37,25 @@
   "notifications": {
     "title": "الإشعارات",
     "empty": "لا توجد إشعارات بعد",
-    "markAllRead": "تحديد الكل كمقروء"
+    "markAllRead": "تحديد الكل كمقروء",
+    "sendBroadcast": "إرسال إشعار عام",
+    "modalTitle": "إرسال إشعار عام",
+    "modalDescription": "أرسل إشعارًا داخل المنصة لجميع المستخدمين أو لفئة محددة.",
+    "titleLabel": "العنوان",
+    "titlePlaceholder": "مثال: صيانة مجدولة",
+    "messageLabel": "الرسالة",
+    "messagePlaceholder": "اكتب الإعلان هنا…",
+    "targetAudience": "الجمهور المستهدف",
+    "allUsers": "جميع المستخدمين",
+    "studentsOnly": "الطلاب فقط",
+    "teachersOnly": "المعلمون فقط",
+    "staffOnly": "الموظفون فقط",
+    "titleMin": "يجب أن يتكون العنوان من 3 أحرف على الأقل",
+    "messageMin": "يجب أن تتكون الرسالة من 5 أحرف على الأقل",
+    "sending": "جارٍ الإرسال…",
+    "sendSuccess": "تم إرسال الإشعار",
+    "sendSuccessDescription": "تم التسليم إلى {{count}} مستخدم.",
+    "sendError": "تعذّر إرسال الإشعار"
   },
   "myCertificates": {
     "title": "شهاداتي",
@@ -345,7 +363,11 @@
       "blog": "المدونة",
       "placement": "اختبار تحديد المستوى",
       "verify": "تحقق من الشهادة",
-      "register": "سجل الآن"
+      "register": "سجل الآن",
+      "dashboard": "لوحة التحكم"
+    },
+    "courseDetail": {
+      "book": "احجز هذه الدورة"
     },
     "hero": {
       "badge": "التسجيل مفتوح الآن — جميع المستويات",

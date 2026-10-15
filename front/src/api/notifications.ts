@@ -7,6 +7,17 @@ export interface NotificationQuery {
   unread_only?: boolean;
 }
 
+export interface BroadcastPayload {
+  title: string;
+  message: string;
+  target_role?: string;
+}
+
+export interface BroadcastResult {
+  sent: number;
+  target_role: string;
+}
+
 export const notificationsApi = {
   list: async (query: NotificationQuery = {}): Promise<PaginatedNotifications> => {
     const { data } = await apiClient.get<PaginatedNotifications>("/notifications", {
@@ -27,6 +38,11 @@ export const notificationsApi = {
 
   markAllRead: async (): Promise<{ marked: number }> => {
     const { data } = await apiClient.post<{ marked: number }>("/notifications/read-all");
+    return data;
+  },
+
+  sendBroadcast: async (payload: BroadcastPayload): Promise<BroadcastResult> => {
+    const { data } = await apiClient.post<BroadcastResult>("/notifications/broadcast", payload);
     return data;
   },
 };

@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, IsUUID, MaxLength, ArrayNotEmpty, ValidateIf } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength, ArrayNotEmpty, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /** Admin announcement (SRS 4.18) — target explicit users or everyone with a role. */
@@ -40,4 +40,32 @@ export class BroadcastNotificationDto {
   @IsString()
   @MaxLength(500)
   action_url?: string;
+}
+
+/**
+ * Payload for the admin "Send Broadcast" modal (SRS 4.18).
+ * Delivers one in-app notification to every active user, optionally
+ * narrowed down to a single role audience.
+ */
+export class SendBroadcastDto {
+  @ApiProperty({ example: 'Scheduled maintenance' })
+  @IsString()
+  @MinLength(3)
+  @MaxLength(255)
+  title: string;
+
+  @ApiProperty({ example: 'The portal will be offline Sunday 02:00–04:00.' })
+  @IsString()
+  @MinLength(5)
+  @MaxLength(5000)
+  message: string;
+
+  @ApiPropertyOptional({
+    enum: ['all', 'student', 'teacher', 'hr'],
+    default: 'all',
+    description: 'Audience filter — "all" (default) or a single role slug',
+  })
+  @IsOptional()
+  @IsIn(['all', 'student', 'teacher', 'hr'])
+  target_role?: 'all' | 'student' | 'teacher' | 'hr';
 }

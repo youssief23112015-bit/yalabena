@@ -84,8 +84,17 @@ function App() {
     <>
       <Routes>
         {/* Public Landing & Catalog Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/welcome" element={<LandingPage />} />
+        {/* Authenticated users never see the guest landing page: `/` and
+            `/welcome` resolve to their role-aware dashboard (same rule the
+            /login and /register routes already apply). */}
+        <Route
+          path="/"
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
+        />
+        <Route
+          path="/welcome"
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
+        />
         <Route path="/catalog" element={<PublicCoursesPage />} />
         <Route path="/catalog/:id" element={<CourseDetailPage />} />
         <Route path="/blog" element={<BlogPage />} />

@@ -6,14 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCheck } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { SendNotificationModal } from "@/components/notifications/SendNotificationModal";
+import { CheckCheck, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Mirrors the @Roles(...) whitelist on POST /notifications/broadcast.
+const BROADCAST_ROLES = ["super_admin", "branch_manager", "admin", "hr", "academic"];
 
 export default function NotificationsPage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+
+  const user = useAuthStore((s) => s.user);
+  const userRoles = user?.roles ?? (user?.role ? [user.role] : []);
+  const canBroadcast = userRoles.some((role) => BROADCAST_ROLES.includes(role));
 
   const q = useQuery({
     queryKey: ["notifications-page", unreadOnly],
@@ -36,6 +46,11 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">{t("notifications.title")}</h1>
         <div className="flex items-center gap-2">
+          {canBroadcast && (
+            <Button size="sm" onClick={() => setShowBroadcast(true)}>
+              <Megaphone className="mr-2 h-4 w-4" /> {t("notifications.sendBroadcast")}
+            </Button>
+          )}
           <Button variant={unreadOnly ? "default" : "outline"} size="sm" onClick={() => setUnreadOnly(!unreadOnly)}>
             Unread only
           </Button>
@@ -44,6 +59,7 @@ export default function NotificationsPage() {
           </Button>
         </div>
       </div>
+      <SendNotificationModal open={showBroadcast} onOpenChange={setShowBroadcast} />
       <Card>
         <CardContent className="pt-4">
           {q.isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}

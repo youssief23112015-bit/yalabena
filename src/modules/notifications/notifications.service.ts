@@ -2,6 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from '../../shared/entities/notification.entity';
+import { User } from '../../shared/entities/user.entity';
+import { UserStatus } from '../../common/enums/user-status.enum';
+import { SendBroadcastDto } from './dto/broadcast-notification.dto';
 import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationQuery {
@@ -10,11 +13,16 @@ export interface NotificationQuery {
   unread_only?: boolean;
 }
 
+/** How many notification rows a single broadcast insert handles per batch. */
+const BROADCAST_CHUNK_SIZE = 500;
+
 @Injectable()
 export class NotificationService {
   constructor(
     @InjectRepository(Notification)
     private readonly repo: Repository<Notification>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly gateway: NotificationsGateway,
   ) {}
 
@@ -96,6 +104,53 @@ export class NotificationService {
       .andWhere('read_at IS NULL')
       .execute();
     return { marked: result.affected ?? 0 };
+  }
+
+  /**
+   * Admin broadcast (SRS 4.18): fan one message out to every active user,
+   * optionally restricted to the holders of a single role slug. Rows are
+   * inserted in chunks and then pushed over the realtime gateway so online
+   * recipients see the notification without a refresh.
+   */
+  async createBroadcast(
+    dto: SendBroadcastDto,
+  ): Promise<{ sent: number; target_role: string }> {
+    const targetRole = dto.target_role ?? 'all';
+
+    const qb = this.userRepo
+      .createQueryBuilder('u')
+      .select('u.id', 'id')
+      .where('u.status = :status', { status: UserStatus.ACTIVE });
+
+    if (targetRole !== 'all') {
+      qb.innerJoin('u.userRoles', 'ur')
+        .innerJoin('ur.role', 'r')
+        .andWhere('r.slug = :slug', { slug: targetRole });
+    }
+
+    const rows: { id: string }[] = await qb.getRawMany();
+    const userIds = [...new Set(rows.map((r) => r.id))];
+
+    const saved: Notification[] = [];
+    for (let i = 0; i < userIds.length; i += BROADCAST_CHUNK_SIZE) {
+      const chunk = userIds.slice(i, i + BROADCAST_CHUNK_SIZE);
+      const entities = chunk.map((userId) =>
+        this.repo.create({
+          user_id: userId,
+          type: 'broadcast',
+          title: dto.title,
+          body: dto.message,
+          data: { target_role: targetRole },
+        }),
+      );
+      saved.push(...(await this.repo.save(entities)));
+    }
+
+    for (const notification of saved) {
+      this.gateway.sendToUser(notification.user_id, notification);
+    }
+
+    return { sent: saved.length, target_role: targetRole };
   }
 }
 

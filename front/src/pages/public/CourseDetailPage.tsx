@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, BookOpen, Clock } from "lucide-react";
 import { PublicLayout } from "@/components/public/PublicLayout";
 import { fetchPublicCourse } from "@/api/public";
+import { useAuthStore } from "@/store/authStore";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +22,7 @@ const LEVEL_COLORS: Record<string, string> = {
 export default function CourseDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const { data: course, isLoading, isError } = useQuery({
     queryKey: ["public-course", id],
@@ -116,7 +118,9 @@ export default function CourseDetailPage() {
             <div className="mt-10 flex flex-wrap gap-4">
               <Button asChild size="lg">
                 <Link to={`/register-online?course=${course.id}`}>
-                  {t("public.courseDetail.register", "Register for This Course")}
+                  {isAuthenticated
+                    ? t("public.courseDetail.book", "Book this Course")
+                    : t("public.courseDetail.register", "Register for This Course")}
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg">
