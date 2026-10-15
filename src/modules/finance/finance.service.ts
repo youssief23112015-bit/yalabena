@@ -120,6 +120,28 @@ export class FinanceService {
     try {
       const { items: dtoItems, ...invoiceData } = dto;
 
+      // The PG schema enforces NOT NULL on subtotal / total_amount /
+      // due_date, but NEITHER caller supplies them: the enrollment path
+      // passes a flat `amount`, the manual path passes priced `items[]`.
+      // Normalise all three here so both flows produce a valid invoice
+      // (previously both crashed with "null value in column subtotal").
+      const computedSubtotal =
+        Number((invoiceData as any).subtotal) ||
+        (dtoItems?.length
+          ? dtoItems.reduce(
+              (sum, it) => sum + Number(it.quantity) * Number(it.unit_price),
+              0,
+            )
+          : Number((invoiceData as any).amount ?? 0));
+      const discountAmount = Number((invoiceData as any).discount_amount ?? 0);
+      const totalAmount = Number(
+        (invoiceData as any).total_amount ?? computedSubtotal - discountAmount,
+      );
+      const dueDays = Number((invoiceData as any).due_days ?? 0);
+      const dueDate =
+        (invoiceData as any).due_date ??
+        new Date(Date.now() + dueDays * 86_400_000);
+
       const invoice = this.invoiceRepo.create({
         ...invoiceData,
         invoice_number: await this.generateInvoiceNumber(),
@@ -127,7 +149,11 @@ export class FinanceService {
         created_by: userId,
         status: InvoiceStatus.UNPAID,
         paid_amount: 0,
-        balance_due: (dto as any).total_amount || (dto as any).amount || 0,
+        subtotal: computedSubtotal,
+        discount_amount: discountAmount,
+        total_amount: totalAmount,
+        balance_due: totalAmount,
+        due_date: dueDate,
       } as any);
       const saved = (await queryRunner.manager.save(invoice)) as unknown as Invoice;
       if (dtoItems?.length) {

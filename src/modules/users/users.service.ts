@@ -1,12 +1,14 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../../shared/entities/user.entity';
 import { Role } from '../../shared/entities/role.entity';
 import { UserRole } from '../../shared/entities/user-role.entity';
+import { Student } from '../../shared/entities/student.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserStatus } from '../../common/enums/user-status.enum';
+import { StudentStatus } from '../../common/enums/student-status.enum';
 
 export interface FindAllUsersFilter {
   branchId?: string;
@@ -31,34 +33,111 @@ export class UsersService {
     @InjectRepository(UserRole) private userRoleRepo: Repository<UserRole>,
   ) {}
 
+  /**
+   * Idempotent student-profile sync: the /students list and /enrollments
+   * picker read the `students` table (not `user_roles`), so a user holding
+   * the student role MUST have a linked row (user_id is UNIQUE).
+   * `student_number` is filled by the 'trg_students_number' DB trigger.
+   * Never deletes: enrollments/invoices/payments FK-reference the row.
+   */
+  private async ensureStudentProfile(
+    em: EntityManager,
+    userId: string,
+    branchId?: string | null,
+  ): Promise<void> {
+    const repo = em.getRepository(Student);
+    const existing = await repo.findOne({ where: { user_id: userId } });
+    if (existing) {
+      // Re-assigned the student role after a role-change deactivation:
+      // restore the row we soft-deactivated so the student number and all
+      // historical enrollments stay attached. Deliberately leaves other
+      // terminal states (suspended / graduated / dropped) untouched — those
+      // are academic decisions, not role-sync artifacts.
+      if (existing.status === StudentStatus.INACTIVE) {
+        existing.status = StudentStatus.ACTIVE;
+        await repo.save(existing);
+      }
+      return;
+    }
+    try {
+      await repo.save(
+        repo.create({
+          user_id: userId,
+          branch_id: branchId || null,
+          enrollment_date: new Date(),
+        } as Partial<Student>),
+      );
+    } catch (err) {
+      // user_id UNIQUE race: a concurrent writer inserted the row between
+      // our SELECT and INSERT — treat it as success.
+      const again = await repo.findOne({ where: { user_id: userId } });
+      if (!again) throw err;
+    }
+  }
+
+  /**
+   * Soft-deactivate counterpart of ensureStudentProfile: called when a user's
+   * role changes AWAY from student. The row is kept (history, invoices,
+   * enrollments) but flipped to 'inactive' so the user immediately drops out
+   * of /students and the /enrollments picker. No-ops for rows that are
+   * already inactive or in another terminal state.
+   */
+  private async deactivateStudentProfile(
+    em: EntityManager,
+    userId: string,
+  ): Promise<void> {
+    await em.getRepository(Student).update(
+      { user_id: userId, status: StudentStatus.ACTIVE },
+      { status: StudentStatus.INACTIVE },
+    );
+  }
+
   async create(dto: CreateUserDto, creatorId: string) {
     const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
     if (existingUser) {
       throw new ConflictException('Email already exists');
     }
 
+    // Resolve the role BEFORE any write so a bad role_id fails fast and the
+    // slug (needed for the student-profile sync) is available below.
+    let role: Role | null = null;
+    if (dto.role_id) {
+      role = await this.roleRepo.findOne({ where: { id: dto.role_id } });
+      if (!role) throw new NotFoundException('Role not found');
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
-    const user = this.userRepo.create({
-      email: dto.email,
-      password_hash: passwordHash,
-      first_name: dto.first_name,
-      last_name: dto.last_name,
-      phone: dto.phone,
-      branch_id: dto.branch_id,
-      status: dto.status || UserStatus.ACTIVE,
-      language: 'ar',
+    // Atomic: user + role + (when student) students-table profile commit
+    // together so the account is immediately visible in /students.
+    const savedUser = await this.userRepo.manager.transaction(async (em) => {
+      const created = await em.getRepository(User).save(
+        em.getRepository(User).create({
+          email: dto.email,
+          password_hash: passwordHash,
+          first_name: dto.first_name,
+          last_name: dto.last_name,
+          phone: dto.phone,
+          branch_id: dto.branch_id,
+          status: dto.status || UserStatus.ACTIVE,
+          language: 'ar',
+        }),
+      );
+
+      if (role) {
+        await em.getRepository(UserRole).save({
+          user_id: created.id,
+          role_id: role.id,
+          assigned_by: creatorId,
+        });
+
+        if (role.slug === 'student') {
+          await this.ensureStudentProfile(em, created.id, dto.branch_id);
+        }
+      }
+
+      return created;
     });
-
-    const savedUser = await this.userRepo.save(user);
-
-    if (dto.role_id) {
-      await this.userRoleRepo.save({
-        user_id: savedUser.id,
-        role_id: dto.role_id,
-        assigned_by: creatorId,
-      });
-    }
 
     return this.userRepo.findOne({
       where: { id: savedUser.id },
@@ -91,12 +170,27 @@ export class UsersService {
     const role = await this.roleRepo.findOne({ where: { id: roleId } });
     if (!role) throw new NotFoundException('Role not found');
 
-    await this.userRoleRepo.delete({ user_id: id });
+    // Atomic swap + profile sync: assigning the student role must
+    // materialise the students-table row in the same commit, otherwise the
+    // user never shows up in /students or the /enrollments picker.
+    // Removing the student role soft-deactivates the row (status ->
+    // 'inactive') instead of deleting it — historical enrollments /
+    // invoices / payments FK-reference it — so the user immediately drops
+    // out of both lists while their academic history stays intact.
+    await this.userRoleRepo.manager.transaction(async (em) => {
+      await em.getRepository(UserRole).delete({ user_id: id });
 
-    await this.userRoleRepo.save({
-      user_id: id,
-      role_id: roleId,
-      assigned_by: creatorId,
+      await em.getRepository(UserRole).save({
+        user_id: id,
+        role_id: roleId,
+        assigned_by: creatorId,
+      });
+
+      if (role.slug === 'student') {
+        await this.ensureStudentProfile(em, id, user.branch_id);
+      } else {
+        await this.deactivateStudentProfile(em, id);
+      }
     });
 
     return this.findOne(id);

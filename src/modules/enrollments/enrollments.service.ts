@@ -41,16 +41,51 @@ export class EnrollmentsService {
     const student = await this.students.findOne({ where: { id: dto.student_id } });
     if (!student) throw new NotFoundException('Student not found');
 
+    // Server-side eligibility (mirrors the /students + /enrollments picker
+    // filters): the profile must be active, the account must be active, and
+    // the linked user must STILL hold the student role. Blocks direct API
+    // enrollment of users whose role changed away from student even though
+    // a stale students row could still exist.
+    const eligible = await this.students
+      .createQueryBuilder('s')
+      .innerJoin('s.user', 'u')
+      .where('s.id = :id', { id: dto.student_id })
+      .andWhere('s.status = :activeStudent', { activeStudent: 'active' })
+      .andWhere('u.status = :activeUser', { activeUser: 'active' })
+      .andWhere((qb) => {
+        const sub = qb
+          .subQuery()
+          .select('1')
+          .from('user_roles', 'ur')
+          .innerJoin('roles', 'r', "r.id = ur.role_id AND r.slug = 'student'")
+          .where('ur.user_id = s.user_id')
+          .getQuery();
+        return `EXISTS ${sub}`;
+      })
+      .getExists();
+    if (!eligible) {
+      throw new BadRequestException(
+        'Student is not active or no longer holds the student role',
+      );
+    }
+
     const group = await this.groups.findOne({ where: { id: dto.group_id }, relations: ['course'] });
     if (!group) throw new NotFoundException('Group not found');
 
+    // NOTE: the enrollment_status PG enum holds LOWERCASE values — the
+    // previous uppercase literals ('PENDING'/'ACTIVE') were masked by `as any`
+    // casts and crashed at runtime with "invalid input value for enum".
     const dup = await this.enrollments.findOne({
-      where: { student_id: dto.student_id, group_id: dto.group_id, status: In(['PENDING', 'ACTIVE'] as any) },
+      where: {
+        student_id: dto.student_id,
+        group_id: dto.group_id,
+        status: In([EnrollmentStatus.PENDING, EnrollmentStatus.ACTIVE]),
+      },
     });
     if (dup) throw new BadRequestException('Student already has an active enrollment in this group');
 
     const activeCount = await this.enrollments.count({
-      where: { group_id: dto.group_id, status: 'ACTIVE' as EnrollmentStatus },
+      where: { group_id: dto.group_id, status: EnrollmentStatus.ACTIVE },
     });
     if (activeCount >= group.capacity) {
       throw new BadRequestException(`Group is full (capacity ${group.capacity})`);
@@ -63,7 +98,7 @@ export class EnrollmentsService {
       this.enrollments.create({
         student_id: student.id,
         group_id: group.id,
-        status: 'ACTIVE' as EnrollmentStatus,
+        status: EnrollmentStatus.ACTIVE,
         total_fee: fee,
         discount_amount: 0,
         final_amount: fee,
