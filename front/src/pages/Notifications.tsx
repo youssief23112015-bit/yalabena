@@ -11,8 +11,9 @@ import { SendNotificationModal } from "@/components/notifications/SendNotificati
 import { CheckCheck, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Mirrors the @Roles(...) whitelist on POST /notifications/broadcast.
-const BROADCAST_ROLES = ["super_admin", "branch_manager", "admin", "hr", "academic"];
+// Mirrors the @Roles(...) whitelist on POST /notifications/broadcast —
+// teachers are admitted too (the backend restricts them to their own groups).
+const BROADCAST_ROLES = ["super_admin", "branch_manager", "admin", "hr", "academic", "teacher"];
 
 export default function NotificationsPage() {
   const { t } = useTranslation("common");

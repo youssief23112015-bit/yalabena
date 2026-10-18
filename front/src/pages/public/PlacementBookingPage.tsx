@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { CalendarClock, MapPin, Users } from "lucide-react";
+import { CalendarClock, MapPin, Users, Zap } from "lucide-react";
 import { PublicLayout } from "@/components/public/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useChatToast } from "@/hooks/useChatToast";
 import {
+  bookInstantPlacementTest,
   bookPublicPlacementTest,
   fetchPublicBranches,
   fetchPublicTestSlots,
@@ -35,11 +43,27 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+/** Path A — instant online test (no slot, no account). */
+const instantSchema = z.object({
+  name: z.string().min(2, "Name is required"),
+  phone: z.string().min(8, "Valid phone number is required"),
+  email: z.string().email().optional().or(z.literal("")),
+});
+
+type InstantFormData = z.infer<typeof instantSchema>;
+
 export default function PlacementBookingPage() {
   const { t } = useTranslation();
   const { pushToast } = useChatToast();
+  const navigate = useNavigate();
   const [branchId, setBranchId] = useState<string>("");
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [instantBranchId, setInstantBranchId] = useState<string>("");
+  const [confirmation, setConfirmation] = useState<{
+    test_id?: string;
+    scheduled_at?: string;
+    message?: string;
+  } | null>(null);
 
   const { data: branches } = useQuery({
     queryKey: ["public-branches"],
@@ -54,6 +78,41 @@ export default function PlacementBookingPage() {
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } =
     useForm<FormData>({ resolver: zodResolver(schema) });
 
+  // ── Path A — instant test form (Name/Phone/Email/branch) ──
+  const {
+    register: registerInstant,
+    handleSubmit: handleInstantSubmit,
+    formState: { errors: instantErrors },
+  } = useForm<InstantFormData>({ resolver: zodResolver(instantSchema) });
+
+  const instantMutation = useMutation({
+    mutationFn: (input: { name: string; phone: string; email?: string; branch_id?: string }) =>
+      bookInstantPlacementTest(input),
+    onSuccess: (res) => {
+      pushToast({
+        kind: "info",
+        message: t("public.placementBook.instantStart", "Starting your free placement test…"),
+      });
+      // Password-free redirect — the testId is the session capability token.
+      navigate(`/placement-test?testId=${encodeURIComponent(res.testId)}`);
+    },
+    onError: () => {
+      pushToast({
+        kind: "error",
+        message: t("public.placementBook.instantError", "Could not start the test. Please try again."),
+      });
+    },
+  });
+
+  const onInstantSubmit = (data: InstantFormData) => {
+    instantMutation.mutate({
+      name: data.name.trim(),
+      phone: data.phone.trim(),
+      email: data.email?.trim() || undefined,
+      branch_id: instantBranchId || undefined,
+    });
+  };
+
   const bookingMutation = useMutation({
     mutationFn: (input: {
       slot_id: string;
@@ -63,7 +122,13 @@ export default function PlacementBookingPage() {
       email?: string;
       level_interest?: string;
     }) => bookPublicPlacementTest(input),
-    onSuccess: () => {
+    onSuccess: (res) => {
+      // Business Rule 3 — show the guest their schedule right away.
+      setConfirmation({
+        test_id: res?.test_id,
+        scheduled_at: (res as any)?.scheduled_at,
+        message: res?.message,
+      });
       pushToast({
         kind: "info",
         message: t("public.placementBook.success", "Booking confirmed! We will contact you shortly."),
@@ -105,6 +170,127 @@ export default function PlacementBookingPage() {
             {t("public.placementBook.subtitle", "Find a slot at your preferred branch and reserve your free placement test.")}
           </p>
         </div>
+
+        {/* Two paths: instant online test OR scheduled appointment */}
+        <Tabs defaultValue="instant" className="mb-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="instant" className="gap-2">
+              <Zap className="h-4 w-4" />
+              {t("public.placementBook.pathInstant", "Take Instant Online Test Now")}
+            </TabsTrigger>
+            <TabsTrigger value="schedule">
+              {t("public.placementBook.pathSchedule", "Schedule an In-Person / Zoom Slot")}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ═══ Path A — instant test (no login required) ═══ */}
+          <TabsContent value="instant">
+            <Card>
+              <CardContent className="p-6">
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {t(
+                    "public.placementBook.instantIntro",
+                    "Answer a short online test right now and get your recommended CEFR level instantly — no account or appointment needed.",
+                  )}
+                </p>
+                <form onSubmit={handleInstantSubmit(onInstantSubmit)} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Input
+                        placeholder={t("public.leadForm.fullName", "Full Name")}
+                        {...registerInstant("name")}
+                      />
+                      {instantErrors.name && (
+                        <p className="mt-1 text-xs text-red-500">{instantErrors.name.message}</p>
+                      )}
+                    </div>
+                    <div>
+                      <Input
+                        placeholder={t("public.leadForm.phone", "Phone Number")}
+                        {...registerInstant("phone")}
+                      />
+                      {instantErrors.phone && (
+                        <p className="mt-1 text-xs text-red-500">{instantErrors.phone.message}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Input
+                        type="email"
+                        placeholder={t("public.leadForm.email", "Email (Optional)")}
+                        {...registerInstant("email")}
+                      />
+                      {instantErrors.email && (
+                        <p className="mt-1 text-xs text-red-500">{instantErrors.email.message}</p>
+                      )}
+                    </div>
+                    <Select value={instantBranchId || "none"} onValueChange={(v) => setInstantBranchId(v === "none" ? "" : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("public.leadForm.branch", "Preferred Branch")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("public.placementBook.noBranch", "No preference")}
+                        </SelectItem>
+                        {(branches ?? []).map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={instantMutation.isPending}
+                  >
+                    {instantMutation.isPending
+                      ? t("public.placementBook.instantStarting", "Starting your test…")
+                      : t("public.placementBook.instantCta", "Start Free Test →")}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ═══ Path B — scheduled in-person / Zoom slot ═══ */}
+          <TabsContent value="schedule">
+        {/* Booking confirmation — schedule + reference shown right away */}
+        {confirmation && (
+          <Card className="mb-8 border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/40">
+            <CardContent className="p-6 text-center">
+              <h2 className="text-xl font-bold">
+                {t("public.placementBook.confirmedTitle", "Booking confirmed!")}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {confirmation.message ??
+                  t("public.placementBook.success", "Booking confirmed! We will contact you shortly.")}
+              </p>
+              {confirmation.scheduled_at && (
+                <p className="mt-3 text-base font-semibold">
+                  {t("public.placementBook.scheduledFor", "Scheduled for")}:{" "}
+                  {new Date(confirmation.scheduled_at).toLocaleString()}
+                </p>
+              )}
+              {confirmation.test_id && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t("public.placementBook.reference", "Reference")}:{" "}
+                  <span className="font-mono">{confirmation.test_id.slice(0, 8)}</span>
+                </p>
+              )}
+              <Button
+                className="mt-4"
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmation(null)}
+              >
+                {t("public.placementBook.bookAnother", "Book another slot")}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         <div className="mb-6 flex justify-center">
           <Select value={branchId || "all"} onValueChange={(v) => setBranchId(v === "all" ? "" : v)}>
             <SelectTrigger className="w-full max-w-xs">
@@ -251,6 +437,8 @@ export default function PlacementBookingPage() {
             </CardContent>
           </Card>
         )}
+          </TabsContent>
+        </Tabs>
       </div>
     </PublicLayout>
   );

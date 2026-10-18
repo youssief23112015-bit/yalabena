@@ -10,12 +10,20 @@ export interface NotificationQuery {
 export interface BroadcastPayload {
   title: string;
   message: string;
+  /** Admin: all | students | teachers | specific_user | group. Teachers: group only. */
+  target_type?: "all" | "students" | "teachers" | "specific_user" | "group";
+  /** Required when target_type = specific_user. */
+  target_user_id?: string;
+  /** Required when target_type = group. */
+  group_id?: string;
+  /** @deprecated legacy audience — prefer target_type. */
   target_role?: string;
 }
 
 export interface BroadcastResult {
   sent: number;
-  target_role: string;
+  target_type: string;
+  target_role?: string;
 }
 
 export const notificationsApi = {

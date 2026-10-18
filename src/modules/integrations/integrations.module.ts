@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { IntegrationsController } from './integrations.controller';
+import { PaymentsController } from './payments.controller';
 import { ZoomService } from './zoom.service';
 import { OnMeetService } from './onmeet.service';
 import { EasyKashService } from './easykash.service';
@@ -17,7 +18,7 @@ import { Session } from '../../shared/entities/session.entity';
       signOptions: { expiresIn: '1h' },
     }),
   ],
-  controllers: [IntegrationsController],
+  controllers: [IntegrationsController, PaymentsController],
   providers: [ZoomService, OnMeetService, EasyKashService],
   exports: [ZoomService, OnMeetService, EasyKashService],
 })

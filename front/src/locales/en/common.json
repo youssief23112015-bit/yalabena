@@ -55,7 +55,20 @@
     "sending": "Sending…",
     "sendSuccess": "Broadcast sent",
     "sendSuccessDescription": "Delivered to {{count}} user(s).",
-    "sendError": "Could not send the broadcast"
+    "sendError": "Could not send the broadcast",
+    "targetAllUsers": "All users",
+    "targetAllStudents": "All students",
+    "targetAllTeachers": "All teachers",
+    "targetSpecificPerson": "Specific person",
+    "targetGroupStudents": "Study group students",
+    "targetMyGroupStudents": "My Group Students",
+    "teacherRestrictionHint": "Teachers can only notify the students of their own groups.",
+    "searchPeople": "Search by name or email…",
+    "noPeople": "No matching people",
+    "selectPerson": "Select a person to notify",
+    "selectGroup": "Select a study group",
+    "noMyGroups": "You have no assigned groups",
+    "noGroups": "No groups available"
   },
   "myCertificates": {
     "title": "My Certificates",

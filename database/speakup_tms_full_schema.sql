@@ -1493,7 +1493,7 @@ CREATE TRIGGER trg_enrollments_updated_at
 CREATE TABLE invoices (
     id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     invoice_number      VARCHAR(50) UNIQUE NOT NULL,
-    enrollment_id       UUID NOT NULL,
+    enrollment_id       UUID,
     student_id          UUID NOT NULL,
     branch_id           UUID NOT NULL,
     subtotal            DECIMAL(12,2) NOT NULL CHECK (subtotal >= 0),

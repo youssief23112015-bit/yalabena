@@ -8,4 +8,6 @@ export class StudentQueryDto {
   @IsOptional() @IsUUID() branch_id?: string;
   @IsOptional() @IsString() @MaxLength(10) level?: string;
   @IsOptional() @IsString() @MaxLength(20) status?: string;
+  /** Roster filter: students ACTIVE in this group (group_students ∪ enrollments). */
+  @IsOptional() @IsUUID() groupId?: string;
 }

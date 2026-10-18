@@ -16,7 +16,8 @@ export class Invoice {
   @Column({ type: 'varchar', length: 50, unique: true })
   invoice_number: string;
 
-  @Column({ type: 'uuid' })
+  // Nullable: manual invoices (SRS §4.8) are not tied to an enrollment.
+  @Column({ type: 'uuid', nullable: true })
   enrollment_id: string;
 
   @ManyToOne(() => Enrollment, { onDelete: 'RESTRICT' })

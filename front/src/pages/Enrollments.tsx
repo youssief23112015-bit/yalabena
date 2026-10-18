@@ -12,16 +12,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { Plus, X, UserMinus } from "lucide-react";
+import { Check, Plus, X, UserMinus } from "lucide-react";
 
 const STATUSES = ["PENDING", "ACTIVE", "COMPLETED", "DROPPED"] as const;
 type EnrollStatus = (typeof STATUSES)[number];
 
-const statusClass = (s: string) =>
-  s === "ACTIVE" ? "bg-green-100 text-green-800"
-  : s === "COMPLETED" ? "bg-blue-100 text-blue-800"
-  : s === "DROPPED" ? "bg-red-100 text-red-800"
+const statusClass = (s: string) => {
+  const v = String(s ?? "").toLowerCase();
+  return v === "active" ? "bg-green-100 text-green-800"
+  : v === "completed" ? "bg-blue-100 text-blue-800"
+  : v === "dropped" ? "bg-red-100 text-red-800"
   : "bg-yellow-100 text-yellow-800";
+};
 
 const studentLabel = (e: any) =>
   e?.student?.user
@@ -34,7 +36,7 @@ export default function EnrollmentsPage() {
   const queryClient = useQueryClient();
   const { confirm, dialog } = useConfirm();
 
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
     student_id: "",
@@ -85,6 +87,25 @@ export default function EnrollmentsPage() {
     onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
   });
 
+  // Admin approval flow: PENDING -> ACTIVE (invoice + LMS access on backend)
+  const approveM = useMutation({
+    mutationFn: (id: string) => enrollmentsApi.approve(id),
+    onSuccess: () => {
+      refresh();
+      toast({ title: t("enrollments.approved", "Enrollment approved") });
+    },
+    onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
+  });
+
+  const rejectM = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) => enrollmentsApi.reject(id, reason),
+    onSuccess: () => {
+      refresh();
+      toast({ title: t("enrollments.rejected", "Enrollment request rejected") });
+    },
+    onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
+  });
+
 
   const columns = [
     { key: "student", header: "Student", render: (e: any) => studentLabel(e) },
@@ -94,9 +115,23 @@ export default function EnrollmentsPage() {
       render: (e: any) => e.group?.name ?? (e.group_id ?? "").slice(0, 8),
     },
     {
+      key: "course",
+      header: "Course",
+      render: (e: any) => (
+        <span className="inline-flex items-center gap-1.5">
+          {e.group?.course?.name ?? "—"}
+          {e.group?.course?.level && (
+            <Badge variant="outline" className="text-xs">{e.group.course.level}</Badge>
+          )}
+        </span>
+      ),
+    },
+    {
       key: "status",
       header: t("common.status"),
-      render: (e: any) => <Badge className={statusClass(e.status)}>{e.status}</Badge>,
+      render: (e: any) => (
+        <Badge className={statusClass(e.status)}>{String(e.status ?? "").toUpperCase()}</Badge>
+      ),
     },
     { key: "total_fee", header: "Fee" },
     { key: "final_amount", header: "Final" },
@@ -106,7 +141,7 @@ export default function EnrollmentsPage() {
       render: (e: any) => (
         <select
           className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-          value={e.status}
+          value={String(e.status ?? "").toUpperCase()}
           onClick={(ev) => ev.stopPropagation()}
           onChange={(ev) => { ev.stopPropagation(); statusM.mutate({ id: e.id, status: ev.target.value as EnrollStatus }); }}
         >
@@ -118,16 +153,49 @@ export default function EnrollmentsPage() {
       key: "actions",
       header: t("common.actions"),
       render: (e: any) => (
-        <Button size="sm" variant="outline" onClick={(ev) => {
-          ev.stopPropagation();
-          confirm({
-            title: "Drop enrollment",
-            description: `Drop ${studentLabel(e)} from this group?`,
-            variant: "destructive",
-            confirmLabel: "Drop",
-            onConfirm: () => dropM.mutate({ id: e.id, reason: "dropped from UI" }),
-          });
-        }}><UserMinus className="h-3 w-3" /></Button>
+        <div className="flex items-center gap-1" onClick={(ev) => ev.stopPropagation()}>
+          {String(e.status).toLowerCase() === "pending" && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-green-600 hover:text-green-700"
+                disabled={approveM.isPending}
+                title="Approve enrollment"
+                onClick={() => approveM.mutate(e.id)}
+              >
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-red-600 hover:text-red-700"
+                disabled={rejectM.isPending}
+                title="Reject request"
+                onClick={() =>
+                  confirm({
+                    title: "Reject enrollment request",
+                    description: `Reject ${studentLabel(e)}'s request for this group?`,
+                    variant: "destructive",
+                    confirmLabel: "Reject",
+                    onConfirm: () => rejectM.mutate({ id: e.id, reason: "Rejected from UI" }),
+                  })
+                }
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+          <Button size="sm" variant="outline" onClick={() => {
+            confirm({
+              title: "Drop enrollment",
+              description: `Drop ${studentLabel(e)} from this group?`,
+              variant: "destructive",
+              confirmLabel: "Drop",
+              onConfirm: () => dropM.mutate({ id: e.id, reason: "dropped from UI" }),
+            });
+          }}><UserMinus className="h-3 w-3" /></Button>
+        </div>
       ),
     },
   ];

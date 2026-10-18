@@ -3,15 +3,23 @@ import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { PublicService } from './public.service';
+import { PlacementTestsService } from '../placement-tests/placement-tests.service';
 import { PublicLeadDto } from './dto/public-lead.dto';
 import { PublicPlacementBookingDto } from './dto/public-placement-booking.dto';
 import { PublicRegistrationDto } from './dto/public-registration.dto';
 import { TrackPageViewDto } from './dto/track-page-view.dto';
+import { InstantPlacementBookingDto } from '../placement-tests/dto/instant-placement-booking.dto';
+import { SubmitWrittenDto } from '../placement-tests/dto/submit-written.dto';
 
 @ApiTags('Public')
 @Controller('public')
 export class PublicController {
-  constructor(private readonly service: PublicService) {}
+  constructor(
+    private readonly service: PublicService,
+    // Guest placement sessions (instant booking, paper, submit) live on the
+    // placement-tests service — the testId acts as the capability token.
+    private readonly placementTests: PlacementTestsService,
+  ) {}
 
   // ─── Blogs ───────────────────────────────────────────────────
 
@@ -75,6 +83,47 @@ export class PublicController {
   @ApiResponse({ status: 201, description: 'Booking confirmed.' })
   bookPlacement(@Body() dto: PublicPlacementBookingDto) {
     return this.service.bookPlacementTest(dto);
+  }
+
+  // ─── Instant guest test (frictionless onboarding, Path A) ────
+
+  @Public()
+  @Post('placement-bookings/instant')
+  @ApiOperation({
+    summary:
+      'Take the instant online placement test now — upserts the Lead (TEST_SCHEDULED) ' +
+      'and returns a testId for password-free execution at /placement-test?testId=…',
+  })
+  @ApiResponse({ status: 201, description: '{ success, testId, leadId }' })
+  bookInstant(@Body() dto: InstantPlacementBookingDto) {
+    return this.placementTests.bookInstant(dto);
+  }
+
+  // ─── Guest test execution (testId = capability token) ─────────
+
+  @Public()
+  @Get('placement-tests/:id')
+  @ApiOperation({ summary: 'Guest placement-test session info (validates the testId link)' })
+  getGuestSession(@Param('id') id: string) {
+    return this.placementTests.getGuestSession(id);
+  }
+
+  @Public()
+  @Post('placement-tests/:id/paper')
+  @ApiOperation({ summary: 'Generate the written paper for a guest session' })
+  guestPaper(@Param('id') id: string, @Body() body: { level?: string; count?: number; categories?: string[]; seed?: number }) {
+    return this.placementTests.getGuestPaper(id, body);
+  }
+
+  @Public()
+  @Post('placement-tests/:id/submit')
+  @ApiOperation({
+    summary:
+      'Submit a guest session — auto-scores it and syncs score + CEFR level ' +
+      'to the Lead (status → test_completed)',
+  })
+  guestSubmit(@Param('id') id: string, @Body() dto: SubmitWrittenDto) {
+    return this.placementTests.submitGuest(id, dto);
   }
 
   // ─── Online registration (SRS 4.14) ──────────────────────────

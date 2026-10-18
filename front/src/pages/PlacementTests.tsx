@@ -19,11 +19,16 @@ import { Plus, X, Pencil, ExternalLink, Copy, Check } from "lucide-react";
 const schema = z.object({
   leadId: z.string().min(1, "Lead is required"),
   slot_id: z.string().min(1, "Slot is required"), // حقل إجباري لاختيار الموعد
-  assigned_level: z.string().optional(),
+  // CEFR label (A1–C2) or empty — the backend re-validates on evaluation
+  final_level: z
+    .string()
+    .regex(/^[A-C][12]$/i, "Must be a CEFR level (A1, A2, B1, B2, C1, C2)")
+    .optional()
+    .or(z.literal("")),
   scheduled_date: z.string().optional(),
   status: z.string().optional(),
-  written_score: z.coerce.number().optional(),
-  oral_score: z.coerce.number().optional(),
+  written_score: z.coerce.number().min(0).max(100).optional(),
+  oral_score: z.coerce.number().min(0).max(100).optional(),
 });
 
 type Form = z.infer<typeof schema>;
@@ -122,7 +127,9 @@ export default function PlacementTestsPage() {
           status: f.status,
           written_score: f.written_score,
           oral_score: f.oral_score,
-          assigned_level: f.assigned_level,
+          // Real entity column — the backend derives/validates and syncs the
+          // result to the Lead (score + level) and Student.current_level.
+          final_level: f.final_level || undefined,
           scheduled_date: f.scheduled_date || undefined,
         } 
       });
@@ -130,7 +137,7 @@ export default function PlacementTestsPage() {
       createMutation.mutate({ 
         leadId: f.leadId,
         slot_id: f.slot_id, // إرسال الـ slot_id المختار
-        assigned_level: f.assigned_level || undefined,
+        suggested_level: f.final_level || undefined, // initial/target level for the paper
         scheduled_date: f.scheduled_date || undefined 
       });
     }
@@ -148,9 +155,18 @@ export default function PlacementTestsPage() {
       render: (r: PlacementTest) => <span className="font-mono text-xs" title={r.id}>{String(r.id).slice(0,8)}…</span> 
     },
     { 
-      key: "assigned_level", 
-      header: "Level", 
-      render: (r: PlacementTest) => <Badge className="bg-purple-100 text-purple-800">{r.assigned_level ?? "—"}</Badge> 
+      key: "level", 
+      header: "Level",
+      render: (r: PlacementTest) => (
+        <span className="inline-flex items-center gap-1.5">
+          <Badge className="bg-purple-100 text-purple-800">{r.final_level ?? "—"}</Badge>
+          {r.suggested_level && r.suggested_level !== r.final_level && (
+            <Badge variant="outline" className="text-xs" title={`Suggested: ${r.suggested_level}`}>
+              {r.suggested_level}
+            </Badge>
+          )}
+        </span>
+      )
     },
     { 
       key: "status", 
@@ -169,11 +185,15 @@ export default function PlacementTestsPage() {
             reset({ 
               leadId: r.lead?.id ?? r.leadId ?? r.lead_id ?? "", 
               slot_id: r.slot_id ?? "",
-              assigned_level: r.assigned_level ?? "",
+              final_level: r.final_level ?? r.suggested_level ?? "",
               status: r.status ?? "", 
-              written_score: r.written_score, 
-              oral_score: r.oral_score, 
-              scheduled_date: r.scheduled_date ? r.scheduled_date.slice(0, 16) : "" 
+              written_score: r.written_score ?? undefined, 
+              oral_score: r.oral_score ?? undefined,
+              scheduled_date: r.scheduled_at
+                ? String(r.scheduled_at).slice(0, 16)
+                : r.scheduled_date
+                  ? r.scheduled_date.slice(0, 16)
+                  : ""
             });
             setShowForm(true);
           }}><Pencil className="h-3 w-3" /></Button>
@@ -238,8 +258,9 @@ export default function PlacementTestsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Target / Initial Level</Label>
-                <Input {...register("assigned_level")} placeholder="e.g. A1, A2, B1" />
+                <Label>Level — A1–C2 (target on create, evaluated on update)</Label>
+                <Input {...register("final_level")} placeholder="e.g. A1, A2, B1" />
+                {errors.final_level && <p className="text-sm text-destructive">{errors.final_level.message}</p>}
               </div>
 
               <div className="space-y-2">

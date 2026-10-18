@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { studentsApi } from "@/api/students";
 import { branchesApi } from "@/api/branches";
+import { groupsApi } from "@/api/groups";
 
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,10 @@ import {
   CreditCard,
   Award,
   UserCheck,
+  UserPlus,
   BookOpen,
+  X,
+  AlertTriangle,
 } from "lucide-react";
 
 /* =========================================================
@@ -190,6 +194,11 @@ export default function StudentsPage() {
   const [showEditForm, setShowEditForm] =
     useState(false);
 
+  // ── "Assign to Group" quick action (direct ACTIVE enrollment) ──
+  const [assignTarget, setAssignTarget] = useState<Student | null>(null);
+  const [assignGroupId, setAssignGroupId] = useState("");
+  const [assignError, setAssignError] = useState<string | null>(null);
+
   /* =========================================================
      STUDENTS
   ========================================================= */
@@ -235,6 +244,42 @@ export default function StudentsPage() {
   const { data: branches } = useQuery({
     queryKey: ["branches"],
     queryFn: branchesApi.findAll,
+  });
+
+  /* =========================================================
+     ASSIGN TO GROUP (direct manual enrollment, Business Rule 2)
+  ========================================================= */
+
+  // Only live groups can receive direct enrollments.
+  const { data: assignableGroups } = useQuery({
+    queryKey: ["groups", "assignable"],
+    queryFn: () => groupsApi.findAll(),
+    enabled: assignTarget !== null,
+    select: (rows) =>
+      (rows ?? []).filter((g) => g.status === "active" || g.status === "upcoming"),
+  });
+
+  const assignToGroupM = useMutation({
+    mutationFn: ({ group, student_id, force }: { group: Group; student_id: string; force?: boolean }) =>
+      groupsApi.assignStudent(group.id, { student_id, force }),
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["group", vars.group.id] });
+      queryClient.invalidateQueries({ queryKey: ["group-students"] });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      toast({ title: "Student assigned — course visible in their LMS" });
+      setAssignTarget(null);
+      setAssignGroupId("");
+      setAssignError(null);
+    },
+    onError: (err: any) => {
+      // 409 = group full → keep the modal open with an override option.
+      if (err?.statusCode === 409) {
+        setAssignError(err.message);
+        return;
+      }
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    },
   });
 
   /* =========================================================
@@ -641,6 +686,20 @@ export default function StudentsPage() {
 
       render: (row: Student) => (
         <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="Assign to Group"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAssignTarget(row);
+              setAssignGroupId("");
+              setAssignError(null);
+            }}
+          >
+            <UserPlus className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -1739,6 +1798,132 @@ export default function StudentsPage() {
   return (
     <div className="space-y-6">
       {dialog}
+
+      {/* ── Assign to Group modal (capacity → 409 → override) ── */}
+      {assignTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold">
+                <UserPlus className="h-5 w-5" /> Assign to Group
+              </h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setAssignTarget(null);
+                  setAssignError(null);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {getStudentName(assignTarget)} — enroll directly into a study
+              group (ACTIVE enrollment).
+            </p>
+
+            <div className="mt-4 space-y-2">
+              <Label>Group</Label>
+              <select
+                value={assignGroupId}
+                onChange={(e) => {
+                  setAssignGroupId(e.target.value);
+                  setAssignError(null);
+                }}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">
+                  {(assignableGroups ?? []).length === 0
+                    ? "No active groups available"
+                    : "Select group…"}
+                </option>
+                {(assignableGroups ?? []).map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.name}
+                    {g.course?.name ? ` — ${g.course.name}` : ""}
+                    {` (${g.student_count ?? 0}/${g.capacity ?? "—"} seats)`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {assignError && (
+              <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/40">
+                <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Cannot assign</span>
+                </div>
+                <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300">
+                  {assignError}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={assignToGroupM.isPending}
+                    onClick={() => {
+                      const group = (assignableGroups ?? []).find(
+                        (g) => g.id === assignGroupId,
+                      );
+                      if (group) {
+                        assignToGroupM.mutate({
+                          group,
+                          student_id: assignTarget.id,
+                          force: true,
+                        });
+                      }
+                    }}
+                  >
+                    {assignToGroupM.isPending
+                      ? "Assigning…"
+                      : "Assign Anyway (Override)"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setAssignError(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setAssignTarget(null);
+                  setAssignError(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                disabled={
+                  !assignGroupId ||
+                  Boolean(assignError) ||
+                  assignToGroupM.isPending
+                }
+                onClick={() => {
+                  const group = (assignableGroups ?? []).find(
+                    (g) => g.id === assignGroupId,
+                  );
+                  if (group) {
+                    assignToGroupM.mutate({
+                      group,
+                      student_id: assignTarget.id,
+                    });
+                  }
+                }}
+              >
+                {assignToGroupM.isPending ? "Assigning…" : "Assign to Group"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <h1 className="text-2xl font-bold tracking-tight">
         {t("nav.students")}

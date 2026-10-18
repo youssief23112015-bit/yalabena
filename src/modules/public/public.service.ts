@@ -21,6 +21,7 @@ import { CourseStatus } from '../../common/enums/course-status.enum';
 import { TestimonialStatus } from '../../common/enums/testimonial-status.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 import { UserStatus } from '../../common/enums/user-status.enum';
+import { upsertLeadForPlacement } from '../../common/utils/placement-lead.util';
 import { PublicLeadDto } from './dto/public-lead.dto';
 import { PublicPlacementBookingDto } from './dto/public-placement-booking.dto';
 import { PublicRegistrationDto } from './dto/public-registration.dto';
@@ -117,14 +118,18 @@ export class PublicService {
 
   /**
    * Anonymous lead from the public site; source is forced to `website`.
-   * Idempotent by phone: an existing contact returns is_new=false without
-   * touching the row (spec: public.service.spec.ts › captureLead).
+   * Idempotent by phone OR email: an existing contact returns is_new=false
+   * without touching the row (Business Rule 1 — dedupe by phone/email;
+   * spec: public.service.spec.ts › captureLead).
    */
   async captureLead(dto: PublicLeadDto): Promise<{ lead_id: string; is_new: boolean }> {
-    const existing = await this.leadRepo
+    const query = this.leadRepo
       .createQueryBuilder('lead')
-      .where('lead.phone = :phone', { phone: dto.phone })
-      .getOne();
+      .where('lead.phone = :phone', { phone: dto.phone });
+    if (dto.email) {
+      query.orWhere('lead.email = :email', { email: dto.email });
+    }
+    const existing = await query.getOne();
     if (existing) {
       return { lead_id: existing.id, is_new: false };
     }
@@ -212,26 +217,17 @@ export class PublicService {
         throw new ConflictException('This slot is fully booked');
       }
 
-      // Find-or-create the lead from the contact info.
-      let lead = await em
-        .getRepository(Lead)
-        .createQueryBuilder('lead')
-        .where('lead.phone = :phone', { phone: dto.phone })
-        .getOne();
-      if (!lead) {
-        lead = await em.getRepository(Lead).save(
-          em.getRepository(Lead).create({
-            first_name: dto.first_name,
-            last_name: dto.last_name,
-            phone: dto.phone,
-            email: dto.email,
-            level_interest: dto.level_interest,
-            branch_id: slot.branch_id,
-            source: LeadSource.WEBSITE,
-            status: LeadStatus.TEST_SCHEDULED,
-          }),
-        );
-      }
+      // Business Rule 2: find-or-create the Lead by phone OR email and keep
+      // the pipeline in sync (existing leads advanced to TEST_SCHEDULED).
+      const lead = await upsertLeadForPlacement(em.getRepository(Lead) as any, {
+        first_name: dto.first_name,
+        last_name: dto.last_name,
+        phone: dto.phone,
+        email: dto.email,
+        branch_id: slot.branch_id,
+        level_interest: dto.level_interest,
+        source: LeadSource.WEBSITE,
+      });
 
       // One active test per lead at a time.
       const activeTest = await em

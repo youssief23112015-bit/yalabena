@@ -94,6 +94,10 @@ export interface Lead {
   source: string;
   status: string;
   level_interest?: string;
+  /** Exam score/degree on the placement test (percent), synced on grading. */
+  placement_score?: number | null;
+  /** Evaluated CEFR level derived from the placement test (A1–C2). */
+  placement_level?: string | null;
   notes?: string;
   assigned_to?: string;
   assigned_to_user?: User;

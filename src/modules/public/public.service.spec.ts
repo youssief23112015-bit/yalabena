@@ -8,6 +8,7 @@ import { Lead } from '../../shared/entities/lead.entity';
 import { TestSlot } from '../../shared/entities/test-slot.entity';
 import { PlacementTest } from '../../shared/entities/placement-test.entity';
 import { LeadSource } from '../../common/enums/lead-source.enum';
+import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { SlotStatus } from '../../common/enums/slot-status.enum';
 import { TestStatus } from '../../common/enums/test-status.enum';
 import { TestimonialStatus } from '../../common/enums/testimonial-status.enum';
@@ -119,6 +120,28 @@ describe('PublicService', () => {
       expect(out).toEqual({ lead_id: 'lead-9', is_new: false });
       expect(leadRepo.save).not.toHaveBeenCalled();
     });
+
+    it('also dedupes by EMAIL when the phone differs (Business Rule 1)', async () => {
+      const qb = qbStub({ id: 'lead-7' });
+      leadRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const out = await service.captureLead({ ...dto, phone: '01099998888' });
+
+      expect(out).toEqual({ lead_id: 'lead-7', is_new: false });
+      expect(qb.where).toHaveBeenCalledWith('lead.phone = :phone', { phone: '01099998888' });
+      expect(qb.orWhere).toHaveBeenCalledWith('lead.email = :email', { email: dto.email });
+      expect(leadRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('skips the email clause when no email is provided', async () => {
+      const qb = qbStub(null);
+      leadRepo.createQueryBuilder.mockReturnValue(qb);
+
+      leadRepo.save.mockImplementation(async (x: any) => ({ id: 'lead-1', ...x }));
+      await service.captureLead({ ...dto, email: undefined });
+
+      expect(qb.orWhere).not.toHaveBeenCalled();
+    });
   });
 
   // ---------- page views ----------
@@ -175,8 +198,9 @@ describe('PublicService', () => {
         createQueryBuilder: jest.fn(() => qbStub(slot)),
         save: jest.fn(async (x: any) => x),
       };
+      const emLeadQb = qbStub(existingLead);
       const emLeadRepo = {
-        createQueryBuilder: jest.fn(() => qbStub(existingLead)),
+        createQueryBuilder: jest.fn(() => emLeadQb),
         create: jest.fn((x: any) => x),
         save: jest.fn(async (x: any) => ({ id: 'lead-1', ...x })),
       };
@@ -194,7 +218,7 @@ describe('PublicService', () => {
         }),
       };
       slotRepo.manager = { transaction: jest.fn(async (cb: any) => cb(em)) };
-      return { emSlotRepo, emLeadRepo, emTestRepo };
+      return { emSlotRepo, emLeadRepo, emTestRepo, emLeadQb };
     };
 
     it('books: creates lead, reserves seat, schedules at slot start', async () => {
@@ -223,6 +247,36 @@ describe('PublicService', () => {
 
     it('reuses an existing lead instead of creating a duplicate', async () => {
       const { emLeadRepo } = wireTx({ ...openSlot }, { id: 'lead-7' });
+      const out = await service.bookPlacementTest(dto);
+      expect(out.lead_id).toBe('lead-7');
+      // No duplicate row is created…
+      expect(emLeadRepo.create).not.toHaveBeenCalled();
+      // …but the booking advances the existing lead to TEST_SCHEDULED.
+      expect(emLeadRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'lead-7', status: LeadStatus.TEST_SCHEDULED }),
+      );
+    });
+
+    it('dedupes by EMAIL as well as phone (Business Rule 2)', async () => {
+      const { emLeadQb } = wireTx({ ...openSlot });
+      await service.bookPlacementTest(dto);
+      expect(emLeadQb.where).toHaveBeenCalledWith('lead.phone = :phone', { phone: dto.phone });
+      expect(emLeadQb.orWhere).toHaveBeenCalledWith('lead.email = :email', { email: dto.email });
+    });
+
+    it('creates the lead with TEST_SCHEDULED when none exists', async () => {
+      const { emLeadRepo } = wireTx({ ...openSlot });
+      await service.bookPlacementTest(dto);
+      expect(emLeadRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ status: LeadStatus.TEST_SCHEDULED, source: LeadSource.WEBSITE }),
+      );
+    });
+
+    it('leaves an already-scheduled, fully-populated lead untouched (no redundant save)', async () => {
+      const { emLeadRepo } = wireTx(
+        { ...openSlot },
+        { id: 'lead-7', status: LeadStatus.TEST_SCHEDULED, email: dto.email, branch_id: 'b-1' },
+      );
       const out = await service.bookPlacementTest(dto);
       expect(out.lead_id).toBe('lead-7');
       expect(emLeadRepo.save).not.toHaveBeenCalled();

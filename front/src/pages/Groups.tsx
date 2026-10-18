@@ -8,6 +8,7 @@ import { groupsApi } from "@/api/groups";
 import { coursesApi } from "@/api/courses";
 import { branchesApi } from "@/api/branches";
 import { usersApi } from "@/api/users";
+import { studentsApi } from "@/api/students";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Group, Course, Branch, User, GroupSchedule } from "@/types";
 import {
   Plus, X, Pencil, Trash2, Eye, ChevronLeft, CalendarDays,
-  Clock, AlertTriangle, MapPin, Video, Monitor
+  Clock, AlertTriangle, MapPin, Video, Monitor, UserCog, UserPlus
 } from "lucide-react";
 
 const groupModes = ["in_person", "online", "hybrid"];
@@ -67,6 +68,17 @@ export default function GroupsPage() {
   const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
   const [scheduleForm, setScheduleForm] = useState({ day_of_week: 0, start_time: "", end_time: "" });
   const [conflictWarning, setConflictWarning] = useState<string[]>([]);
+
+  // ── Manage Teacher modal state (direct assignment, conflict/force flow) ──
+  const [teacherTarget, setTeacherTarget] = useState<Group | null>(null);
+  const [teacherChoice, setTeacherChoice] = useState("");
+  const [teacherError, setTeacherError] = useState<string | null>(null);
+
+  // ── Enroll Student modal state (direct ACTIVE enrollment, capacity/force) ──
+  const [enrollTarget, setEnrollTarget] = useState<Group | null>(null);
+  const [studentSearch, setStudentSearch] = useState("");
+  const [enrollStudentId, setEnrollStudentId] = useState("");
+  const [enrollError, setEnrollError] = useState<string | null>(null);
 
   const {
     data: groups,
@@ -174,6 +186,278 @@ export default function GroupsPage() {
       toast({ variant: "destructive", title: "Error", description: err.message });
     },
   });
+
+  // Active students searchable for the Enroll Student modal (only while open).
+  const { data: enrollableStudents } = useQuery({
+    queryKey: ["students", "enroll-picker", studentSearch],
+    queryFn: () =>
+      studentsApi.findAll({ search: studentSearch || undefined, status: "active" }),
+    enabled: enrollTarget !== null,
+  });
+
+  /**
+   * Direct teacher assignment (Business Rule 1). A 409 means schedule/room
+   * conflicts were detected — the modal shows them and offers a forced retry.
+   */
+  const assignTeacherM = useMutation({
+    mutationFn: ({ group, teacher_id, force }: { group: Group; teacher_id: string; force?: boolean }) =>
+      groupsApi.assignTeacher(group.id, { teacher_id, force }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      if (selectedGroupId) queryClient.invalidateQueries({ queryKey: ["group", selectedGroupId] });
+      if (teacherTarget) queryClient.invalidateQueries({ queryKey: ["group", teacherTarget.id] });
+      toast({ title: "Teacher assigned successfully" });
+      setTeacherTarget(null);
+      setTeacherError(null);
+    },
+    onError: (err: any) => {
+      if (err?.statusCode === 409) {
+        setTeacherError(err.message);
+        return;
+      }
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    },
+  });
+
+  /**
+   * Direct manual enrollment (Business Rule 2): ACTIVE enrollment + roster.
+   * A 409 means the group is full — the modal warns and offers a forced retry.
+   */
+  const enrollStudentM = useMutation({
+    mutationFn: ({ group, student_id, force }: { group: Group; student_id: string; force?: boolean }) =>
+      groupsApi.assignStudent(group.id, { student_id, force }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["group", enrollTarget?.id] });
+      queryClient.invalidateQueries({ queryKey: ["group-students"] });
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      toast({ title: "Student enrolled — course visible in their LMS" });
+      setEnrollTarget(null);
+      setEnrollError(null);
+      setEnrollStudentId("");
+      setStudentSearch("");
+    },
+    onError: (err: any) => {
+      if (err?.statusCode === 409) {
+        setEnrollError(err.message);
+        return;
+      }
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    },
+  });
+
+  const openTeacherModal = (group: Group) => {
+    setTeacherTarget(group);
+    setTeacherChoice(group.teacher_id ?? "");
+    setTeacherError(null);
+  };
+
+  const openEnrollModal = (group: Group) => {
+    setEnrollTarget(group);
+    setEnrollStudentId("");
+    setStudentSearch("");
+    setEnrollError(null);
+  };
+
+  const closeTeacherModal = () => {
+    setTeacherTarget(null);
+    setTeacherError(null);
+  };
+
+  const closeEnrollModal = () => {
+    setEnrollTarget(null);
+    setEnrollStudentId("");
+    setStudentSearch("");
+    setEnrollError(null);
+  };
+
+  // ── Manage Teacher modal (conflict → 409 → "Assign Anyway" force flow) ──
+  const teacherDialog = teacherTarget ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <UserCog className="h-5 w-5" /> Manage Teacher
+          </h2>
+          <Button variant="ghost" size="icon" onClick={closeTeacherModal}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {teacherTarget.name}
+          {teacherTarget.teacher
+            ? ` — currently ${teacherTarget.teacher.first_name} ${teacherTarget.teacher.last_name}`
+            : " — unassigned"}
+        </p>
+
+        <div className="mt-4 space-y-2">
+          <Label>Teacher</Label>
+          <select
+            value={teacherChoice}
+            onChange={(e) => {
+              setTeacherChoice(e.target.value);
+              setTeacherError(null);
+            }}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Select teacher…</option>
+            {teachers?.map((u: User) => (
+              <option key={u.id} value={u.id}>
+                {u.first_name} {u.last_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {teacherError && (
+          <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/40">
+            <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Scheduling conflicts detected</span>
+            </div>
+            <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300">{teacherError}</p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={assignTeacherM.isPending}
+                onClick={() =>
+                  assignTeacherM.mutate({ group: teacherTarget, teacher_id: teacherChoice, force: true })
+                }
+              >
+                {assignTeacherM.isPending ? "Assigning…" : "Assign Anyway (Override)"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={closeTeacherModal}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={closeTeacherModal}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!teacherChoice || Boolean(teacherError) || assignTeacherM.isPending}
+            onClick={() =>
+              assignTeacherM.mutate({ group: teacherTarget, teacher_id: teacherChoice })
+            }
+          >
+            {assignTeacherM.isPending ? "Assigning…" : "Assign Teacher"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
+  // ── Enroll Student modal (capacity → 409 → "Enroll Anyway" force flow) ──
+  const rosterIds = new Set((enrollTarget?.students ?? []).map((s) => s.id));
+  const isFull =
+    enrollTarget != null &&
+    (enrollTarget.student_count ?? 0) >= (enrollTarget.capacity ?? Number.MAX_SAFE_INTEGER);
+
+  const enrollDialog = enrollTarget ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <UserPlus className="h-5 w-5" /> Enroll Student
+          </h2>
+          <Button variant="ghost" size="icon" onClick={closeEnrollModal}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {enrollTarget.name}
+          {enrollTarget.course?.name ? ` — ${enrollTarget.course.name}` : ""} ·{" "}
+          {enrollTarget.student_count ?? 0} / {enrollTarget.capacity ?? "—"} seats
+        </p>
+
+        {isFull && (
+          <div className="mt-3 rounded-md border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
+            This group is at full capacity — enrolling will require an admin override.
+          </div>
+        )}
+
+        <div className="mt-4 space-y-2">
+          <Label>Search active students</Label>
+          <Input
+            placeholder="Name, email or student number…"
+            value={studentSearch}
+            onChange={(e) => setStudentSearch(e.target.value)}
+          />
+          <select
+            value={enrollStudentId}
+            onChange={(e) => {
+              setEnrollStudentId(e.target.value);
+              setEnrollError(null);
+            }}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">
+              {(enrollableStudents ?? []).length === 0 ? "No students match" : "Select student…"}
+            </option>
+            {(enrollableStudents ?? []).map((s: any) => {
+              const label = s.user
+                ? `${s.user.first_name ?? ""} ${s.user.last_name ?? ""}`.trim()
+                : s.id.slice(0, 8);
+              const already = rosterIds.has(s.id);
+              return (
+                <option key={s.id} value={s.id} disabled={already}>
+                  {label}
+                  {already ? " (already enrolled)" : ""}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        {enrollError && (
+          <div className="mt-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950/40">
+            <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-medium">Cannot enroll</span>
+            </div>
+            <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-300">{enrollError}</p>
+            <div className="mt-3 flex gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={enrollStudentM.isPending}
+                onClick={() =>
+                  enrollStudentM.mutate({
+                    group: enrollTarget,
+                    student_id: enrollStudentId,
+                    force: true,
+                  })
+                }
+              >
+                {enrollStudentM.isPending ? "Enrolling…" : "Enroll Anyway (Override)"}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={closeEnrollModal}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="outline" onClick={closeEnrollModal}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!enrollStudentId || Boolean(enrollError) || enrollStudentM.isPending}
+            onClick={() =>
+              enrollStudentM.mutate({ group: enrollTarget, student_id: enrollStudentId })
+            }
+          >
+            {enrollStudentM.isPending ? "Enrolling…" : "Enroll Student"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const checkConflictsMutation = useMutation({
     mutationFn: groupsApi.checkConflicts,
@@ -308,6 +592,9 @@ export default function GroupsPage() {
           </Button>
           {!isStudent && (
             <>
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Manage Teacher" onClick={(e) => { e.stopPropagation(); openTeacherModal(row); }}>
+                <UserCog className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); startEdit(row); }}>
                 <Pencil className="h-4 w-4" />
               </Button>
@@ -353,6 +640,8 @@ export default function GroupsPage() {
     return (
       <div className="space-y-6">
         {dialog}
+        {teacherDialog}
+        {enrollDialog}
         <Button variant="outline" onClick={() => { setView("list"); setSelectedGroupId(null); }} className="gap-2">
           <ChevronLeft className="h-4 w-4" /> Back to Groups
         </Button>
@@ -372,7 +661,15 @@ export default function GroupsPage() {
             </div>
           </div>
           {!isStudent && (
-            <Button onClick={() => startEdit(selectedGroup)}><Pencil className="h-4 w-4 mr-2" /> Edit Group</Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => openTeacherModal(selectedGroup)}>
+                <UserCog className="h-4 w-4 mr-2" /> Manage Teacher
+              </Button>
+              <Button variant="outline" onClick={() => openEnrollModal(selectedGroup)}>
+                <UserPlus className="h-4 w-4 mr-2" /> Enroll Student
+              </Button>
+              <Button onClick={() => startEdit(selectedGroup)}><Pencil className="h-4 w-4 mr-2" /> Edit Group</Button>
+            </div>
           )}
         </div>
 
@@ -457,6 +754,13 @@ export default function GroupsPage() {
           </TabsContent>
 
           <TabsContent value="students" className="space-y-4">
+            {!isStudent && (
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => openEnrollModal(selectedGroup)}>
+                  <UserPlus className="h-4 w-4 mr-1" /> Enroll Student
+                </Button>
+              </div>
+            )}
             {selectedGroup.students && selectedGroup.students.length > 0 ? (
               <div className="grid gap-3 md:grid-cols-2">
                 {selectedGroup.students.map((student) => {
@@ -479,7 +783,16 @@ export default function GroupsPage() {
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">No students enrolled.</div>
+              <div className="text-center py-8 text-muted-foreground">
+                No students enrolled.
+                {!isStudent && (
+                  <div className="mt-3">
+                    <Button size="sm" variant="outline" onClick={() => openEnrollModal(selectedGroup)}>
+                      <UserPlus className="h-4 w-4 mr-1" /> Enroll Student
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </TabsContent>
 
@@ -508,6 +821,8 @@ export default function GroupsPage() {
   return (
     <div className="space-y-6">
       {dialog}
+      {teacherDialog}
+      {enrollDialog}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">{t("nav.groups")}</h1>
         <div className="flex gap-2">

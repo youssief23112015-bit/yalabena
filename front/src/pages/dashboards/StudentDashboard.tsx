@@ -1,14 +1,17 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sessionsApi } from "@/api/sessions";
 import { lmsApi } from "@/api/lms";
+import { placementAdminApi } from "@/api/placementAdmin";
+import { fetchPublicTestSlots } from "@/api/public";
 import { useAuthStore } from "@/store/authStore";
+import { useToast } from "@/hooks/use-toast";
 import type { Group, SessionItem } from "@/types";
 import {
   sessionGroupId,
@@ -49,6 +52,15 @@ const STATUS_STYLES: Record<SessionUiStatus, string> = {
   cancelled: "bg-red-500/10 text-red-700 dark:text-red-300",
 };
 
+/** Badge colors for placement-test statuses (matches backend TestStatus). */
+const PLACEMENT_STATUS_STYLES: Record<string, string> = {
+  scheduled: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  in_progress: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  completed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  no_show: "bg-red-500/10 text-red-700 dark:text-red-300",
+  cancelled: "bg-red-500/10 text-red-700 dark:text-red-300",
+};
+
 /**
  * Distraction-free student home: my session statistics, upcoming sessions
  * (rendered in the user's time zone, default Africa/Cairo), active courses
@@ -73,6 +85,47 @@ export default function StudentDashboard() {
     queryFn: () => lmsApi.myGroups(),
     retry: false,
     staleTime: 60_000,
+  });
+
+  // ── Placement test: my bookings (schedule + evaluated result) and the
+  //    open slots published by the public self-booking flow.
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [slotToBook, setSlotToBook] = useState("");
+
+  const placementTestsQ = useQuery({
+    queryKey: ["dashboard", "my-placement-tests"],
+    queryFn: () => placementAdminApi.myTests(),
+    retry: false,
+    staleTime: 60_000,
+  });
+  const placementSlotsQ = useQuery({
+    queryKey: ["public-placement-slots"],
+    queryFn: () => fetchPublicTestSlots(),
+    retry: false,
+  });
+
+  const bookPlacementM = useMutation({
+    mutationFn: (slotId: string) => placementAdminApi.book({ slot_id: slotId }),
+    onSuccess: () => {
+      toast({
+        title: t("studentDashboard.placement.bookedTitle", "Placement test booked"),
+        description: t(
+          "studentDashboard.placement.bookedDesc",
+          "Your test has been scheduled. We will see you there!",
+        ),
+      });
+      setSlotToBook("");
+      void queryClient.invalidateQueries({ queryKey: ["dashboard", "my-placement-tests"] });
+      void queryClient.invalidateQueries({ queryKey: ["public-placement-slots"] });
+      void queryClient.invalidateQueries({ queryKey: ["leads"] });
+    },
+    onError: (e: any) =>
+      toast({
+        variant: "destructive",
+        title: t("common.error", "Error"),
+        description: e?.message,
+      }),
   });
 
   const myGroups = useMemo(() => groupsQ.data ?? [], [groupsQ.data]);
@@ -270,6 +323,120 @@ export default function StudentDashboard() {
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                   <CalendarClock className="mb-2 h-8 w-8 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">{t("studentDashboard.upcoming.empty")}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Placement test: book an open slot, track status, see the result */}
+          <Card className="shadow-sm border-border/60">
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                {t("studentDashboard.placement.title", "Placement Test")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Available slots → booking */}
+              {(placementSlotsQ.data ?? []).length > 0 && (
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[16rem] flex-1 space-y-1">
+                    <label
+                      htmlFor="placement-slot"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      {t("studentDashboard.placement.chooseSlot", "Available slot")}
+                    </label>
+                    <select
+                      id="placement-slot"
+                      value={slotToBook}
+                      onChange={(e) => setSlotToBook(e.target.value)}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">
+                        {t("studentDashboard.placement.pickSlot", "Pick a date & time…")}
+                      </option>
+                      {(placementSlotsQ.data ?? []).map((s: any) => {
+                        const seats = Math.max(0, (s.capacity ?? 0) - (s.booked_count ?? 0));
+                        return (
+                          <option key={s.id} value={s.id} disabled={seats <= 0}>
+                            {s.date ?? ""} {String(s.start_time ?? "").slice(0, 5)}
+                            {s.branch ? ` — ${s.branch.name}` : ""} ({seats}{" "}
+                            {t("studentDashboard.placement.seats", "seats")})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                  <Button
+                    size="sm"
+                    disabled={!slotToBook || bookPlacementM.isPending}
+                    onClick={() => bookPlacementM.mutate(slotToBook)}
+                  >
+                    {bookPlacementM.isPending && (
+                      <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    )}
+                    {t("studentDashboard.placement.book", "Book Placement Test")}
+                  </Button>
+                </div>
+              )}
+
+              {/* My tests: schedule + status + evaluated degree/level */}
+              {(placementTestsQ.data ?? []).length > 0 ? (
+                <div className="space-y-3">
+                  {(placementTestsQ.data ?? []).map((pt) => {
+                    const pct =
+                      pt.written_score != null ? Math.round(Number(pt.written_score)) : null;
+                    const level = pt.final_level ?? pt.suggested_level ?? null;
+                    const when =
+                      pt.slot?.date ??
+                      (pt.scheduled_at ? String(pt.scheduled_at).slice(0, 10) : null);
+                    const status = String(pt.status ?? "scheduled");
+                    return (
+                      <div
+                        key={pt.id}
+                        className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {when
+                              ? `${when}${pt.slot?.start_time ? ` · ${String(pt.slot.start_time).slice(0, 5)}` : ""}`
+                              : t("studentDashboard.placement.unknownTime", "Scheduled test")}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {pt.slot?.branch?.name ??
+                              pt.slot?.mode ??
+                              t("studentDashboard.placement.awaitingNotes", "Awaiting evaluation results")}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {pct !== null && (
+                            <Badge variant="outline" className="tabular-nums">
+                              {t("studentDashboard.placement.degree", "Degree")}: {pct}%
+                            </Badge>
+                          )}
+                          {level && (
+                            <Badge className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300">
+                              {level}
+                            </Badge>
+                          )}
+                          <Badge className={PLACEMENT_STATUS_STYLES[status] ?? ""}>
+                            {status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                  <GraduationCap className="mb-2 h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    {t(
+                      "studentDashboard.placement.empty",
+                      "No placement test booked yet — pick a slot above to get your level assessed.",
+                    )}
+                  </p>
                 </div>
               )}
             </CardContent>

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from 
 import { EnrollmentsService } from './enrollments.service';
 import { CreateEnrollmentDto } from './dto/create-enrollment.dto';
 import { UpdateEnrollmentStatusDto } from './dto/update-enrollment-status.dto';
+import { BookEnrollmentDto } from './dto/book-enrollment.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AuthUser } from '../../common/utils/branch-scope';
@@ -14,6 +15,24 @@ export class EnrollmentsController {
   @Roles('super_admin', 'branch_manager', 'sales', 'finance')
   create(@Body() dto: CreateEnrollmentDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user);
+  }
+
+  /**
+   * Student self-service booking ("Book this Course"). Creates a PENDING
+   * enrollment request for the logged-in student only — level eligibility
+   * is enforced server-side (400 on violation).
+   */
+  @Post('book')
+  @Roles('student')
+  book(@Body() dto: BookEnrollmentDto, @CurrentUser() user: AuthUser) {
+    return this.service.bookCourse(user, dto);
+  }
+
+  /** The logged-in student's own enrollments (pending + active + history). */
+  @Get('my')
+  @Roles('student')
+  findMy(@CurrentUser() user: AuthUser) {
+    return this.service.getMyEnrollments(user);
   }
 
   @Get()
@@ -42,6 +61,27 @@ export class EnrollmentsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.updateStatus(id, dto, user);
+  }
+
+  /**
+   * Admin / Branch Manager approval: PENDING -> ACTIVE, triggers the
+   * invoice/payment workflow and LMS access for the student.
+   */
+  @Patch(':id/approve')
+  @Roles('super_admin', 'branch_manager', 'sales', 'finance')
+  approve(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
+    return this.service.approve(id, user);
+  }
+
+  /** Admin / Branch Manager rejection of a PENDING booking request. */
+  @Patch(':id/reject')
+  @Roles('super_admin', 'branch_manager', 'sales', 'finance')
+  reject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('reason') reason: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.reject(id, reason, user);
   }
 
   @Post(':id/drop')

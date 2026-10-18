@@ -26,6 +26,11 @@ export interface UpdateStudentDto {
 }
 
 export const studentsApi = {
+  /** The logged-in student's own profile (incl. current_level). */
+  me: async (): Promise<Student | null> => {
+    const { data } = await apiClient.get<Student>("/students/me");
+    return data ?? null;
+  },
   findAll: async (params?: StudentFilters): Promise<Student[]> => {
     const { data } = await apiClient.get<Student[]>("/students", { params });
     return data;

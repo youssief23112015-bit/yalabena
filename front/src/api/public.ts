@@ -108,8 +108,61 @@ export async function fetchPublicTestSlots(branchId?: string): Promise<PublicTes
 
 export async function bookPublicPlacementTest(
   input: PublicPlacementBookingInput,
-): Promise<{ test_id: string; message: string }> {
+): Promise<{
+  test_id: string;
+  lead_id?: string;
+  /** ISO datetime of the scheduled session (Business Rule 3 — schedule visibility). */
+  scheduled_at?: string;
+  message: string;
+}> {
   const { data } = await apiClient.post("/public/placement-bookings", input);
+  return data;
+}
+
+/* ── Instant guest test (frictionless onboarding, Path A) ───────────── */
+
+export interface InstantBookingInput {
+  name: string;
+  phone: string;
+  email?: string;
+  branch_id?: string;
+}
+
+export interface InstantBookingResult {
+  success: boolean;
+  /** Capability token for /placement-test?testId=… — no login required. */
+  testId: string;
+  leadId: string;
+}
+
+export async function bookInstantPlacementTest(
+  input: InstantBookingInput,
+): Promise<InstantBookingResult> {
+  const { data } = await apiClient.post<InstantBookingResult>(
+    "/public/placement-bookings/instant",
+    input,
+  );
+  return data;
+}
+
+export interface GuestPlacementSession {
+  testId: string;
+  status: string;
+  completed: boolean;
+  first_name: string | null;
+  result: {
+    score: number;
+    maxScore: number;
+    percentage: number;
+    level: string | null;
+  } | null;
+}
+
+/** Validates the testId link and returns the session (incl. stored result). */
+export async function fetchPublicPlacementTest(id: string): Promise<GuestPlacementSession> {
+  const { data } = await apiClient.get<GuestPlacementSession>(
+    `/public/placement-tests/${encodeURIComponent(id)}`,
+  );
   return data;
 }
 

@@ -1,8 +1,19 @@
 import apiClient from "@/api/client";
+import { useAuthStore } from "@/store/authStore";
 
 /* =========================================================
    Question Types
 ========================================================= */
+
+/**
+ * Guest sessions (instant booking / admin-copied links) execute through the
+ * unauthenticated /public/placement-tests routes — possession of the
+ * unguessable testId is the authorization. Authenticated users (students,
+ * staff previews) keep the ownership-checked /placement-tests routes.
+ */
+export function isGuestSession(): boolean {
+  return !useAuthStore.getState().accessToken;
+}
 
 export type PlacementQuestionType =
   | "mcq"
@@ -282,8 +293,12 @@ export function getWrittenPaper(
   const existing = inflightPapers.get(key);
   if (existing) return existing;
 
+  const path = isGuestSession()
+    ? `/public/placement-tests/${encodeURIComponent(testId)}/paper`
+    : `/placement-tests/${encodeURIComponent(testId)}/written/paper`;
+
   const promise = apiClient
-    .post(`/placement-tests/${encodeURIComponent(testId)}/written/paper`, {
+    .post(path, {
       level,
       ...(count !== undefined ? { count } : {}),
       ...(categories?.length ? { categories } : {}),
@@ -340,10 +355,11 @@ export async function submitWritten(
     answers: Array.from(byQuestion.values()),
   };
 
-  const response = await apiClient.post(
-    `/placement-tests/${encodeURIComponent(testId)}/written/submit`,
-    payload,
-  );
+  const path = isGuestSession()
+    ? `/public/placement-tests/${encodeURIComponent(testId)}/submit`
+    : `/placement-tests/${encodeURIComponent(testId)}/written/submit`;
+
+  const response = await apiClient.post(path, payload);
 
   return normalizeSubmitResponse(response.data);
 }

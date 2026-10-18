@@ -55,7 +55,20 @@
     "sending": "جارٍ الإرسال…",
     "sendSuccess": "تم إرسال الإشعار",
     "sendSuccessDescription": "تم التسليم إلى {{count}} مستخدم.",
-    "sendError": "تعذّر إرسال الإشعار"
+    "sendError": "تعذّر إرسال الإشعار",
+    "targetAllUsers": "جميع المستخدمين",
+    "targetAllStudents": "جميع الطلاب",
+    "targetAllTeachers": "جميع المعلمين",
+    "targetSpecificPerson": "شخص محدد",
+    "targetGroupStudents": "طلاب المجموعة الدراسية",
+    "targetMyGroupStudents": "طلاب مجموعتي",
+    "teacherRestrictionHint": "يُسمح للمعلم بإرسال الإشعارات فقط لطلاب مجموعاته الخاصة.",
+    "searchPeople": "ابحث بالاسم أو البريد الإلكتروني…",
+    "noPeople": "لا توجد أشخاص مطابقون",
+    "selectPerson": "اختر الشخص المراد إشعارةه",
+    "selectGroup": "اختر مجموعة دراسية",
+    "noMyGroups": "ليس لديك مجموعات مخصصة",
+    "noGroups": "لا توجد مجموعات متاحة"
   },
   "myCertificates": {
     "title": "شهاداتي",

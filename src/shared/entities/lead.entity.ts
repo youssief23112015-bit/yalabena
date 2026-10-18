@@ -36,6 +36,14 @@ export class Lead {
   @Column({ type: 'varchar', length: 10, nullable: true })
   level_interest: string;
 
+  /** Exam score/degree achieved on the placement test (percent, 0–100). */
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  placement_score: number;
+
+  /** Evaluated CEFR level derived from the placement test (A1–C2). */
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  placement_level: string;
+
   @Column({ type: 'text', nullable: true })
   notes: string;
 

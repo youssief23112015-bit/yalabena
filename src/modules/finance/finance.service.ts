@@ -18,6 +18,11 @@ import { CreatePaymentDto } from './dto/create-payment.dto';
 import { CreateRefundDto } from './dto/create-refund.dto';
 import { CreatePromoCodeDto } from './dto/create-promo-code.dto';
 import { QueryInvoiceDto } from './dto/query-invoice.dto';
+import { PromoCodeService } from './promo-code.service';
+import { InstallmentStatus } from '../../common/enums/installment-status.enum';
+import { InvoiceItemType } from '../../common/enums/invoice-item-type.enum';
+import { round2 } from '../../common/utils/math.util';
+import { effectiveBranchFilter } from '../../common/utils/branch-scope';
 
 
 @Injectable()
@@ -31,12 +36,33 @@ export class FinanceService {
     @InjectRepository(FinancialTransaction) private ftRepo: Repository<FinancialTransaction>,
     @InjectRepository(InvoiceItem) private itemRepo: Repository<InvoiceItem>,
     private dataSource: DataSource,
+    private promoCodeService: PromoCodeService,
   ) {}
 
   // ─── ALIASES FOR CONTROLLER & ENROLLMENTS COMPATIBILITY ───
 
+  /**
+   * Invoice generation for a new enrollment (SRS §4.8). Delegates to
+   * createInvoice, which now honours the enrollment payload fields:
+   * `amount` (subtotal), `manual_discount` (mapped to discount_amount),
+   * `promo_code` (validated + counted), `installments_count` (plan split)
+   * and `due_days` (invoice due date, default 7 days).
+   */
   async createInvoiceForEnrollment(data: any) {
     return this.createInvoice(data, data.created_by, data.branch_id);
+  }
+
+  /**
+   * Idempotency guard for the enrollment approval flow: approval must never
+   * double-bill a student whose enrollment was already invoiced (e.g. via
+   * the staff-created enrollment path or a retried approval).
+   */
+  async hasInvoiceForEnrollment(enrollmentId: string): Promise<boolean> {
+    if (!enrollmentId) return false;
+    const count = await this.invoiceRepo.count({
+      where: { enrollment_id: enrollmentId },
+    });
+    return count > 0;
   }
 
   async createManualInvoice(dto: CreateInvoiceDto, user: any) {
@@ -63,8 +89,36 @@ export class FinanceService {
     return { success: true };
   }
 
-  async listPayments(user: any, filter: any) {
-    return this.paymentRepo.find({ where: filter });
+  async listPayments(
+    user: any,
+    filter: { invoice_id?: string; branch_id?: string; from?: string; to?: string } = {},
+  ) {
+    // Payment has NO branch_id / from / to columns — passing those keys to
+    // find({ where }) throws EntityPropertyNotFoundError. Branch scoping
+    // goes through the invoice relation; the date range maps to paid_at.
+    const qb = this.paymentRepo
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.invoice', 'invoice')
+      .leftJoinAndSelect('invoice.student', 'student')
+      .leftJoinAndSelect('student.user', 'user')
+      .leftJoinAndSelect('invoice.branch', 'branch')
+      .leftJoinAndSelect('p.recorder', 'recorder')
+      .orderBy('p.paid_at', 'DESC');
+
+    const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
+    // '__none__' = branchless non-admin: return nothing rather than running
+    // an invalid uuid comparison against the invoice.branch_id column.
+    if (branchFilter === '__none__') return [];
+    if (branchFilter) {
+      qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
+    }
+    if (filter?.invoice_id) {
+      qb.andWhere('p.invoice_id = :invoiceId', { invoiceId: filter.invoice_id });
+    }
+    if (filter?.from) qb.andWhere('p.paid_at >= :from', { from: filter.from });
+    if (filter?.to) qb.andWhere('p.paid_at <= :to', { to: filter.to });
+
+    return qb.getMany();
   }
 
   async getPayment(id: string, user: any) {
@@ -76,13 +130,52 @@ export class FinanceService {
     return this.requestRefund(dto, userId);
   }
 
-  async listRefunds(user: any, filter: any) {
-    return this.refundRepo.find({ where: filter });
+  /**
+   * Refund list (SRS §4.8). Refund has NO branch_id column — the previous
+   * find({ where: { branch_id } }) crashed with EntityPropertyNotFoundError.
+   * Branch scoping runs through invoice.branch_id; the response carries the
+   * invoice/branch/payment and approver/processor details for the UI.
+   */
+  async listRefunds(
+    user: any,
+    filter: { status?: string; branch_id?: string } = {},
+  ) {
+    const qb = this.refundRepo
+      .createQueryBuilder('r')
+      .innerJoinAndSelect('r.invoice', 'invoice')
+      .leftJoinAndSelect('invoice.branch', 'branch')
+      .leftJoinAndSelect('r.payment', 'payment')
+      .leftJoinAndSelect('r.approver', 'approver')
+      .leftJoinAndSelect('r.processor', 'processor')
+      .orderBy('r.created_at', 'DESC');
+
+    const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
+    // '__none__' = branchless non-admin: return nothing rather than running
+    // an invalid uuid comparison against the invoice.branch_id column.
+    if (branchFilter === '__none__') return [];
+    if (branchFilter) {
+      qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
+    }
+    if (filter?.status) {
+      qb.andWhere('r.status = :status', { status: filter.status });
+    }
+
+    return qb.getMany();
   }
 
   async decideRefund(id: string, action: string, note: string, user: any) {
-    const status = action === 'APPROVE' ? RefundStatus.APPROVED : RefundStatus.REJECTED;
-    await this.refundRepo.update(id, { status, rejection_reason: note } as any);
+    // ApproveRefundDto only accepts lowercase 'approve' | 'reject' — the
+    // previous `action === 'APPROVE'` comparison was never true, so every
+    // approval was silently stored as REJECTED. Normalise the case.
+    const approved = String(action).toUpperCase() === 'APPROVE';
+    const status = approved ? RefundStatus.APPROVED : RefundStatus.REJECTED;
+    // Refund has no `rejection_reason` column — writing it crashed the UPDATE
+    // with EntityPropertyNotFoundError. Persist the decision note in the
+    // real `reason_note` column, and only on rejection so the original
+    // request note survives approvals.
+    const patch: any = { status };
+    if (status === RefundStatus.REJECTED && note) patch.reason_note = note;
+    await this.refundRepo.update(id, patch);
     return { success: true };
   }
 
@@ -133,11 +226,45 @@ export class FinanceService {
               0,
             )
           : Number((invoiceData as any).amount ?? 0));
-      const discountAmount = Number((invoiceData as any).discount_amount ?? 0);
-      const totalAmount = Number(
-        (invoiceData as any).total_amount ?? computedSubtotal - discountAmount,
+
+      // ── Discounts & promo code (SRS §4.8) ──
+      // Field-mismatch fix: enrollments send `manual_discount`, the manual
+      // invoice DTO sends `discount_amount` — both feed the same column.
+      // When a promo_code is provided it is validated (expiry, usage limit,
+      // branch/course scoping) and its discount replaces the manual one.
+      let discountAmount = round2(
+        Number(
+          (invoiceData as any).manual_discount ??
+            (invoiceData as any).discount_amount ??
+            0,
+        ) || 0,
       );
-      const dueDays = Number((invoiceData as any).due_days ?? 0);
+      let promo: PromoCode | null = null;
+      const promoCodeInput = (invoiceData as any).promo_code;
+      if (promoCodeInput) {
+        const courseId =
+          (invoiceData as any).course_id ??
+          dtoItems?.find((it: any) => it.course_id)?.course_id;
+        promo = await this.validatePromoCode(
+          String(promoCodeInput),
+          courseId,
+          branchId ?? (invoiceData as any).branch_id,
+        );
+        discountAmount = this.promoCodeService.computeDiscount(
+          promo,
+          computedSubtotal,
+        );
+      }
+
+      const totalAmount = Number(
+        (invoiceData as any).total_amount ??
+          round2(computedSubtotal - discountAmount),
+      );
+      const rawDueDays = (invoiceData as any).due_days;
+      const dueDays =
+        rawDueDays === undefined || rawDueDays === null || rawDueDays === ''
+          ? 7
+          : Number(rawDueDays) || 0;
       const dueDate =
         (invoiceData as any).due_date ??
         new Date(Date.now() + dueDays * 86_400_000);
@@ -145,7 +272,9 @@ export class FinanceService {
       const invoice = this.invoiceRepo.create({
         ...invoiceData,
         invoice_number: await this.generateInvoiceNumber(),
-        branch_id: branchId,
+        // Super admins have no branch of their own — fall back to the
+        // payload's branch (always present on the manual DTO).
+        branch_id: branchId ?? (invoiceData as any).branch_id ?? null,
         created_by: userId,
         status: InvoiceStatus.UNPAID,
         paid_amount: 0,
@@ -161,10 +290,43 @@ export class FinanceService {
           this.itemRepo.create({
             ...item,
             invoice_id: saved.id,
-            item_type: item.item_type as any,
+            // invoice_items.item_type is NOT NULL — derive it when the DTO
+            // omits it (course-priced lines are COURSE, everything else OTHER).
+            item_type:
+              item.item_type ??
+              (item.course_id
+                ? InvoiceItemType.COURSE
+                : InvoiceItemType.OTHER),
+            // NOT NULL without DB defaults — compute explicitly.
+            discount_amount: Number(item.discount_amount ?? 0),
+            tax_amount: Number(item.tax_amount ?? 0),
+            total_amount: round2(
+              Number(item.quantity ?? 1) * Number(item.unit_price ?? 0),
+            ),
           } as any),
         );
         await queryRunner.manager.save(items);
+      }
+
+      // ── Installment plan (SRS §4.8): split when installments_count > 1 ──
+      // Rows are built with the injected installmentRepo but persisted
+      // through the TRANSACTION manager: the invoice row is not visible to
+      // other connections until commit, so a plain repo.save() would hit an
+      // FK violation and could not roll back together with the invoice.
+      const installmentsCount = Number((invoiceData as any).installments_count ?? 1);
+      if (installmentsCount > 1) {
+        const rows = this.buildInstallments(
+          saved.id,
+          totalAmount,
+          installmentsCount,
+          dueDate,
+        );
+        await queryRunner.manager.save(rows);
+      }
+
+      // ── Promo usage: atomic increment, committed with the invoice ──
+      if (promo) {
+        await this.promoCodeService.incrementUsage(promo.id, queryRunner.manager);
       }
 
       await queryRunner.commitTransaction();
@@ -175,6 +337,44 @@ export class FinanceService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  /**
+   * Split an invoice total into `count` monthly installments starting at the
+   * invoice due date. Equal base amounts; the LAST installment absorbs the
+   * rounding remainder so the row amounts always sum exactly to the total.
+   */
+  private buildInstallments(
+    invoiceId: string,
+    total: number,
+    count: number,
+    firstDue: Date,
+  ): Installment[] {
+    const n = Math.floor(count);
+    if (n <= 1) return [];
+    const base = round2(total / n);
+    const rows: Installment[] = [];
+    for (let i = 1; i <= n; i++) {
+      const amount = i === n ? round2(total - base * (n - 1)) : base;
+      rows.push(
+        this.installmentRepo.create({
+          invoice_id: invoiceId,
+          installment_number: i,
+          amount,
+          due_date: this.addMonths(firstDue, i - 1),
+          paid_amount: 0,
+          status: InstallmentStatus.PENDING,
+        }),
+      );
+    }
+    return rows;
+  }
+
+  /** Calendar-month offset used for sequential installment due dates. */
+  private addMonths(date: Date, months: number): Date {
+    const d = new Date(date);
+    d.setMonth(d.getMonth() + months);
+    return d;
   }
 
   async findInvoices(query: QueryInvoiceDto, user: any) {
@@ -217,6 +417,11 @@ export class FinanceService {
 
     const payment = this.paymentRepo.create({
       ...dto,
+      // payment_method PG enum holds LOWERCASE values while the DTO/frontend
+      // send 'CASH' | 'BANK_TRANSFER' | 'EASYKASH' — normalise before insert.
+      method: String(dto.method).toLowerCase() as any,
+      // paid_at is NOT NULL without a DB default and the DTO never carries it.
+      paid_at: new Date(),
       recorded_by: userId,
       status: PaymentStatus.COMPLETED,
       receipt_number: await this.generateReceiptNumber(),
@@ -332,19 +537,10 @@ export class FinanceService {
   }
 
   async validatePromoCode(code: string, courseId?: string, branchId?: string) {
-    const promo = await this.promoRepo.findOne({ where: { code, status: 'active' } as any });
-    if (!promo) throw new NotFoundException('Invalid promo code');
-    if (new Date(promo.expiry_date) < new Date()) throw new BadRequestException('Promo code expired');
-    if (promo.usage_limit && promo.used_count >= promo.usage_limit) {
-      throw new BadRequestException('Promo code usage limit reached');
-    }
-    if (courseId && promo.applicable_courses && !promo.applicable_courses.includes(courseId)) {
-      throw new BadRequestException('Promo code not applicable to this course');
-    }
-    if (branchId && promo.applicable_branches && !promo.applicable_branches.includes(branchId)) {
-      throw new BadRequestException('Promo code not applicable to this branch');
-    }
-    return promo;
+    // Delegates to PromoCodeService — the single source of truth for
+    // expiry / usage-limit / branch / course scoping rules (kept as a
+    // facade for the existing controller endpoint and tests).
+    return this.promoCodeService.validatePromoCode(code, courseId, branchId);
   }
 
   // ─── REPORTS ───

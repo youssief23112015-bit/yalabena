@@ -24,15 +24,17 @@ export class PlacementTest {
   @JoinColumn({ name: 'student_id' })
   student: Student;
 
-  @Column({ type: 'uuid' })
-  slot_id: string;
+  /** Nullable: guest instant sessions (public onboarding) have no slot. */
+  @Column({ type: 'uuid', nullable: true })
+  slot_id: string | null;
 
-  @ManyToOne(() => TestSlot, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => TestSlot, { onDelete: 'RESTRICT', nullable: true })
   @JoinColumn({ name: 'slot_id' })
   slot: TestSlot;
 
-  @Column({ type: 'uuid' })
-  examiner_id: string;
+  /** Nullable: guest instant sessions have no assigned examiner. */
+  @Column({ type: 'uuid', nullable: true })
+  examiner_id: string | null;
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'examiner_id' })

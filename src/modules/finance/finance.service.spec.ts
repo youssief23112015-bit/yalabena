@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
+import { PromoCodeService } from './promo-code.service';
 import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
 import { PaymentStatus } from '../../common/enums/payment-status.enum';
 import { RefundStatus } from '../../common/enums/refund-status.enum';
@@ -71,6 +72,9 @@ describe('FinanceService', () => {
     service = new FinanceService(
       invoiceRepo, paymentRepo, installmentRepo, refundRepo,
       promoRepo, ftRepo, itemRepo, {} as any,
+      // Same promoRepo mock wired into the delegated validation service so
+      // validatePromoCode behaviour tests keep hitting these mocks.
+      new PromoCodeService(promoRepo),
     );
   });
 

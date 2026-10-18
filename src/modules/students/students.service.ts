@@ -29,6 +29,19 @@ export class StudentsService {
   }
 
   /**
+   * The student row backing a logged-in user (used by the self-service
+   * booking flow to resolve current_level / branch). Returns null when the
+   * user does not hold a student profile.
+   */
+  async findByUserId(userId: string): Promise<Student | null> {
+    if (!userId) return null;
+    return this.repo.findOne({
+      where: { user_id: userId },
+      relations: ['branch', 'profile'],
+    });
+  }
+
+  /**
    * Backfill safety net (Task 2): users who hold the student role but have
    * no `students`-table row — historical data written before role-assignment
    * sync existed — are materialised here so they appear in /students and the
@@ -54,6 +67,7 @@ export class StudentsService {
     search?: string;
     branchId?: string;
     status?: string;
+    groupId?: string;
   }): Promise<Student[]> {
     // Heal any role/user drift before listing so every student-role holder
     // is guaranteed a row (registration and role assignment already sync;
@@ -122,6 +136,21 @@ export class StudentsService {
           status: filters.status,
         },
       );
+    }
+
+    if (filters.groupId) {
+      // Roster filter (previously silently ignored → every caller — group
+      // detail tab, session attendance — received ALL students). UNION of
+      // group_students + ACTIVE enrollments keeps both roster sources.
+      const rows: { student_id: string }[] = await this.repo.query(
+        `SELECT student_id FROM group_students WHERE group_id = $1 AND status = 'active'
+         UNION
+         SELECT student_id FROM enrollments WHERE group_id = $2 AND LOWER(CAST(status AS TEXT)) = 'active'`,
+        [filters.groupId, filters.groupId],
+      );
+      const ids = rows.map((r) => r.student_id);
+      if (ids.length === 0) return [];
+      query.andWhere('student.id IN (:...rosterIds)', { rosterIds: ids });
     }
 
     return query.getMany();

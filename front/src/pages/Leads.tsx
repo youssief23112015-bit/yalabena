@@ -25,12 +25,13 @@ import {
 } from "lucide-react";
 
 const leadSources = ["walk_in", "website", "referral", "social_media", "other"];
-const leadStatuses = ["new", "contacted", "interested", "test_scheduled", "enrolled", "lost"];
+const leadStatuses = ["new", "contacted", "interested", "test_scheduled", "test_completed", "enrolled", "lost"];
 const leadStatusColors: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
   contacted: "bg-purple-100 text-purple-800",
   interested: "bg-indigo-100 text-indigo-800",
   test_scheduled: "bg-cyan-100 text-cyan-800",
+  test_completed: "bg-teal-100 text-teal-800",
   enrolled: "bg-green-100 text-green-800",
   lost: "bg-red-100 text-red-800",
 };
@@ -349,6 +350,30 @@ export default function LeadsPage() {
           {row.status.replace("_", " ")}
         </Badge>
       ),
+    },
+    {
+      key: "placement_score",
+      header: "Test Degree",
+      render: (row: Lead) =>
+        row.placement_score != null ? (
+          <span className="text-xs font-semibold tabular-nums">
+            {Math.round(Number(row.placement_score))}%
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
+    },
+    {
+      key: "placement_level",
+      header: "Test Level",
+      render: (row: Lead) =>
+        row.placement_level || row.level_interest ? (
+          <Badge variant="outline" className="text-xs">
+            {row.placement_level ?? row.level_interest}
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
     },
     {
       key: "assigned_to",

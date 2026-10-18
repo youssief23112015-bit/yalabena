@@ -100,7 +100,7 @@ export class LmsService {
 
     if (isAdminOrStaff) {
       return this.groupRepo.find({
-        relations: ['course', 'branch'],
+        relations: ['course', 'branch', 'teacher', 'schedules'],
         order: { created_at: 'DESC' },
       });
     }
@@ -109,24 +109,65 @@ export class LmsService {
       where: { user_id: userId },
     });
 
-    if (!student) {
-      return this.groupRepo.find({
-        relations: ['course', 'branch'],
-        order: { created_at: 'DESC' },
-      });
-    }
+    // Students WITHOUT a profile see nothing — falling back to "all groups"
+    // would leak every cohort to any authenticated user missing a row.
+    if (!student) return [];
 
+    // Business Rule 3: LMS visibility is driven strictly by ACTIVE
+    // enrollments — PENDING requests stay hidden until an admin approves.
     const enrollments = await this.enrollmentRepo.find({
       where: {
         student_id: student.id,
         status: EnrollmentStatus.ACTIVE,
       },
-      relations: ['group', 'group.course', 'group.branch'],
+      relations: ['group', 'group.course', 'group.branch', 'group.teacher', 'group.schedules'],
     });
 
     return enrollments
       .map((e) => e.group)
       .filter((g): g is Group => Boolean(g));
+  }
+
+  /**
+   * "My Courses" for the LMS dashboard (Business Rule 3). Students receive
+   * the groups of their ACTIVE enrollments enriched with full course specs
+   * (level, duration, syllabus, price), instructor, branch and schedule;
+   * staff keep their broad view, mapped to the same shape.
+   */
+  async getMyCourses(userId: string, roles: string[] = []) {
+    const normalizedRoles = (roles || []).map((r) => String(r).toLowerCase());
+    const isStaff = normalizedRoles.some((role) =>
+      ['super_admin', 'admin', 'academic', 'teacher', 'instructor'].includes(role),
+    );
+
+    if (isStaff) {
+      const groups = await this.groupRepo.find({
+        relations: ['course', 'branch', 'teacher', 'schedules'],
+        order: { created_at: 'DESC' },
+      });
+      return groups.map((g) => ({ group: g, enrollment: null }));
+    }
+
+    const student = await this.studentRepo.findOne({ where: { user_id: userId } });
+    if (!student) return [];
+
+    const enrollments = await this.enrollmentRepo.find({
+      where: { student_id: student.id, status: EnrollmentStatus.ACTIVE },
+      relations: [
+        'group',
+        'group.course',
+        'group.course.materials',
+        'group.branch',
+        'group.teacher',
+        'group.schedules',
+        'group.schedules.classroom',
+      ],
+      order: { created_at: 'DESC' },
+    });
+
+    return enrollments
+      .filter((e) => Boolean(e.group))
+      .map((e) => ({ group: e.group, enrollment: e }));
   }
 
   // ═══════════════════════════════════════════════════

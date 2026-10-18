@@ -3,6 +3,9 @@ import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentQueryDto } from './dto/student-query.dto';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuthUser } from '../../common/utils/branch-scope';
 
 @Controller('students')
 export class StudentsController {
@@ -11,6 +14,17 @@ export class StudentsController {
   @Post()
   create(@Body() createStudentDto: CreateStudentDto) {
     return this.studentsService.create(createStudentDto);
+  }
+
+  /**
+   * The logged-in student's own profile (incl. current_level) — powers the
+   * level-eligibility check in the "Book this Course" flow. MUST be declared
+   * before '/:id' so the literal 'me' path wins over the parameter route.
+   */
+  @Get('me')
+  @Roles('student')
+  async findMe(@CurrentUser() user: AuthUser) {
+    return this.studentsService.findByUserId(user?.id ?? user?.userId);
   }
 
   @Get()

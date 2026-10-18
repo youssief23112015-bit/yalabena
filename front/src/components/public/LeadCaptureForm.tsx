@@ -1,8 +1,11 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +29,7 @@ type FormData = z.infer<typeof schema>;
 export function LeadCaptureForm() {
   const { t } = useTranslation();
   const { pushToast } = useChatToast();
+  const [submitted, setSubmitted] = useState(false);
 
   const { data: branches } = useQuery({
     queryKey: ["public-branches"],
@@ -39,6 +43,9 @@ export function LeadCaptureForm() {
   const mutation = useMutation({
     mutationFn: capturePublicLead,
     onSuccess: () => {
+      // Success confirmation with the instant-placement-test option
+      // (Business Rule 1): toast + inline panel with a direct CTA.
+      setSubmitted(true);
       pushToast({ kind: "info", message: t("public.leadForm.success", "Thank you! We will contact you soon.") });
       reset();
     },
@@ -59,6 +66,32 @@ export function LeadCaptureForm() {
   return (
     <Card>
       <CardContent className="pt-6">
+        {submitted ? (
+          /* Success confirmation + instant free-test offer (Business Rule 1) */
+          <div className="space-y-4 py-6 text-center">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
+            <h3 className="text-lg font-semibold">
+              {t("public.leadForm.thankYou", "Thank you — we received your details!")}
+            </h3>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              {t(
+                "public.leadForm.instantOffer",
+                "Would you like to take your Free Placement Test right now?",
+              )}
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button asChild>
+                <Link to="/placement-booking">
+                  <Zap className="mr-2 h-4 w-4" />
+                  {t("public.leadForm.takeTestNow", "Take the Free Test Now")}
+                </Link>
+              </Button>
+              <Button variant="outline" onClick={() => setSubmitted(false)}>
+                {t("public.leadForm.dismiss", "No thanks, I'll wait for your call")}
+              </Button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -111,6 +144,7 @@ export function LeadCaptureForm() {
             {isSubmitting || mutation.isPending ? t("public.leadForm.submitting", "Submitting...") : t("public.leadForm.submit", "Submit Request")}
           </Button>
         </form>
+        )}
       </CardContent>
     </Card>
   );

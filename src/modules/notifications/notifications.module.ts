@@ -8,6 +8,7 @@ import { NotificationsGateway } from './notifications.gateway';
 import { Notification } from '../../shared/entities/notification.entity';
 import { NotificationPreference } from '../../shared/entities/notification-preference.entity';
 import { User } from '../../shared/entities/user.entity';
+import { Group } from '../../shared/entities/group.entity';
 
 @Module({
   imports: [
@@ -15,6 +16,9 @@ import { User } from '../../shared/entities/user.entity';
       Notification,
       NotificationPreference,
       User,
+      // Group is required by the broadcast targeting rules: teacher-senders
+      // must be the assigned teacher_id of the target group.
+      Group,
     ]),
     // The realtime gateway verifies user JWTs on each socket connection.
     JwtModule.registerAsync({

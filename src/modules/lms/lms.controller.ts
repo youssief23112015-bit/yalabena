@@ -71,6 +71,21 @@ export class LmsController {
     return this.lmsService.findGroupsForUser(userId, roles);
   }
 
+  /**
+   * My Courses (Business Rule 3): students see the courses of their ACTIVE
+   * enrollments with full specs (level, duration, syllabus, instructor,
+   * schedule) — the LMS dashboard source of truth. Pending requests are
+   * invisible until approved.
+   */
+  @Get('my-courses')
+  @Roles('super_admin', 'academic', 'teacher', 'student')
+  @ApiOperation({ summary: 'Current user courses backed by ACTIVE enrollments' })
+  findMyCourses(@CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    return this.lmsService.getMyCourses(userId, roles);
+  }
+
   // RESTful aliases for nested group routes
   @Get('groups/:groupId/modules')
   @Roles('super_admin', 'academic', 'teacher', 'student')

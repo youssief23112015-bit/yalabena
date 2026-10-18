@@ -43,10 +43,18 @@ export class BroadcastNotificationDto {
 }
 
 /**
- * Payload for the admin "Send Broadcast" modal (SRS 4.18).
- * Delivers one in-app notification to every active user, optionally
- * narrowed down to a single role audience.
+ * Payload for the "Send Broadcast" modal (SRS 4.18), extended with explicit
+ * targeting (Business Rules 1–2):
+ *  - Admin/Branch Manager: any target_type.
+ *  - Teacher: ONLY `group` — and only for groups they are assigned to.
  */
+export type BroadcastTargetType =
+  | 'all'
+  | 'students'
+  | 'teachers'
+  | 'specific_user'
+  | 'group';
+
 export class SendBroadcastDto {
   @ApiProperty({ example: 'Scheduled maintenance' })
   @IsString()
@@ -61,9 +69,35 @@ export class SendBroadcastDto {
   message: string;
 
   @ApiPropertyOptional({
-    enum: ['all', 'student', 'teacher', 'hr'],
+    enum: ['all', 'students', 'teachers', 'specific_user', 'group'],
     default: 'all',
-    description: 'Audience filter — "all" (default) or a single role slug',
+    description:
+      'Audience selector — everyone, a whole role, one user, or a study group. ' +
+      'Teachers may only use "group".',
+  })
+  @IsOptional()
+  @IsIn(['all', 'students', 'teachers', 'specific_user', 'group'])
+  target_type?: BroadcastTargetType;
+
+  /** Required exactly when target_type === 'specific_user'. */
+  @ApiPropertyOptional({ format: 'uuid', description: 'Recipient (target_type = specific_user)' })
+  @ValidateIf((o: SendBroadcastDto) => o.target_type === 'specific_user')
+  @IsUUID()
+  target_user_id?: string;
+
+  /** Required exactly when target_type === 'group'. */
+  @ApiPropertyOptional({ format: 'uuid', description: 'Study group (target_type = group)' })
+  @ValidateIf((o: SendBroadcastDto) => o.target_type === 'group')
+  @IsUUID()
+  group_id?: string;
+
+  /**
+   * @deprecated legacy audience selector kept for older clients — the
+   * service translates it into target_type ('student' → 'students', …).
+   */
+  @ApiPropertyOptional({
+    enum: ['all', 'student', 'teacher', 'hr'],
+    description: 'Legacy audience filter — prefer target_type',
   })
   @IsOptional()
   @IsIn(['all', 'student', 'teacher', 'hr'])

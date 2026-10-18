@@ -132,6 +132,42 @@ export interface EnrolledGroup {
   progressPercent: number;
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** Human-readable schedule from the group's group_schedules rows. */
+const formatSchedule = (g: any): string => {
+  const schedules = Array.isArray(g?.schedules) ? g.schedules : [];
+  if (schedules.length > 0) {
+    return schedules
+      .map((s: any) => {
+        const day = DAY_NAMES[Number(s?.day_of_week)] ?? s?.day_of_week;
+        const start = String(s?.start_time ?? '').slice(0, 5);
+        const end = String(s?.end_time ?? '').slice(0, 5);
+        return `${day} ${start}–${end}`;
+      })
+      .join(' • ');
+  }
+  if (g?.start_date && g?.end_date) return `${g.start_date} → ${g.end_date}`;
+  return 'TBA';
+};
+
+/**
+ * Maps the raw backend Group entity (snake_case, nested course/teacher)
+ * into the view model this page renders. Without this, fields like
+ * courseTitle/teacherName/schedule were always undefined.
+ */
+const mapGroupToView = (g: any): EnrolledGroup => ({
+  id: g?.id,
+  code: g?.name ?? '—',
+  courseTitle: g?.course?.name ?? 'Course',
+  level: g?.course?.level ?? '—',
+  teacherName:
+    [g?.teacher?.first_name, g?.teacher?.last_name].filter(Boolean).join(' ') ||
+    'TBA',
+  schedule: formatSchedule(g),
+  progressPercent: 0,
+});
+
 // API Base URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -245,14 +281,21 @@ export default function LmsPage() {
   const [newResourceTitle, setNewResourceTitle] = useState('');
   const [newResourceType, setNewResourceType] = useState<ResourceType>('pdf');
 
-  // 1. Fetch Enrolled Groups on Load
+  // 1. Fetch My Courses on Load — GET /lms/my-courses returns the groups of
+  //    the student's ACTIVE enrollments (approved bookings) with full course
+  //    specs, teacher and schedules; staff receive their broad group list.
   useEffect(() => {
     async function fetchUserGroups() {
       try {
         setIsLoading(true);
         setError(null);
-        const rawRes = await apiFetch<any>('/lms/groups');
-        const fetchedGroups = ensureArray<EnrolledGroup>(rawRes);
+        const rawRes = await apiFetch<any>('/lms/my-courses');
+        const items = ensureArray<any>(rawRes);
+        // Accept both { group, enrollment } envelopes and plain Group rows.
+        const fetchedGroups = items
+          .map((item: any) => (item?.group ?? item))
+          .filter((g: any) => Boolean(g?.id))
+          .map(mapGroupToView);
         setGroups(fetchedGroups);
         
         if (fetchedGroups.length > 0) {
@@ -570,7 +613,7 @@ export default function LmsPage() {
             )}
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
-            {selectedGroup ? selectedGroup.courseTitle : 'لا توجد دورة محددة'}
+            {selectedGroup ? selectedGroup.courseTitle : 'No specific course'}
           </h1>
           {selectedGroup && (
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
