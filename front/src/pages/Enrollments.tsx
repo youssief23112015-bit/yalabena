@@ -28,7 +28,7 @@ const statusClass = (s: string) => {
 const studentLabel = (e: any) =>
   e?.student?.user
     ? `${e.student.user.first_name ?? ""} ${e.student.user.last_name ?? ""}`.trim()
-    : (e?.student_id ?? "").slice(0, 8);
+    : e?.student?.student_number ?? (e?.student_id ?? "").slice(0, 8);
 
 export default function EnrollmentsPage() {
   const { t } = useTranslation("common");
@@ -36,6 +36,8 @@ export default function EnrollmentsPage() {
   const queryClient = useQueryClient();
   const { confirm, dialog } = useConfirm();
 
+  // Default to PENDING so freshly booked catalog requests ("Book this
+  // Course") are visible in the approval queue the moment they are created.
   const [statusFilter, setStatusFilter] = useState("PENDING");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -125,6 +127,11 @@ export default function EnrollmentsPage() {
           )}
         </span>
       ),
+    },
+    {
+      key: "branch",
+      header: "Branch",
+      render: (e: any) => e?.group?.branch?.name ?? e?.student?.branch?.name ?? "—",
     },
     {
       key: "status",

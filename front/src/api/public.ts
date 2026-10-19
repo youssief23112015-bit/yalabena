@@ -126,6 +126,8 @@ export interface InstantBookingInput {
   phone: string;
   email?: string;
   branch_id?: string;
+  /** Course-context target level (e.g. the level of the catalog course). */
+  level_interest?: string;
 }
 
 export interface InstantBookingResult {

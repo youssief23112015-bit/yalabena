@@ -7,6 +7,7 @@ import "./index.css";
 import "./lib/i18n";
 import { setChatAuthTokenProvider } from "./lib/chatSocket";
 import { useAuthStore } from "./store/authStore";
+import { ChatToastProvider } from "./hooks/useChatToast";
 
 
 
@@ -34,7 +35,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        {/* Root-level chat-toast context: page components (e.g.
+            /placement-booking, /register-online) call useChatToast() in their
+            OWN component body — a page sits ABOVE the layout it returns, so
+            the provider nested inside PublicLayout is invisible to its hooks.
+            Without this root provider the hook threw, unmounting the whole
+            tree and rendering a blank screen. */}
+        <ChatToastProvider>
+          <App />
+        </ChatToastProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>

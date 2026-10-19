@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,6 +30,7 @@ import {
   bookInstantPlacementTest,
   bookPublicPlacementTest,
   fetchPublicBranches,
+  fetchPublicCourse,
   fetchPublicTestSlots,
 } from "@/api/public";
 
@@ -56,9 +57,24 @@ export default function PlacementBookingPage() {
   const { t } = useTranslation();
   const { pushToast } = useChatToast();
   const navigate = useNavigate();
-  const [branchId, setBranchId] = useState<string>("");
+
+  // Course context handed over by /catalog/:id —
+  // /placement-booking?courseId=…&branchId=…
+  const [searchParams] = useSearchParams();
+  const courseContextId = searchParams.get("courseId") ?? "";
+  const branchContextId = searchParams.get("branchId") ?? "";
+
+  const { data: courseContext } = useQuery({
+    queryKey: ["public-course", courseContextId],
+    queryFn: () => fetchPublicCourse(courseContextId),
+    enabled: Boolean(courseContextId),
+    retry: false,
+  });
+
+  // URL context pre-selects the branch in BOTH paths.
+  const [branchId, setBranchId] = useState<string>(branchContextId);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
-  const [instantBranchId, setInstantBranchId] = useState<string>("");
+  const [instantBranchId, setInstantBranchId] = useState<string>(branchContextId);
   const [confirmation, setConfirmation] = useState<{
     test_id?: string;
     scheduled_at?: string;
@@ -75,7 +91,7 @@ export default function PlacementBookingPage() {
     queryFn: () => fetchPublicTestSlots(branchId || undefined),
   });
 
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } =
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
     useForm<FormData>({ resolver: zodResolver(schema) });
 
   // ── Path A — instant test form (Name/Phone/Email/branch) ──
@@ -86,8 +102,13 @@ export default function PlacementBookingPage() {
   } = useForm<InstantFormData>({ resolver: zodResolver(instantSchema) });
 
   const instantMutation = useMutation({
-    mutationFn: (input: { name: string; phone: string; email?: string; branch_id?: string }) =>
-      bookInstantPlacementTest(input),
+    mutationFn: (input: {
+      name: string;
+      phone: string;
+      email?: string;
+      branch_id?: string;
+      level_interest?: string;
+    }) => bookInstantPlacementTest(input),
     onSuccess: (res) => {
       pushToast({
         kind: "info",
@@ -110,8 +131,18 @@ export default function PlacementBookingPage() {
       phone: data.phone.trim(),
       email: data.email?.trim() || undefined,
       branch_id: instantBranchId || undefined,
+      // Course context: the clicked course's level becomes the Lead's target.
+      level_interest: courseContext?.level || undefined,
     });
   };
+
+  // Course context also pre-fills Path B's "Target Level" select.
+  const levelInterest = watch("level_interest");
+  useEffect(() => {
+    if (courseContext?.level) {
+      setValue("level_interest", courseContext.level, { shouldValidate: true });
+    }
+  }, [courseContext?.level, setValue]);
 
   const bookingMutation = useMutation({
     mutationFn: (input: {
@@ -170,6 +201,17 @@ export default function PlacementBookingPage() {
             {t("public.placementBook.subtitle", "Find a slot at your preferred branch and reserve your free placement test.")}
           </p>
         </div>
+
+        {/* Course context banner (from /catalog/:id) */}
+        {courseContext && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-center text-sm">
+            {t("public.placementBook.courseContext", "You are booking a placement test for")}{" "}
+            <span className="font-semibold">{courseContext.name}</span>
+            <Badge variant="outline" className="mx-2 align-middle">
+              {courseContext.level}
+            </Badge>
+          </div>
+        )}
 
         {/* Two paths: instant online test OR scheduled appointment */}
         <Tabs defaultValue="instant" className="mb-6">
@@ -411,7 +453,10 @@ export default function PlacementBookingPage() {
                     />
                   </div>
                 </div>
-                <Select onValueChange={(val) => setValue("level_interest", val)}>
+                <Select
+                  value={levelInterest || undefined}
+                  onValueChange={(val) => setValue("level_interest", val)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={t("public.leadForm.level", "Target Level")} />
                   </SelectTrigger>

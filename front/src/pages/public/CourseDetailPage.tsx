@@ -230,7 +230,9 @@ export default function CourseDetailPage() {
                 </Button>
               )}
               <Button asChild variant="outline" size="lg">
-                <Link to="/placement-booking">
+                <Link
+                  to={`/placement-booking?courseId=${course.id}&branchId=${(course as any).branch_id ?? ""}`}
+                >
                   {t("public.hero.ctaPlacement", "Book a Placement Test")}
                 </Link>
               </Button>

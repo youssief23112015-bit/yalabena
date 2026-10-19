@@ -86,7 +86,7 @@ export default function LandingPage() {
               {/* Single Main CTA Action Section */}
               <div className="mt-8 flex flex-wrap gap-4">
                 <Button asChild size="lg" className="px-8 py-6 text-base shadow-lg transition-all hover:scale-105 active:scale-95">
-                  <Link to="/placement-booking">
+                  <Link to="/register">
                     {t("public.hero.ctaRegister", "Register Now")}
                     <ArrowRight className="ml-2 h-4 w-4 rtl:ml-0 rtl:mr-2 rtl:rotate-180" />
                   </Link>
