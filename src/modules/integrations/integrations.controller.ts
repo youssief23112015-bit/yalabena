@@ -26,7 +26,7 @@ export class IntegrationsController {
   ) {}
 
   @Get('status')
-  @Roles('super_admin', 'branch_manager')
+  @Roles('super_admin')
   @ApiOperation({ summary: 'Check which integrations are configured' })
   status() {
     return {

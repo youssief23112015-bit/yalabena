@@ -18,7 +18,6 @@ export interface PlacementContact {
   last_name: string;
   phone?: string | null;
   email?: string | null;
-  branch_id?: string | null;
   level_interest?: string | null;
   source: LeadSource;
 }
@@ -26,7 +25,7 @@ export interface PlacementContact {
 /**
  * Find-or-create the Lead behind a placement-test booking, deduplicating by
  * phone OR email (Business Rule 2). Existing leads are enriched (missing
- * email/branch/level) and advanced to TEST_SCHEDULED so sales/academic see
+ * email/level) and advanced to TEST_SCHEDULED so sales/academic see
  * the booking — never regressing terminal statuses (ENROLLED / LOST).
  */
 export async function upsertLeadForPlacement(
@@ -51,7 +50,6 @@ export async function upsertLeadForPlacement(
   if (lead) {
     let changed = false;
     if (!lead.email && email) { lead.email = email; changed = true; }
-    if (!lead.branch_id && contact.branch_id) { lead.branch_id = contact.branch_id; changed = true; }
     if (!lead.level_interest && contact.level_interest) {
       lead.level_interest = contact.level_interest;
       changed = true;
@@ -74,7 +72,6 @@ export async function upsertLeadForPlacement(
       last_name: contact.last_name,
       ...(phone ? { phone } : { phone: email as string }),
       ...(email ? { email } : {}),
-      ...(contact.branch_id ? { branch_id: contact.branch_id } : {}),
       ...(contact.level_interest ? { level_interest: contact.level_interest } : {}),
       source: contact.source,
       status: LeadStatus.TEST_SCHEDULED,

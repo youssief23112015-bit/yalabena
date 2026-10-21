@@ -1,0 +1,985 @@
+﻿src\common\utils\branch-scope.ts|4|branchId?: string;
+src\common\utils\branch-scope.ts|5|branch_id?: string;
+src\common\utils\branch-scope.ts|13|export function userBranchId(user: AuthUser): string | undefined {
+src\common\utils\branch-scope.ts|14|return user?.branchId ?? user?.branch_id ?? undefined;
+src\common\utils\branch-scope.ts|18|* Branch a non-super-admin user is locked to, or undefined for super admin.
+src\common\utils\branch-scope.ts|19|* Pass the result as a query filter. Returns '__none__' for branchless
+src\common\utils\branch-scope.ts|22|export function effectiveBranchFilter(user: AuthUser, requested?: string): string | undefined {
+src\common\utils\branch-scope.ts|24|return userBranchId(user) ?? '__none__';
+src\common\utils\branch-scope.ts|28|* Roles that oversee enrollments/academics across EVERY branch. Branch
+src\common\utils\branch-scope.ts|30|* coordinator reviewing bookings made in another branch). An explicit
+src\common\utils\branch-scope.ts|31|* ?branch_id query param still narrows the result set.
+src\common\utils\branch-scope.ts|33|export function canAccessAllBranches(user: AuthUser): boolean {
+src\common\utils\branch-scope.ts|40|export function assertBranchAccess(user: AuthUser, resourceBranchId: string | undefined) {
+src\common\utils\branch-scope.ts|42|const ub = userBranchId(user);
+src\common\utils\branch-scope.ts|43|if (ub && resourceBranchId && ub !== resourceBranchId) {
+src\common\utils\branch-scope.ts|44|throw Object.assign(new Error('Forbidden: cross-branch access denied'), { status: 403 });
+src\common\utils\placement-lead.util.ts|21|branch_id?: string | null;
+src\common\utils\placement-lead.util.ts|29|* email/branch/level) and advanced to TEST_SCHEDULED so sales/academic see
+src\common\utils\placement-lead.util.ts|54|if (!lead.branch_id && contact.branch_id) { lead.branch_id = contact.branch_id; changed = true; }
+src\common\utils\placement-lead.util.ts|77|...(contact.branch_id ? { branch_id: contact.branch_id } : {}),
+src\database\migrations\1786965613141-InitialSchema.ts|8|await queryRunner.query(`CREATE TABLE "classrooms" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "branch_id" uuid NOT NULL, "name" character varying(100) NOT NULL, "capacity" integer NOT NULL DEFAULT '20', "type" character varying(20) NOT NULL DEFAULT 'standard', "status" "public"."classrooms_status_enum" NOT NULL DEFAULT 'active', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_20b7b82896c06eda27548bd0c24" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|9|await queryRunner.query(`CREATE TYPE "public"."branches_status_enum" AS ENUM('active', 'inactive', 'suspended', 'pending')`);
+src\database\migrations\1786965613141-InitialSchema.ts|10|await queryRunner.query(`CREATE TABLE "branches" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(150) NOT NULL, "address" text NOT NULL, "phone" character varying(20) NOT NULL, "email" character varying(255), "manager_id" uuid, "classroom_count" integer NOT NULL DEFAULT '0', "logo_url" character varying(500), "status" "public"."branches_status_enum" NOT NULL DEFAULT 'active', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_7f37d3b42defea97f1df0d19535" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|12|await queryRunner.query(`CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying(255) NOT NULL, "phone" character varying(20), "password_hash" character varying(255) NOT NULL, "first_name" character varying(100) NOT NULL, "last_name" character varying(100) NOT NULL, "avatar_url" character varying(500), "language" character varying(5) NOT NULL DEFAULT 'ar', "branch_id" uuid, "status" "public"."users_status_enum" NOT NULL DEFAULT 'active', "email_verified_at" TIMESTAMP WITH TIME ZONE, "phone_verified_at" TIMESTAMP WITH TIME ZONE, "two_factor_enabled" boolean NOT NULL DEFAULT false, "two_factor_secret" character varying(255), "last_login_at" TIMESTAMP WITH TIME ZONE, "last_login_ip" character varying(45), "chat_policy_accepted_at" TIMESTAMP WITH TIME ZONE, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "UQ_a000cca60bcf04454e727699490" UNIQUE ("phone"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|16|await queryRunner.query(`CREATE TABLE "students" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "user_id" uuid NOT NULL, "student_number" character varying(50) NOT NULL, "current_level" character varying(10), "status" "public"."students_status_enum" NOT NULL DEFAULT 'active', "enrollment_date" date, "branch_id" uuid, "placement_test_id" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_fb3eff90b11bddf7285f9b4e281" UNIQUE ("user_id"), CONSTRAINT "UQ_a711caeb43450bf6ce3e9086dfa" UNIQUE ("student_number"), CONSTRAINT "REL_fb3eff90b11bddf7285f9b4e28" UNIQUE ("user_id"), CONSTRAINT "PK_7d7f07271ad4ce999880713f05e" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|23|await queryRunner.query(`CREATE TABLE "groups" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(150) NOT NULL, "course_id" uuid NOT NULL, "teacher_id" uuid NOT NULL, "substitute_teacher_id" uuid, "branch_id" uuid NOT NULL, "capacity" integer NOT NULL, "mode" "public"."groups_mode_enum" NOT NULL DEFAULT 'in_person', "zoom_meeting_id" character varying(100), "zoom_link" character varying(500), "onmeet_link" character varying(500), "onmeet_meeting_id" character varying(100), "start_date" date NOT NULL, "end_date" date NOT NULL, "status" "public"."groups_status_enum" NOT NULL DEFAULT 'upcoming', "created_by" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_659d1483316afb28afd3a90646e" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|26|await queryRunner.query(`CREATE TABLE "waitlists" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "student_id" uuid NOT NULL, "course_id" uuid NOT NULL, "level" character varying(10) NOT NULL, "branch_id" uuid, "priority" integer NOT NULL DEFAULT '0', "status" character varying(20) NOT NULL DEFAULT 'waiting', "notes" text, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "enrolled_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_d825b8fcdb753fda136c4039b3a" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|34|await queryRunner.query(`CREATE TABLE "test_slots" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "branch_id" uuid NOT NULL, "examiner_id" uuid NOT NULL, "date" date NOT NULL, "start_time" TIME NOT NULL, "end_time" TIME NOT NULL, "mode" "public"."test_slots_mode_enum" NOT NULL DEFAULT 'in_person', "capacity" integer NOT NULL DEFAULT '1', "booked_count" integer NOT NULL DEFAULT '0', "status" "public"."test_slots_status_enum" NOT NULL DEFAULT 'open', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_66e549827decf50f1e8f13b1844" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|51|await queryRunner.query(`CREATE TABLE "student_item_issues" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "student_id" uuid NOT NULL, "item_id" uuid NOT NULL, "branch_id" uuid NOT NULL, "quantity" integer NOT NULL DEFAULT '1', "cost" numeric(10,2) NOT NULL DEFAULT '0', "issued_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "returned_at" TIMESTAMP WITH TIME ZONE, "condition_on_return" "public"."student_item_issues_condition_on_return_enum", "created_by" uuid, CONSTRAINT "PK_b1dc348a3d4ddc5e2766bfa88bc" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|53|await queryRunner.query(`CREATE TABLE "stock_moves" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "item_id" uuid NOT NULL, "branch_id" uuid NOT NULL, "type" "public"."stock_moves_type_enum" NOT NULL, "quantity" integer NOT NULL, "unit_cost" numeric(10,2), "reason" character varying(255) NOT NULL, "reference_type" character varying(50), "reference_id" uuid, "created_by" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_27d4cab9a9996a1805d132497b7" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|54|await queryRunner.query(`CREATE TABLE "stock_levels" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "item_id" uuid NOT NULL, "branch_id" uuid NOT NULL, "quantity" integer NOT NULL DEFAULT '0', "reserved_quantity" integer NOT NULL DEFAULT '0', "last_counted_at" TIMESTAMP WITH TIME ZONE, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_ca338cbf37b34ec4913578d1343" UNIQUE ("item_id", "branch_id"), CONSTRAINT "PK_ee416fdf2f5696dff16fd0c1c90" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|64|await queryRunner.query(`CREATE TABLE "invoices" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "invoice_number" character varying(50) NOT NULL, "enrollment_id" uuid NOT NULL, "student_id" uuid NOT NULL, "branch_id" uuid NOT NULL, "subtotal" numeric(12,2) NOT NULL, "discount_amount" numeric(12,2) NOT NULL DEFAULT '0', "tax_amount" numeric(12,2) NOT NULL DEFAULT '0', "total_amount" numeric(12,2) NOT NULL, "paid_amount" numeric(12,2) NOT NULL DEFAULT '0', "balance_due" numeric(12,2) NOT NULL, "status" "public"."invoices_status_enum" NOT NULL DEFAULT 'unpaid', "due_date" date NOT NULL, "notes" text, "is_e_invoice" boolean NOT NULL DEFAULT false, "e_invoice_reference" character varying(100), "created_by" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_d8f8d3788694e1b3f96c42c36fb" UNIQUE ("invoice_number"), CONSTRAINT "PK_668cef7c22a427fd822cc1be3ce" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|78|await queryRunner.query(`CREATE TABLE "promo_codes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "code" character varying(50) NOT NULL, "type" "public"."promo_codes_type_enum" NOT NULL, "value" numeric(10,2) NOT NULL, "max_discount" numeric(10,2), "expiry_date" date NOT NULL, "usage_limit" integer, "used_count" integer NOT NULL DEFAULT '0', "applicable_courses" jsonb, "applicable_branches" jsonb, "status" character varying(20) NOT NULL DEFAULT 'active', "created_by" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_2f096c406a9d9d5b8ce204190c3" UNIQUE ("code"), CONSTRAINT "PK_c7b4f01710fda5afa056a2b4a35" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|85|await queryRunner.query(`CREATE TABLE "leads" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "first_name" character varying(100) NOT NULL, "last_name" character varying(100) NOT NULL, "phone" character varying(20) NOT NULL, "email" character varying(255), "national_id" character varying(50), "source" "public"."leads_source_enum" NOT NULL, "status" "public"."leads_status_enum" NOT NULL DEFAULT 'new', "level_interest" character varying(10), "notes" text, "assigned_to" uuid, "branch_id" uuid, "converted_to_student_id" uuid, "converted_at" TIMESTAMP WITH TIME ZONE, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_cd102ed7a9a4ca7d4d8bfeba406" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|105|await queryRunner.query(`CREATE TABLE "lead_tags" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(50) NOT NULL, "color" character varying(7) NOT NULL DEFAULT '#000000', "branch_id" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_ce6b12309bf373c5af878035b3e" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|115|await queryRunner.query(`CREATE TABLE "financial_transactions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "branch_id" uuid, "invoice_id" uuid, "payment_id" uuid, "refund_id" uuid, "transaction_type" "public"."financial_transactions_transaction_type_enum" NOT NULL, "direction" "public"."financial_transactions_direction_enum" NOT NULL, "amount" numeric(12,2) NOT NULL, "transaction_date" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(), "description" text, "created_by" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_3f0ffe3ca2def8783ad8bb5036b" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|130|await queryRunner.query(`CREATE TABLE "activities" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(200) NOT NULL, "description" text, "type" "public"."activities_type_enum" NOT NULL, "date" date NOT NULL, "start_time" TIME, "end_time" TIME, "location" character varying(255), "branch_id" uuid NOT NULL, "capacity" integer NOT NULL, "fee" numeric(10,2) NOT NULL DEFAULT '0', "target_levels" jsonb, "target_groups" jsonb, "is_open_to_all" boolean NOT NULL DEFAULT false, "status" "public"."activities_status_enum" NOT NULL DEFAULT 'upcoming', "created_by" uuid, "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_7f4004429f731ffb9c88eb486a8" PRIMARY KEY ("id"))`);
+src\database\migrations\1786965613141-InitialSchema.ts|137|await queryRunner.query(`ALTER TABLE "classrooms" ADD CONSTRAINT "FK_0bbedc9d10b3b6c53144a9e2e63" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|138|await queryRunner.query(`ALTER TABLE "branches" ADD CONSTRAINT "FK_14da1875eaf9e5c81ca4678765d" FOREIGN KEY ("manager_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|139|await queryRunner.query(`ALTER TABLE "users" ADD CONSTRAINT "FK_5a58f726a41264c8b3e86d4a1de" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|144|await queryRunner.query(`ALTER TABLE "students" ADD CONSTRAINT "FK_e2b424d1d926ec268413c32de59" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|155|await queryRunner.query(`ALTER TABLE "groups" ADD CONSTRAINT "FK_a2a39f99d587813ada6f1a12ed3" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|158|await queryRunner.query(`ALTER TABLE "waitlists" ADD CONSTRAINT "FK_f8549c24116e37291b336faf7e1" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|162|await queryRunner.query(`ALTER TABLE "test_slots" ADD CONSTRAINT "FK_74acd2425e8885e8cd58cd7d929" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|180|await queryRunner.query(`ALTER TABLE "student_item_issues" ADD CONSTRAINT "FK_04980de8699c4ec34ede894fcd7" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|183|await queryRunner.query(`ALTER TABLE "stock_moves" ADD CONSTRAINT "FK_b1265a0414f4c282d251f68bf07" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|186|await queryRunner.query(`ALTER TABLE "stock_levels" ADD CONSTRAINT "FK_95b525d66b131aeb3a4e107b73b" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|196|await queryRunner.query(`ALTER TABLE "invoices" ADD CONSTRAINT "FK_f8b468df52fb45053ad0c4ca38b" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE RESTRICT ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|217|await queryRunner.query(`ALTER TABLE "leads" ADD CONSTRAINT "FK_1f077fc1a37d0ef752e0b8285fb" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|235|await queryRunner.query(`ALTER TABLE "lead_tags" ADD CONSTRAINT "FK_cf2c00470dc5c11f0ad4aca2e8d" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|248|await queryRunner.query(`ALTER TABLE "financial_transactions" ADD CONSTRAINT "FK_e05880ea239c1f7a165448c0157" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|266|await queryRunner.query(`ALTER TABLE "activities" ADD CONSTRAINT "FK_1315bba9f87e51a49bd7280410b" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+src\database\migrations\1786965613141-InitialSchema.ts|412|await queryRunner.query(`ALTER TABLE "branches" DROP CONSTRAINT "FK_14da1875eaf9e5c81ca4678765d"`);
+src\database\migrations\1786965613141-InitialSchema.ts|540|await queryRunner.query(`DROP TABLE "branches"`);
+src\database\migrations\1786965613141-InitialSchema.ts|541|await queryRunner.query(`DROP TYPE "public"."branches_status_enum"`);
+src\database\migrations\1790000002000-BackfillStudentsForRegisteredUsers.ts|20|INSERT INTO students (user_id, branch_id, enrollment_date)
+src\database\migrations\1790000002000-BackfillStudentsForRegisteredUsers.ts|21|SELECT u.id, u.branch_id, u.created_at::date
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|4|* Per-branch price overrides for courses (multi-branch academies charge
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|5|* differently per location). Backs the new CourseBranchPricing entity used
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|6|* by GET/POST /courses/:id/branch-pricing.
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|8|export class AddCourseBranchPricing1791000000000 implements MigrationInterface {
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|9|name = 'AddCourseBranchPricing1791000000000';
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|13|CREATE TABLE IF NOT EXISTS "course_branch_pricing" (
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|16|"branch_id" uuid NOT NULL,
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|19|CONSTRAINT "PK_course_branch_pricing" PRIMARY KEY ("id"),
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|20|CONSTRAINT "UQ_course_branch_pricing" UNIQUE ("course_id", "branch_id"),
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|22|CONSTRAINT "FK_cbp_branch" FOREIGN KEY ("branch_id") REFERENCES "branches"("id") ON DELETE CASCADE ON UPDATE NO ACTION
+src\database\migrations\1791000000000-AddCourseBranchPricing.ts|28|await queryRunner.query(`DROP TABLE IF EXISTS "course_branch_pricing"`);
+src\database\seeds\branch.seed.ts|3|export async function seedBranch(dataSource: DataSource) {
+src\database\seeds\branch.seed.ts|7|// 1. Ø¥Ø¯Ø®Ø§Ù„ Ø§Ù„ÙØ±Ø¹ (Branch)
+src\database\seeds\branch.seed.ts|9|`INSERT INTO branches (id, name, address, phone, status, created_at, updated_at)
+src\database\seeds\branch.seed.ts|12|[defaultId, 'Main Branch', 'Default Address', '+201000000000', 'active']
+src\database\seeds\branch.seed.ts|25|`INSERT INTO users (id, email, password_hash, first_name, last_name, branch_id, language, status, created_at, updated_at)
+src\database\seeds\branch.seed.ts|41|`INSERT INTO groups (id, name, course_id, teacher_id, branch_id, capacity, mode, start_date, end_date, status, created_at, updated_at)
+src\database\seeds\branch.seed.ts|47|console.log('Default Branch, Course, Teacher, Teacher Role, and Group seeded successfully.');
+src\database\seeds\main.seed.ts|7|import { seedBranch } from './branch.seed';
+src\database\seeds\main.seed.ts|31|await seedBranch(dataSource);
+src\database\seeds\permission.seed.ts|70|{ module: 'branches', action: 'view', description: 'View branch data' },
+src\database\seeds\permission.seed.ts|71|{ module: 'branches', action: 'create', description: 'Create branches' },
+src\database\seeds\permission.seed.ts|72|{ module: 'branches', action: 'edit', description: 'Edit branches' },
+src\database\seeds\permission.seed.ts|73|{ module: 'branches', action: 'delete', description: 'Close branches' },
+src\database\seeds\role-permission.seed.ts|8|branch_manager: [
+src\database\seeds\role-permission.seed.ts|17|'kb:view', 'reports:view', 'reports:export', 'branches:view',
+src\database\seeds\role-permission.seed.ts|68|'branches:view', 'system:view', 'chat:view',
+src\database\seeds\role.seed.ts|8|{ name: 'Branch Manager', slug: 'branch_manager', description: 'Day-to-day branch oversight', is_system: true },
+src\modules\activities\dto\activity-query.dto.ts|23|@ApiPropertyOptional({ format: 'uuid', description: 'Branch filter (non-admins are locked to their own branch)' })
+src\modules\activities\dto\activity-query.dto.ts|26|branch_id?: string;
+src\modules\activities\dto\create-activity.dto.ts|60|branch_id: string;
+src\modules\activities\activities.controller.ts|15|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\activities\activities.controller.ts|34|@Roles('super_admin', 'branch_manager', 'finance', 'sales')
+src\modules\activities\activities.controller.ts|46|@Roles('super_admin', 'branch_manager', 'sales', 'academic', 'student')
+src\modules\activities\activities.controller.ts|57|@Roles('super_admin', 'branch_manager', 'teacher')
+src\modules\activities\activities.controller.ts|70|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\activities\activities.controller.ts|74|@ApiResponse({ status: 403, description: 'Cross-branch creation denied.' })
+src\modules\activities\activities.controller.ts|80|@Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\activities\activities.controller.ts|81|@ApiOperation({ summary: 'List activities with type/level/branch/status/search filters' })
+src\modules\activities\activities.controller.ts|85|@ApiQuery({ name: 'branch_id', required: false, description: 'UUID branch filter' })
+src\modules\activities\activities.controller.ts|93|@Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\activities\activities.controller.ts|103|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\activities\activities.controller.ts|116|@Roles('super_admin', 'branch_manager')
+src\modules\activities\activities.controller.ts|126|@Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'sales', 'student')
+src\modules\activities\activities.controller.ts|143|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\activities\activities.controller.ts|151|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\activities\activities.controller.ts|166|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\activities\activities.service.spec.ts|30|const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'], branchId: null };
+src\modules\activities\activities.service.spec.ts|34|roles: ['branch_manager'],
+src\modules\activities\activities.service.spec.ts|35|branchId: 'branch-1',
+src\modules\activities\activities.service.spec.ts|41|branch_id: 'branch-1',
+src\modules\activities\activities.service.spec.ts|57|branch_id: 'branch-1',
+src\modules\activities\activities.service.spec.ts|99|it('locks a non-admin to their own branch', async () => {
+src\modules\activities\activities.service.spec.ts|100|const dto: any = { title: 'X', branch_id: 'branch-9', type: ActivityEventType.TRIP, date: '2026-10-01', capacity: 10 };
+src\modules\activities\activities.service.spec.ts|106|const dto: any = { title: 'Trip', branch_id: 'branch-1', type: ActivityEventType.TRIP, date: '2026-10-01', capacity: 10 };
+src\modules\activities\activities.service.spec.ts|193|expect.objectContaining({ branch_id: 'branch-1', amount: 100 }),
+src\modules\activities\activities.service.spec.ts|208|const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'], branchId: 'branch-1' };
+src\modules\activities\activities.service.ts|18|assertBranchAccess,
+src\modules\activities\activities.service.ts|19|effectiveBranchFilter,
+src\modules\activities\activities.service.ts|20|} from '../../common/utils/branch-scope';
+src\modules\activities\activities.service.ts|40|'branch_manager',
+src\modules\activities\activities.service.ts|70|'branch',
+src\modules\activities\activities.service.ts|78|assertBranchAccess(user, activity.branch_id);
+src\modules\activities\activities.service.ts|125|const branchFilter = effectiveBranchFilter(user, dto.branch_id);
+src\modules\activities\activities.service.ts|126|if (branchFilter && branchFilter !== dto.branch_id) {
+src\modules\activities\activities.service.ts|127|throw new ForbiddenException('Cannot create activities outside your branch');
+src\modules\activities\activities.service.ts|141|.leftJoinAndSelect('a.branch', 'branch');
+src\modules\activities\activities.service.ts|143|const branchFilter = effectiveBranchFilter(user, query.branch_id);
+src\modules\activities\activities.service.ts|144|if (branchFilter) qb.andWhere('a.branch_id = :branchId', { branchId: branchFilter });
+src\modules\activities\activities.service.ts|254|// Branch rule: a student may only join their own branch's activity.
+src\modules\activities\activities.service.ts|255|if (student.branch_id && activity.branch_id && student.branch_id !== activity.branch_id) {
+src\modules\activities\activities.service.ts|256|throw new BadRequestException('Student belongs to a different branch than this activity');
+src\modules\activities\activities.service.ts|309|branch_id: activity.branch_id,
+src\modules\activities\activities.service.ts|333|assertBranchAccess(user, registration.activity?.branch_id);
+src\modules\activities\activities.service.ts|362|assertBranchAccess(user, registration.activity?.branch_id);
+src\modules\activities\activities.service.ts|373|branch_id: registration.activity!.branch_id,
+src\modules\activities\activities.service.ts|491|assertBranchAccess(user, photo.activity?.branch_id);
+src\modules\attendance\attendance.controller.ts|46|@Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\attendance\attendance.controller.ts|67|@Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\attendance\attendance.controller.ts|80|@Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\attendance\attendance.controller.ts|93|@Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\auth\dto\register.dto.ts|30|branch_id?: string;
+src\modules\auth\strategies\jwt.strategy.ts|37|relations: ['branch'],
+src\modules\auth\strategies\jwt.strategy.ts|73|branchId: user.branch_id ?? null,
+src\modules\auth\auth.service.spec.ts|36|branch_id: 'b-1',
+src\modules\auth\auth.service.ts|58|branch_id: dto.branch_id,
+src\modules\auth\auth.service.ts|79|branch_id: dto.branch_id,
+src\modules\auth\auth.service.ts|268|branch_id: user.branch_id,
+src\modules\certificates\certificates.controller.ts|9|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\certificates\certificates.controller.ts|17|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\certificates\certificates.controller.ts|23|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\certificates\certificates.controller.ts|29|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\certificates\certificates.controller.ts|36|@Roles('super_admin', 'branch_manager', 'academic') // admin-level only => "manual issue with approval"
+src\modules\certificates\certificates.controller.ts|42|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\certificates\certificates.controller.ts|48|@Roles('super_admin', 'branch_manager')
+src\modules\certificates\certificates.controller.ts|55|@Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher')
+src\modules\certificates\certificates.controller.ts|62|@Query('branch_id') branch_id?: string,
+src\modules\certificates\certificates.controller.ts|64|return this.service.list(user, { student_id, course_id, group_id, status, branch_id });
+src\modules\certificates\certificates.controller.ts|78|@Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher', 'student')
+src\modules\certificates\certificates.controller.ts|84|@Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\certificates\certificates.service.spec.ts|25|const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'], branchId: 'branch-1' };
+src\modules\certificates\certificates.service.spec.ts|26|const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'], branchId: null };
+src\modules\certificates\certificates.service.spec.ts|34|student: { id: 'stu-1', user_id: 'user-9', branch_id: 'branch-1', user: { id: 'user-9' } },
+src\modules\certificates\certificates.service.spec.ts|90|it('lets a student read their own certificate even when branch scoping would fail', async () => {
+src\modules\certificates\certificates.service.spec.ts|99|student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-1' },
+src\modules\certificates\certificates.service.spec.ts|104|it('still enforces branch scoping for staff without the certificate owner check', async () => {
+src\modules\certificates\certificates.service.spec.ts|107|student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-9' },
+src\modules\certificates\certificates.service.spec.ts|109|const manager = { id: 'user-2', userId: 'user-2', roles: ['branch_manager'], branchId: 'branch-1' };
+src\modules\certificates\certificates.service.spec.ts|116|student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-9' },
+src\modules\certificates\certificates.service.ts|16|import { AuthUser, effectiveBranchFilter } from '../../common/utils/branch-scope';
+src\modules\certificates\certificates.service.ts|176|async list(user: AuthUser, query: { student_id?: string; course_id?: string; group_id?: string; status?: string; branch_id?: string }) {
+src\modules\certificates\certificates.service.ts|187|const branchFilter = effectiveBranchFilter(user, query.branch_id);
+src\modules\certificates\certificates.service.ts|188|if (branchFilter) qb.andWhere('st.branch_id = :b', { b: branchFilter });
+src\modules\certificates\certificates.service.ts|195|'branch_manager',
+src\modules\certificates\certificates.service.ts|243|// checked before the branch filter because a student's own branch can
+src\modules\certificates\certificates.service.ts|251|const branchFilter = effectiveBranchFilter(user);
+src\modules\certificates\certificates.service.ts|252|if (branchFilter && c.student?.branch_id !== branchFilter) throw new NotFoundException('Certificate not found');
+src\modules\chat\chat.controller.ts|175|@Roles('super_admin', 'academic', 'teacher', 'branch_manager')
+src\modules\classrooms\classrooms.controller.ts|14|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\classrooms\classrooms.controller.ts|23|branchId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+src\modules\classrooms\classrooms.controller.ts|35|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\classrooms\classrooms.controller.ts|36|@ApiOperation({ summary: 'Get all classrooms with optional branch filter' })
+src\modules\classrooms\classrooms.controller.ts|37|@ApiQuery({ name: 'branchId', required: false, description: 'Filter classrooms by branch' })
+src\modules\classrooms\classrooms.controller.ts|38|async findAll(@Query('branchId') branchId?: string) {
+src\modules\classrooms\classrooms.controller.ts|39|return this.service.findAll(branchId);
+src\modules\classrooms\classrooms.controller.ts|43|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\classrooms\classrooms.controller.ts|53|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\classrooms\classrooms.controller.ts|63|branchId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+src\modules\classrooms\classrooms.controller.ts|74|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\classrooms\classrooms.service.ts|18|async findAll(branchId?: string): Promise<Classroom[]> {
+src\modules\classrooms\classrooms.service.ts|20|.leftJoinAndSelect('classroom.branch', 'branch');
+src\modules\classrooms\classrooms.service.ts|22|if (branchId) {
+src\modules\classrooms\classrooms.service.ts|23|query.andWhere('branch.id = :branchId', { branchId });
+src\modules\classrooms\classrooms.service.ts|32|relations: ['branch'],
+src\modules\courses\courses.controller.ts|15|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|55|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|78|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|90|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|113|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|136|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|155|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|163|// ==================== Branch Pricing Endpoints ====================
+src\modules\courses\courses.controller.ts|165|@Get(':id/branch-pricing')
+src\modules\courses\courses.controller.ts|166|@ApiOperation({ summary: 'Per-branch price overrides for a course' })
+src\modules\courses\courses.controller.ts|168|listBranchPricing(@Param('id') id: string) {
+src\modules\courses\courses.controller.ts|169|return this.service.listBranchPricing(id);
+src\modules\courses\courses.controller.ts|172|@Post(':id/branch-pricing')
+src\modules\courses\courses.controller.ts|173|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts|174|@ApiOperation({ summary: 'Create or update a branch price override' })
+src\modules\courses\courses.controller.ts|179|required: ['branch_id', 'price'],
+src\modules\courses\courses.controller.ts|181|branch_id: { type: 'string', format: 'uuid' },
+src\modules\courses\courses.controller.ts|186|setBranchPricing(@Param('id') id: string, @Body() body: { branch_id: string; price: number }) {
+src\modules\courses\courses.controller.ts|187|return this.service.setBranchPricing(id, body);
+src\modules\courses\courses.module.ts|6|import { CourseBranchPricing } from '../../shared/entities/course-branch-pricing.entity';
+src\modules\courses\courses.module.ts|11|imports: [TypeOrmModule.forFeature([Course, CourseMaterial, CoursePrerequisite, CourseBranchPricing])],
+src\modules\courses\courses.service.ts|7|import { CourseBranchPricing } from '../../shared/entities/course-branch-pricing.entity';
+src\modules\courses\courses.service.ts|18|@InjectRepository(CourseBranchPricing)
+src\modules\courses\courses.service.ts|19|private readonly branchPricingRepo: Repository<CourseBranchPricing>,
+src\modules\courses\courses.service.ts|142|// â”€â”€â”€ Per-branch pricing overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+src\modules\courses\courses.service.ts|144|async listBranchPricing(courseId: string): Promise<CourseBranchPricing[]> {
+src\modules\courses\courses.service.ts|146|return this.branchPricingRepo.find({
+src\modules\courses\courses.service.ts|148|relations: ['branch'],
+src\modules\courses\courses.service.ts|152|async setBranchPricing(
+src\modules\courses\courses.service.ts|154|dto: { branch_id: string; price: number },
+src\modules\courses\courses.service.ts|155|): Promise<CourseBranchPricing> {
+src\modules\courses\courses.service.ts|157|const existing = await this.branchPricingRepo.findOne({
+src\modules\courses\courses.service.ts|158|where: { course_id: courseId, branch_id: dto.branch_id },
+src\modules\courses\courses.service.ts|162|return this.branchPricingRepo.save(existing);
+src\modules\courses\courses.service.ts|164|const pricing = this.branchPricingRepo.create({
+src\modules\courses\courses.service.ts|166|branch_id: dto.branch_id,
+src\modules\courses\courses.service.ts|169|return this.branchPricingRepo.save(pricing);
+src\modules\dashboard\dashboard.controller.ts|13|@ApiOperation({ summary: 'Aggregated KPIs for the dashboard (branch-scoped)' })
+src\modules\dashboard\dashboard.module.ts|6|import { Branch } from '../../shared/entities/branch.entity';
+src\modules\dashboard\dashboard.module.ts|21|Branch,
+src\modules\dashboard\dashboard.service.ts|7|import { Branch } from '../../shared/entities/branch.entity';
+src\modules\dashboard\dashboard.service.ts|13|import { AuthUser, effectiveBranchFilter } from '../../common/utils/branch-scope';
+src\modules\dashboard\dashboard.service.ts|17|* All counts respect the caller's branch scope (super_admin sees everything).
+src\modules\dashboard\dashboard.service.ts|25|@InjectRepository(Branch) private readonly branchRepo: Repository<Branch>,
+src\modules\dashboard\dashboard.service.ts|34|const branchFilter = effectiveBranchFilter(user);
+src\modules\dashboard\dashboard.service.ts|36|// General scoped helper for entities that safely have branch_id
+src\modules\dashboard\dashboard.service.ts|38|const scoped = (repo: Repository<any>, hasBranchColumn = true) => {
+src\modules\dashboard\dashboard.service.ts|40|if (branchFilter && hasBranchColumn) {
+src\modules\dashboard\dashboard.service.ts|41|qb.where('x.branch_id = :b', { b: branchFilter });
+src\modules\dashboard\dashboard.service.ts|52|// Leads do not have a direct branch_id column in many schemas, or handle gracefully
+src\modules\dashboard\dashboard.service.ts|56|this.branchRepo.count(),
+src\modules\dashboard\dashboard.service.ts|67|this.sumPayments(startOfDay, branchFilter),
+src\modules\dashboard\dashboard.service.ts|68|this.sumPayments(startOfMonth, branchFilter),
+src\modules\dashboard\dashboard.service.ts|69|this.sumPayments(startOfYear, branchFilter),
+src\modules\dashboard\dashboard.service.ts|70|this.sumOutstanding(branchFilter),
+src\modules\dashboard\dashboard.service.ts|71|this.sumGroupCapacity(branchFilter),
+src\modules\dashboard\dashboard.service.ts|72|this.sumEnrolledStudents(branchFilter),
+src\modules\dashboard\dashboard.service.ts|73|this.sessionStats(branchFilter, today),
+src\modules\dashboard\dashboard.service.ts|77|this.attendanceBreakdown(branchFilter),
+src\modules\dashboard\dashboard.service.ts|81|total_leads, total_students, total_courses, total_branches,
+src\modules\dashboard\dashboard.service.ts|95|total_branches,
+src\modules\dashboard\dashboard.service.ts|114|private async sumPayments(from: Date, branchFilter?: string): Promise<number> {
+src\modules\dashboard\dashboard.service.ts|120|if (branchFilter) {
+src\modules\dashboard\dashboard.service.ts|121|qb.innerJoin('p.invoice', 'i').andWhere('i.branch_id = :b', { b: branchFilter });
+src\modules\dashboard\dashboard.service.ts|127|private async sumOutstanding(branchFilter?: string): Promise<number> {
+src\modules\dashboard\dashboard.service.ts|132|if (branchFilter) qb.andWhere('i.branch_id = :b', { b: branchFilter });
+src\modules\dashboard\dashboard.service.ts|137|private async sumGroupCapacity(branchFilter?: string): Promise<{ capacity: number }> {
+src\modules\dashboard\dashboard.service.ts|139|if (branchFilter) qb.where('g.branch_id = :b', { b: branchFilter });
+src\modules\dashboard\dashboard.service.ts|143|private async sumEnrolledStudents(branchFilter?: string): Promise<{ enrolled: number }> {
+src\modules\dashboard\dashboard.service.ts|149|if (branchFilter) qb.andWhere('g.branch_id = :b', { b: branchFilter });
+src\modules\dashboard\dashboard.service.ts|154|private async sessionStats(branchFilter: string | undefined, today: Date) {
+src\modules\dashboard\dashboard.service.ts|162|if (branchFilter) qb.andWhere('g.branch_id = :b', { b: branchFilter });
+src\modules\dashboard\dashboard.service.ts|166|private async attendanceBreakdown(branchFilter?: string) {
+src\modules\dashboard\dashboard.service.ts|172|if (branchFilter) {
+src\modules\dashboard\dashboard.service.ts|173|qb.innerJoin('a.session', 's').innerJoin('s.group', 'g').andWhere('g.branch_id = :b', {
+src\modules\dashboard\dashboard.service.ts|174|b: branchFilter,
+src\modules\enrollments\enrollments.controller.ts|8|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\enrollments\enrollments.controller.ts|15|@Roles('super_admin', 'branch_manager', 'sales', 'finance')
+src\modules\enrollments\enrollments.controller.ts|39|@Roles('super_admin', 'branch_manager', 'sales', 'finance', 'academic')
+src\modules\enrollments\enrollments.controller.ts|45|@Query('branch_id') branch_id?: string,
+src\modules\enrollments\enrollments.controller.ts|47|return this.service.findAll(user, { student_id, group_id, status, branch_id });
+src\modules\enrollments\enrollments.controller.ts|51|@Roles('super_admin', 'branch_manager', 'sales', 'finance', 'academic')
+src\modules\enrollments\enrollments.controller.ts|57|@Roles('super_admin', 'branch_manager', 'finance')
+src\modules\enrollments\enrollments.controller.ts|67|* Admin / Branch Manager approval: PENDING -> ACTIVE, triggers the
+src\modules\enrollments\enrollments.controller.ts|71|@Roles('super_admin', 'branch_manager', 'sales', 'finance')
+src\modules\enrollments\enrollments.controller.ts|76|/** Admin / Branch Manager rejection of a PENDING booking request. */
+src\modules\enrollments\enrollments.controller.ts|78|@Roles('super_admin', 'branch_manager', 'sales', 'finance')
+src\modules\enrollments\enrollments.controller.ts|88|@Roles('super_admin', 'branch_manager', 'finance')
+src\modules\enrollments\enrollments.service.spec.ts|32|const admin = { id: 'admin-1', roles: ['branch_manager'], branchId: 'br-1' };
+src\modules\enrollments\enrollments.service.spec.ts|40|branch_id: 'br-1',
+src\modules\enrollments\enrollments.service.spec.ts|47|branch_id: 'br-1',
+src\modules\enrollments\enrollments.service.ts|12|canAccessAllBranches,
+src\modules\enrollments\enrollments.service.ts|13|effectiveBranchFilter,
+src\modules\enrollments\enrollments.service.ts|14|} from '../../common/utils/branch-scope';
+src\modules\enrollments\enrollments.service.ts|131|const branchId = student.branch_id ?? group.branch_id;
+src\modules\enrollments\enrollments.service.ts|149|branch_id: branchId,
+src\modules\enrollments\enrollments.service.ts|170|* Admin / Branch Manager dashboard for review — no invoice is generated
+src\modules\enrollments\enrollments.service.ts|223|* with free capacity is selected, preferring the student's own branch.
+src\modules\enrollments\enrollments.service.ts|248|const inStudentBranch = student.branch_id
+src\modules\enrollments\enrollments.service.ts|249|? candidates.filter((g) => g.branch_id === student.branch_id)
+src\modules\enrollments\enrollments.service.ts|252|...inStudentBranch,
+src\modules\enrollments\enrollments.service.ts|253|...candidates.filter((g) => !inStudentBranch.includes(g)),
+src\modules\enrollments\enrollments.service.ts|284|* Admin / Branch Manager approval (Business Rule 2). A PENDING request is
+src\modules\enrollments\enrollments.service.ts|323|branch_id: e.student?.branch_id ?? e.group?.branch_id,
+src\modules\enrollments\enrollments.service.ts|362|relations: ['group', 'group.course', 'group.branch'],
+src\modules\enrollments\enrollments.service.ts|391|async findAll(user: AuthUser, query: { student_id?: string; group_id?: string; status?: string; branch_id?: string }) {
+src\modules\enrollments\enrollments.service.ts|396|// course (g.course) and the branch (group branch with the student's
+src\modules\enrollments\enrollments.service.ts|397|// own branch as fallback) — without these joins the UI can only show
+src\modules\enrollments\enrollments.service.ts|400|.leftJoinAndSelect('st.branch', 'sb')
+src\modules\enrollments\enrollments.service.ts|403|.leftJoinAndSelect('g.branch', 'gb')
+src\modules\enrollments\enrollments.service.ts|413|// Branch scoping — this is where PENDING booking requests used to vanish
+src\modules\enrollments\enrollments.service.ts|415|//  * super_admin / academic oversee every branch, so they are unscoped
+src\modules\enrollments\enrollments.service.ts|416|//    (an explicit ?branch_id still narrows the list);
+src\modules\enrollments\enrollments.service.ts|417|//  * '__none__' (branchless non-admin) must NEVER reach SQL — comparing
+src\modules\enrollments\enrollments.service.ts|418|//    it against the uuid branch columns crashes PostgreSQL with 22P02
+src\modules\enrollments\enrollments.service.ts|420|//  * self-registered catalog students often have students.branch_id =
+src\modules\enrollments\enrollments.service.ts|421|//    NULL while the booked GROUP belongs to a branch — fall back to the
+src\modules\enrollments\enrollments.service.ts|422|//    group's branch (mirrors bookCourse/approve invoice branch
+src\modules\enrollments\enrollments.service.ts|424|const branchFilter = canAccessAllBranches(user)
+src\modules\enrollments\enrollments.service.ts|425|? query.branch_id
+src\modules\enrollments\enrollments.service.ts|426|: effectiveBranchFilter(user, query.branch_id);
+src\modules\enrollments\enrollments.service.ts|427|if (branchFilter === '__none__') return [];
+src\modules\enrollments\enrollments.service.ts|428|if (branchFilter) {
+src\modules\enrollments\enrollments.service.ts|429|qb.andWhere('COALESCE(st.branch_id, g.branch_id) = :b', { b: branchFilter });
+src\modules\enrollments\enrollments.service.ts|441|'student.branch',
+src\modules\enrollments\enrollments.service.ts|444|'group.branch',
+src\modules\enrollments\enrollments.service.ts|448|// Broad-oversight roles (super_admin / academic) may view every branch's
+src\modules\enrollments\enrollments.service.ts|449|// enrollments; other staff stay locked to their own branch.
+src\modules\enrollments\enrollments.service.ts|450|const branchFilter = canAccessAllBranches(user)
+src\modules\enrollments\enrollments.service.ts|452|: effectiveBranchFilter(user);
+src\modules\enrollments\enrollments.service.ts|454|// flow) even when branch data is missing; staff stay branch-scoped.
+src\modules\enrollments\enrollments.service.ts|457|if (!isOwnEnrollment && branchFilter) {
+src\modules\enrollments\enrollments.service.ts|458|// Same resolution as the list query: a branchless student belongs to
+src\modules\enrollments\enrollments.service.ts|459|// the branch of the group they booked into — otherwise approving a
+src\modules\enrollments\enrollments.service.ts|462|const resourceBranch = e.student?.branch_id ?? e.group?.branch_id;
+src\modules\enrollments\enrollments.service.ts|463|if (branchFilter === '__none__' || resourceBranch !== branchFilter) {
+src\modules\finance\dto\create-invoice.dto.ts|12|@IsUUID() branch_id: string;
+src\modules\finance\dto\create-promo-code.dto.ts|11|@IsOptional() @IsArray() applicable_branches?: string[];
+src\modules\finance\dto\query-invoice.dto.ts|6|@IsOptional() @IsUUID() branch_id?: string;
+src\modules\finance\finance.controller.ts|12|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\finance\finance.controller.ts|21|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|27|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|33|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|40|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|46|@Roles('super_admin', 'finance', 'branch_manager', 'sales')
+src\modules\finance\finance.controller.ts|52|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|59|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|65|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|69|@Query('branch_id') branch_id?: string,
+src\modules\finance\finance.controller.ts|73|return this.service.listPayments(user, { invoice_id, branch_id, from, to });
+src\modules\finance\finance.controller.ts|77|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|83|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|114|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|115|listRefunds(@CurrentUser() user: AuthUser, @Query('status') status?: string, @Query('branch_id') branch_id?: string) {
+src\modules\finance\finance.controller.ts|116|return this.service.listRefunds(user, { status, branch_id });
+src\modules\finance\finance.controller.ts|133|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|138|@Query('branch_id') branch_id?: string,
+src\modules\finance\finance.controller.ts|140|return this.service.ledger(user, from, to, branch_id);
+src\modules\finance\finance.controller.ts|144|@Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts|145|receivables(@CurrentUser() user: AuthUser, @Query('branch_id') branch_id?: string) {
+src\modules\finance\finance.controller.ts|146|return this.service.receivables(user, branch_id);
+src\modules\finance\finance.service.spec.ts|40|branch_id: 'b-1',
+src\modules\finance\finance.service.spec.ts|235|applicable_branches: null,
+src\modules\finance\finance.service.spec.ts|268|describe('getInvoice â€” branch isolation', () => {
+src\modules\finance\finance.service.spec.ts|276|it('forbids cross-branch access for non-super-admins', async () => {
+src\modules\finance\finance.service.spec.ts|277|invoiceRepo.findOne.mockResolvedValue({ ...invoice, branch_id: 'b-other' });
+src\modules\finance\finance.service.spec.ts|279|service.getInvoice('inv-1', { roles: ['branch_manager'], branchId: 'b-1' }),
+src\modules\finance\finance.service.spec.ts|283|it('allows super_admin across branches', async () => {
+src\modules\finance\finance.service.spec.ts|284|invoiceRepo.findOne.mockResolvedValue({ ...invoice, branch_id: 'b-other' });
+src\modules\finance\finance.service.ts|25|import { effectiveBranchFilter } from '../../common/utils/branch-scope';
+src\modules\finance\finance.service.ts|52|return this.createInvoice(data, data.created_by, data.branch_id);
+src\modules\finance\finance.service.ts|70|const branchId = typeof user === 'object' ? user?.branch_id || user?.branchId : undefined;
+src\modules\finance\finance.service.ts|71|return this.createInvoice(dto, userId, branchId);
+src\modules\finance\finance.service.ts|94|filter: { invoice_id?: string; branch_id?: string; from?: string; to?: string } = {},
+src\modules\finance\finance.service.ts|96|// Payment has NO branch_id / from / to columns â€” passing those keys to
+src\modules\finance\finance.service.ts|97|// find({ where }) throws EntityPropertyNotFoundError. Branch scoping
+src\modules\finance\finance.service.ts|104|.leftJoinAndSelect('invoice.branch', 'branch')
+src\modules\finance\finance.service.ts|108|const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
+src\modules\finance\finance.service.ts|109|// '__none__' = branchless non-admin: return nothing rather than running
+src\modules\finance\finance.service.ts|110|// an invalid uuid comparison against the invoice.branch_id column.
+src\modules\finance\finance.service.ts|111|if (branchFilter === '__none__') return [];
+src\modules\finance\finance.service.ts|112|if (branchFilter) {
+src\modules\finance\finance.service.ts|113|qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
+src\modules\finance\finance.service.ts|134|* Refund list (SRS Â§4.8). Refund has NO branch_id column â€” the previous
+src\modules\finance\finance.service.ts|135|* find({ where: { branch_id } }) crashed with EntityPropertyNotFoundError.
+src\modules\finance\finance.service.ts|136|* Branch scoping runs through invoice.branch_id; the response carries the
+src\modules\finance\finance.service.ts|137|* invoice/branch/payment and approver/processor details for the UI.
+src\modules\finance\finance.service.ts|141|filter: { status?: string; branch_id?: string } = {},
+src\modules\finance\finance.service.ts|146|.leftJoinAndSelect('invoice.branch', 'branch')
+src\modules\finance\finance.service.ts|152|const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
+src\modules\finance\finance.service.ts|153|// '__none__' = branchless non-admin: return nothing rather than running
+src\modules\finance\finance.service.ts|154|// an invalid uuid comparison against the invoice.branch_id column.
+src\modules\finance\finance.service.ts|155|if (branchFilter === '__none__') return [];
+src\modules\finance\finance.service.ts|156|if (branchFilter) {
+src\modules\finance\finance.service.ts|157|qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
+src\modules\finance\finance.service.ts|182|async ledger(user: any, from?: string, to?: string, branchId?: string) {
+src\modules\finance\finance.service.ts|183|return this.getRevenueReport(branchId || user?.branchId || null, from ? new Date(from) : new Date(0), to ? new Date(to) : new Date());
+src\modules\finance\finance.service.ts|186|async receivables(user: any, branchId?: string) {
+src\modules\finance\finance.service.ts|187|return this.getOutstandingPayments(branchId || user?.branchId || null);
+src\modules\finance\finance.service.ts|199|'invoice.branch',
+src\modules\finance\finance.service.ts|209|async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string) {
+src\modules\finance\finance.service.ts|234|// branch/course scoping) and its discount replaces the manual one.
+src\modules\finance\finance.service.ts|251|branchId ?? (invoiceData as any).branch_id,
+src\modules\finance\finance.service.ts|275|// Super admins have no branch of their own â€” fall back to the
+src\modules\finance\finance.service.ts|276|// payload's branch (always present on the manual DTO).
+src\modules\finance\finance.service.ts|277|branch_id: branchId ?? (invoiceData as any).branch_id ?? null,
+src\modules\finance\finance.service.ts|387|if (!user?.roles?.includes('super_admin') && user?.branchId) {
+src\modules\finance\finance.service.ts|388|qb.andWhere('i.branch_id = :branchId', { branchId: user.branchId });
+src\modules\finance\finance.service.ts|405|if (!user?.roles?.includes('super_admin') && invoice.branch_id !== user?.branchId) {
+src\modules\finance\finance.service.ts|434|branch_id: invoice.branch_id,
+src\modules\finance\finance.service.ts|458|branch_id: string;
+src\modules\finance\finance.service.ts|465|branch_id: data.branch_id,
+src\modules\finance\finance.service.ts|518|branch_id: invoice?.branch_id,
+src\modules\finance\finance.service.ts|539|async validatePromoCode(code: string, courseId?: string, branchId?: string) {
+src\modules\finance\finance.service.ts|541|// expiry / usage-limit / branch / course scoping rules (kept as a
+src\modules\finance\finance.service.ts|543|return this.promoCodeService.validatePromoCode(code, courseId, branchId);
+src\modules\finance\finance.service.ts|548|async getRevenueReport(branchId: string | null, from: Date, to: Date) {
+src\modules\finance\finance.service.ts|559|if (branchId) qb.andWhere('ft.branch_id = :branchId', { branchId });
+src\modules\finance\finance.service.ts|563|async getOutstandingPayments(branchId: string | null) {
+src\modules\finance\finance.service.ts|569|if (branchId) qb.andWhere('i.branch_id = :branchId', { branchId });
+src\modules\finance\promo-code.service.ts|21|* and branch/course scoping. Throws 404/400 on any failure.
+src\modules\finance\promo-code.service.ts|26|branchId?: string,
+src\modules\finance\promo-code.service.ts|46|branchId &&
+src\modules\finance\promo-code.service.ts|47|promo.applicable_branches &&
+src\modules\finance\promo-code.service.ts|48|!promo.applicable_branches.includes(branchId)
+src\modules\finance\promo-code.service.ts|50|throw new BadRequestException('Promo code not applicable to this branch');
+src\modules\groups\dto\assign-teacher.dto.ts|4|* Direct teacher assignment (Business Rule 1): admins/branch managers may
+src\modules\groups\dto\create-group.dto.ts|13|branchId: string;
+src\modules\groups\groups.controller.ts|10|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\groups\groups.controller.ts|19|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|28|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts|29|@ApiOperation({ summary: 'Get all groups with optional branch or course filters' })
+src\modules\groups\groups.controller.ts|30|@ApiQuery({ name: 'branchId', required: false })
+src\modules\groups\groups.controller.ts|33|@Query('branchId') branchId?: string,
+src\modules\groups\groups.controller.ts|36|return this.service.findAll({ branchId, courseId });
+src\modules\groups\groups.controller.ts|41|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts|72|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts|78|@ApiQuery({ name: 'branchId', required: false })
+src\modules\groups\groups.controller.ts|84|@Query('branchId') branchId?: string,
+src\modules\groups\groups.controller.ts|86|return this.service.getCalendar({ view, date, teacherId, classroomId, branchId });
+src\modules\groups\groups.controller.ts|90|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts|100|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|111|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|121|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|129|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|138|* Business Rule 1 â€” direct teacher assignment (staff only, branch-scoped).
+src\modules\groups\groups.controller.ts|142|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|159|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts|172|@Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.service.spec.ts|48|const admin = { id: 'admin-1', roles: ['branch_manager'], branchId: 'b-1' };
+src\modules\groups\groups.service.spec.ts|55|branch_id: 'b-1',
+src\modules\groups\groups.service.spec.ts|205|it('blocks cross-branch assignment for branch managers', async () => {
+src\modules\groups\groups.service.spec.ts|206|const branchManager = { id: 'admin-2', roles: ['branch_manager'], branchId: 'b-OTHER' };
+src\modules\groups\groups.service.spec.ts|208|service.assignTeacher('g-1', { teacher_id: 't-1' }, branchManager),
+src\modules\groups\groups.service.spec.ts|209|).rejects.toThrow(/cross-branch/);
+src\modules\groups\groups.service.spec.ts|290|it('blocks cross-branch enrollment for branch managers', async () => {
+src\modules\groups\groups.service.spec.ts|291|const branchManager = { id: 'admin-2', roles: ['branch_manager'], branchId: 'b-OTHER' };
+src\modules\groups\groups.service.spec.ts|293|service.addStudent('g-1', { student_id: 'stu-1' }, branchManager),
+src\modules\groups\groups.service.spec.ts|294|).rejects.toThrow(/cross-branch/);
+src\modules\groups\groups.service.ts|21|import { AuthUser, assertBranchAccess } from '../../common/utils/branch-scope';
+src\modules\groups\groups.service.ts|93|branch_id: dto.branchId,
+src\modules\groups\groups.service.ts|109|async findAll(filters: { branchId?: string; courseId?: string }): Promise<Group[]> {
+src\modules\groups\groups.service.ts|112|.leftJoinAndSelect('group.branch', 'branch')
+src\modules\groups\groups.service.ts|116|if (filters.branchId) {
+src\modules\groups\groups.service.ts|117|query.andWhere('branch.id = :branchId', { branchId: filters.branchId });
+src\modules\groups\groups.service.ts|135|relations: ['course', 'branch', 'teacher', 'substitute_teacher', 'schedules'],
+src\modules\groups\groups.service.ts|200|if (dto.branchId !== undefined) group.branch_id = dto.branchId;
+src\modules\groups\groups.service.ts|339|branchId?: string;
+src\modules\groups\groups.service.ts|343|.leftJoinAndSelect('group.branch', 'branch')
+src\modules\groups\groups.service.ts|346|if (filters.branchId) {
+src\modules\groups\groups.service.ts|347|query.andWhere('group.branch_id = :branchId', { branchId: filters.branchId });
+src\modules\groups\groups.service.ts|364|assertBranchAccess(user, group.branch_id);
+src\modules\groups\groups.service.ts|431|assertBranchAccess(user, group.branch_id);
+src\modules\hr\hr.controller.ts|21|branchId: u?.branchId ?? null,
+src\modules\hr\hr.controller.ts|25|// in HrService: branch scoping, own-record checks, compensation visibility).
+src\modules\hr\hr.controller.ts|41|@Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts|48|@Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts|143|@Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts|144|@ApiOperation({ summary: 'List leave requests (branch managers: own branch)' })
+src\modules\hr\hr.controller.ts|157|@Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts|164|@Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.helpers.ts|57|phone: u.phone, branch_id: u.branch_id, avatar_url: u.avatar_url, status: u.status,
+src\modules\hr\hr.service.spec.ts|34|const HR: HrActor = { userId: 'u-hr', roles: ['hr'], branchId: null };
+src\modules\hr\hr.service.spec.ts|35|const ADMIN: HrActor = { userId: 'u-admin', roles: ['super_admin'], branchId: null };
+src\modules\hr\hr.service.spec.ts|36|const TEACHER: HrActor = { userId: 'u-t1', roles: ['teacher'], branchId: 'br-A' };
+src\modules\hr\hr.service.spec.ts|37|const TEACHER2: HrActor = { userId: 'u-t2', roles: ['teacher'], branchId: 'br-A' };
+src\modules\hr\hr.service.spec.ts|38|const MGR_A: HrActor = { userId: 'u-mgrA', roles: ['branch_manager'], branchId: 'br-A' };
+src\modules\hr\hr.service.spec.ts|39|const MGR_B: HrActor = { userId: 'u-mgrB', roles: ['branch_manager'], branchId: 'br-B' };
+src\modules\hr\hr.service.spec.ts|48|{ id: 'u-t1', first_name: 'T', last_name: 'One', branch_id: 'br-A', password_hash: 'X' },
+src\modules\hr\hr.service.spec.ts|49|{ id: 'u-t2', first_name: 'T', last_name: 'Two', branch_id: 'br-A', password_hash: 'X' },
+src\modules\hr\hr.service.spec.ts|50|{ id: 'u-hr', first_name: 'H', last_name: 'R', branch_id: 'br-A', password_hash: 'X' },
+src\modules\hr\hr.service.spec.ts|113|it('branch manager cannot decide leave of another branch', async () => {
+src\modules\hr\hr.service.ts|28|branchId?: string | null;
+src\modules\hr\hr.service.ts|54|/** Branch managers only work with employees of their own branch. HR / admin see all. */
+src\modules\hr\hr.service.ts|55|private branchScope(actor?: HrActor): string | null {
+src\modules\hr\hr.service.ts|57|return actor.branchId ?? null;
+src\modules\hr\hr.service.ts|61|const b = this.branchScope(actor);
+src\modules\hr\hr.service.ts|64|if (user?.branch_id !== b) throw new ForbiddenException('Employee belongs to another branch');
+src\modules\hr\hr.service.ts|137|const scope = this.branchScope(actor);
+src\modules\hr\hr.service.ts|138|if (scope) qb.andWhere('user.branch_id = :scope', { scope });
+src\modules\hr\hr.service.ts|371|const scope = this.branchScope(actor);
+src\modules\hr\hr.service.ts|372|if (scope) qb.andWhere('user.branch_id = :scope', { scope });
+src\modules\hr\hr.service.ts|394|// Branch managers decide only for their own branch.
+src\modules\integrations\integrations.controller.ts|29|@Roles('super_admin', 'branch_manager')
+src\modules\integrations\payments.controller.ts|18|userBranchId,
+src\modules\integrations\payments.controller.ts|19|} from '../../common/utils/branch-scope';
+src\modules\integrations\payments.controller.ts|55|// Ownership / branch validation before touching the gateway.
+src\modules\integrations\payments.controller.ts|64|// Staff are locked to their own branch.
+src\modules\integrations\payments.controller.ts|65|const branch = userBranchId(user);
+src\modules\integrations\payments.controller.ts|66|if (!branch || branch !== invoice.branch_id) {
+src\modules\integrations\payments.controller.ts|67|throw new ForbiddenException('Invoice is outside your branch');
+src\modules\inventory\dto\adjust-stock.dto.ts|8|branch_id: string;
+src\modules\inventory\dto\adjust-stock.dto.ts|22|branch_id: string;
+src\modules\inventory\dto\adjust-stock.dto.ts|39|/** POST /inventory/:id/transfer - move stock between branches atomically. */
+src\modules\inventory\dto\adjust-stock.dto.ts|42|from_branch_id: string;
+src\modules\inventory\dto\adjust-stock.dto.ts|45|to_branch_id: string;
+src\modules\inventory\dto\issue-item.dto.ts|14|branch_id: string;
+src\modules\inventory\dto\query.dto.ts|11|@ApiPropertyOptional() @IsOptional() @IsUUID() branch_id?: string;
+src\modules\inventory\dto\query.dto.ts|26|@ApiPropertyOptional() @IsOptional() @IsUUID() branch_id?: string;
+src\modules\inventory\dto\query.dto.ts|36|@ApiPropertyOptional() @IsOptional() @IsUUID() branch_id?: string;
+src\modules\inventory\dto\query.dto.ts|42|export class BranchQueryDto {
+src\modules\inventory\dto\query.dto.ts|43|@ApiPropertyOptional() @IsOptional() @IsUUID() branch_id?: string;
+src\modules\inventory\dto\query.dto.ts|47|@ApiPropertyOptional() @IsOptional() @IsUUID() branch_id?: string;
+src\modules\inventory\dto\save-item.dto.ts|8|/** Create an item in the master catalog. Stock lives per branch in stock_levels. */
+src\modules\inventory\dto\save-item.dto.ts|35|@ApiPropertyOptional({ description: 'Branch that receives initial_quantity (required when initial_quantity > 0)' })
+src\modules\inventory\dto\save-item.dto.ts|37|branch_id?: string;
+src\modules\inventory\inventory.controller.ts|9|ListItemsQueryDto, ListMovesQueryDto, ListIssuesQueryDto, BranchQueryDto, MovementReportQueryDto,
+src\modules\inventory\inventory.controller.ts|15|//   READ   - super_admin, branch_manager, sales, finance, auditor
+src\modules\inventory\inventory.controller.ts|16|//   MANAGE - super_admin, branch_manager   (catalog, receive, adjust, transfer)
+src\modules\inventory\inventory.controller.ts|17|//   ISSUE  - super_admin, branch_manager, sales
+src\modules\inventory\inventory.controller.ts|18|// Branch scoping for non-HQ roles is enforced inside the service.
+src\modules\inventory\inventory.controller.ts|19|const READ = ['super_admin', 'branch_manager', 'sales', 'finance', 'auditor'] as const;
+src\modules\inventory\inventory.controller.ts|20|const MANAGE = ['super_admin', 'branch_manager'] as const;
+src\modules\inventory\inventory.controller.ts|21|const ISSUE = ['super_admin', 'branch_manager', 'sales'] as const;
+src\modules\inventory\inventory.controller.ts|27|branchId: u?.branchId ?? null,
+src\modules\inventory\inventory.controller.ts|40|@ApiOperation({ summary: 'Items at or below reorder level, per branch (SRS 4.12)' })
+src\modules\inventory\inventory.controller.ts|41|lowStockAlerts(@Query() q: BranchQueryDto, @CurrentUser() user: any) {
+src\modules\inventory\inventory.controller.ts|42|return this.service.lowStockAlerts(q.branch_id, toActor(user));
+src\modules\inventory\inventory.controller.ts|47|@ApiOperation({ summary: 'Inventory valuation per branch and item (SRS 4.12)' })
+src\modules\inventory\inventory.controller.ts|48|valuationReport(@Query() q: BranchQueryDto, @CurrentUser() user: any) {
+src\modules\inventory\inventory.controller.ts|49|return this.service.valuationReport(q.branch_id, toActor(user));
+src\modules\inventory\inventory.controller.ts|91|@ApiOperation({ summary: 'Create an inventory item (optionally with opening stock in one branch)' })
+src\modules\inventory\inventory.controller.ts|107|@ApiOperation({ summary: 'Item with per-branch stock and recent movements' })
+src\modules\inventory\inventory.controller.ts|109|findOne(@Param('id', ParseUUIDPipe) id: string, @Query() q: BranchQueryDto, @CurrentUser() user: any) {
+src\modules\inventory\inventory.controller.ts|110|return this.service.findOne(id, q.branch_id, toActor(user));
+src\modules\inventory\inventory.controller.ts|131|@ApiOperation({ summary: 'Receive stock into a branch' })
+src\modules\inventory\inventory.controller.ts|145|@ApiOperation({ summary: 'Transfer stock between branches (atomic)' })
+src\modules\inventory\inventory.service.spec.ts|21|students: [{ id: 'stu-1' }], branches: [{ id: 'br-A', name: 'Branch A' }, { id: 'br-B', name: 'Branch B' }],
+src\modules\inventory\inventory.service.spec.ts|99|const [item_id, branch_id] = params;
+src\modules\inventory\inventory.service.spec.ts|100|if (!db.tables.StockLevel.some((r) => r.item_id === item_id && r.branch_id === branch_id)) {
+src\modules\inventory\inventory.service.spec.ts|101|const row = { id: db.uid('sl'), item_id, branch_id, quantity: 0, last_counted_at: null };
+src\modules\inventory\inventory.service.spec.ts|142|if (o.relations?.includes('branch')) c.branch = db.tables.branches.find((b) => b.id === x.branch_id);
+src\modules\inventory\inventory.service.spec.ts|152|const ADMIN = { id: 'u-admin', roles: ['super_admin'], branchId: null };
+src\modules\inventory\inventory.service.spec.ts|153|const MANAGER_A = { id: 'u-mgr-a', roles: ['branch_manager'], branchId: 'br-A' };
+src\modules\inventory\inventory.service.spec.ts|166|const qty = (itemId: string, branch: string) =>
+src\modules\inventory\inventory.service.spec.ts|167|db.tables.StockLevel.find((s) => s.item_id === itemId && s.branch_id === branch)?.quantity ?? 0;
+src\modules\inventory\inventory.service.spec.ts|182|const item = await makeItem({ initial_quantity: 12, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|189|it('rejects initial_quantity without a branch', async () => {
+src\modules\inventory\inventory.service.spec.ts|214|const item = await makeItem({ initial_quantity: 4, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|223|await svc.receiveStock(item.id, { branch_id: 'br-A', quantity: 20, unit_cost: 12.5 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|230|const item = await makeItem({ initial_quantity: 5, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|231|await svc.adjustStock(item.id, { branch_id: 'br-A', quantity: -3, reason: 'damaged' }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|233|await svc.adjustStock(item.id, { branch_id: 'br-A', quantity: 4, reason: 'recount' }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|238|svc.adjustStock(item.id, { branch_id: 'br-A', quantity: -7, reason: 'oops' }, ADMIN),
+src\modules\inventory\inventory.service.spec.ts|245|const item = await makeItem({ initial_quantity: 5, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|246|await expect(svc.adjustStock(item.id, { branch_id: 'br-A', quantity: 1, reason: '  ' }, ADMIN)).rejects.toBeInstanceOf(BadRequestException);
+src\modules\inventory\inventory.service.spec.ts|247|await expect(svc.adjustStock(item.id, { branch_id: 'br-A', quantity: 0, reason: 'x' }, ADMIN)).rejects.toBeInstanceOf(BadRequestException);
+src\modules\inventory\inventory.service.spec.ts|248|await expect(svc.adjustStock(item.id, { branch_id: 'br-A', quantity: 1.5, reason: 'x' }, ADMIN)).rejects.toBeInstanceOf(BadRequestException);
+src\modules\inventory\inventory.service.spec.ts|254|const item = await makeItem({ initial_quantity: 5, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|255|await svc.issueToStudent({ item_id: item.id, student_id: 'stu-1', branch_id: 'br-A', quantity: 2 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|264|const item = await makeItem({ initial_quantity: 1, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|266|svc.issueToStudent({ item_id: item.id, student_id: 'stu-1', branch_id: 'br-A', quantity: 3 }, ADMIN),
+src\modules\inventory\inventory.service.spec.ts|274|const item = await makeItem({ initial_quantity: 5, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|276|svc.issueToStudent({ item_id: item.id, student_id: 'nope', branch_id: 'br-A' }, ADMIN),
+src\modules\inventory\inventory.service.spec.ts|280|svc.issueToStudent({ item_id: item.id, student_id: 'stu-1', branch_id: 'br-A' }, ADMIN),
+src\modules\inventory\inventory.service.spec.ts|285|const item = await makeItem({ initial_quantity: 5, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|286|const i1: any = await svc.issueToStudent({ item_id: item.id, student_id: 'stu-1', branch_id: 'br-A', quantity: 2 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|287|const i2: any = await svc.issueToStudent({ item_id: item.id, student_id: 'stu-1', branch_id: 'br-A', quantity: 1 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|299|it('transfers between branches atomically', async () => {
+src\modules\inventory\inventory.service.spec.ts|300|const item = await makeItem({ initial_quantity: 10, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|301|await svc.transferStock(item.id, { from_branch_id: 'br-A', to_branch_id: 'br-B', quantity: 4 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|309|it('transfer with insufficient stock leaves both branches and the ledger untouched', async () => {
+src\modules\inventory\inventory.service.spec.ts|310|const item = await makeItem({ initial_quantity: 2, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|312|svc.transferStock(item.id, { from_branch_id: 'br-A', to_branch_id: 'br-B', quantity: 5 }, ADMIN),
+src\modules\inventory\inventory.service.spec.ts|319|it('rejects a transfer to the same branch', async () => {
+src\modules\inventory\inventory.service.spec.ts|320|const item = await makeItem({ initial_quantity: 2, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|322|svc.transferStock(item.id, { from_branch_id: 'br-A', to_branch_id: 'br-A', quantity: 1 }, ADMIN),
+src\modules\inventory\inventory.service.spec.ts|328|const item = await makeItem({ initial_quantity: 5, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|330|svc.issueToStudent({ item_id: item.id, student_id: 'stu-1', branch_id: 'br-A', quantity: 1 }, ADMIN).then(
+src\modules\inventory\inventory.service.spec.ts|342|// ---------- authorization / branch scoping ----------
+src\modules\inventory\inventory.service.spec.ts|343|it('stops a branch manager from touching another branch, allows HQ roles', async () => {
+src\modules\inventory\inventory.service.spec.ts|346|svc.receiveStock(item.id, { branch_id: 'br-B', quantity: 1 }, MANAGER_A),
+src\modules\inventory\inventory.service.spec.ts|349|svc.adjustStock(item.id, { branch_id: 'br-B', quantity: 1, reason: 'x' }, MANAGER_A),
+src\modules\inventory\inventory.service.spec.ts|352|svc.transferStock(item.id, { from_branch_id: 'br-B', to_branch_id: 'br-A', quantity: 1 }, MANAGER_A),
+src\modules\inventory\inventory.service.spec.ts|354|await svc.receiveStock(item.id, { branch_id: 'br-A', quantity: 1 }, MANAGER_A);
+src\modules\inventory\inventory.service.spec.ts|355|await svc.receiveStock(item.id, { branch_id: 'br-B', quantity: 1 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|360|it('findOne hides other branches from a branch-scoped user', async () => {
+src\modules\inventory\inventory.service.spec.ts|361|const item = await makeItem({ initial_quantity: 3, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|362|await svc.receiveStock(item.id, { branch_id: 'br-B', quantity: 9 }, ADMIN);
+src\modules\inventory\inventory.service.spec.ts|371|const withStock = await makeItem({ initial_quantity: 2, branch_id: 'br-A' });
+src\modules\inventory\inventory.service.spec.ts|374|await svc.adjustStock(withStock.id, { branch_id: 'br-A', quantity: -2, reason: 'clear' }, ADMIN);
+src\modules\inventory\inventory.service.ts|22|branchId?: string | null;
+src\modules\inventory\inventory.service.ts|25|/** Roles that may see / act on every branch (HQ-level, SRS 4.15). */
+src\modules\inventory\inventory.service.ts|29|branch_id?: string;
+src\modules\inventory\inventory.service.ts|52|// ==================== BRANCH SCOPING ====================
+src\modules\inventory\inventory.service.ts|59|/** Throws if the actor may not act on `branchId`. */
+src\modules\inventory\inventory.service.ts|60|private assertBranchAccess(actor: InventoryActor | undefined, branchId: string) {
+src\modules\inventory\inventory.service.ts|62|if (actor?.branchId && actor.branchId !== branchId) {
+src\modules\inventory\inventory.service.ts|63|throw new ForbiddenException('You can only manage inventory of your own branch');
+src\modules\inventory\inventory.service.ts|67|/** Branch-scoped users are always limited to their own branch for reads. */
+src\modules\inventory\inventory.service.ts|68|private resolveReadBranch(actor: InventoryActor | undefined, requested?: string): string | undefined {
+src\modules\inventory\inventory.service.ts|69|if (this.isGlobal(actor) || !actor?.branchId) return requested;
+src\modules\inventory\inventory.service.ts|70|if (requested && requested !== actor.branchId) {
+src\modules\inventory\inventory.service.ts|71|throw new ForbiddenException('You can only view inventory of your own branch');
+src\modules\inventory\inventory.service.ts|73|return actor.branchId;
+src\modules\inventory\inventory.service.ts|100|if (qty > 0 && !dto.branch_id) {
+src\modules\inventory\inventory.service.ts|101|throw new BadRequestException('branch_id is required when initial_quantity is greater than 0');
+src\modules\inventory\inventory.service.ts|103|if (qty > 0) this.assertBranchAccess(actor, dto.branch_id as string);
+src\modules\inventory\inventory.service.ts|127|branchId: dto.branch_id as string,
+src\modules\inventory\inventory.service.ts|145|* quantity = stock in `branch_id` when filtered, otherwise summed over branches.
+src\modules\inventory\inventory.service.ts|148|const branchId = this.resolveReadBranch(actor, query.branch_id);
+src\modules\inventory\inventory.service.ts|157|branchId ? 'sl.item_id = item.id AND sl.branch_id = :branchId' : 'sl.item_id = item.id',
+src\modules\inventory\inventory.service.ts|158|{ branchId },
+src\modules\inventory\inventory.service.ts|206|return { data, total, page, limit, branch_id: branchId ?? null };
+src\modules\inventory\inventory.service.ts|209|async findOne(id: string, branchId?: string, actor?: InventoryActor) {
+src\modules\inventory\inventory.service.ts|213|const scoped = this.resolveReadBranch(actor, branchId);
+src\modules\inventory\inventory.service.ts|214|const where: any = scoped ? { item_id: id, branch_id: scoped } : { item_id: id };
+src\modules\inventory\inventory.service.ts|215|const stock = await this.stockRepo.find({ where, relations: ['branch'] });
+src\modules\inventory\inventory.service.ts|218|relations: ['creator', 'branch'],
+src\modules\inventory\inventory.service.ts|230|branch_id: s.branch_id,
+src\modules\inventory\inventory.service.ts|231|branch_name: s.branch?.name ?? null,
+src\modules\inventory\inventory.service.ts|302|private async ensureAndLockStock(manager: EntityManager, itemId: string, branchId: string) {
+src\modules\inventory\inventory.service.ts|304|'INSERT INTO stock_levels (item_id, branch_id, quantity) VALUES ($1, $2, 0) ON CONFLICT (item_id, branch_id) DO NOTHING',
+src\modules\inventory\inventory.service.ts|305|[itemId, branchId],
+src\modules\inventory\inventory.service.ts|308|where: { item_id: itemId, branch_id: branchId },
+src\modules\inventory\inventory.service.ts|311|if (!stock) throw new NotFoundException('Stock record could not be created (check the branch id)');
+src\modules\inventory\inventory.service.ts|318|* item+branch are serialised and the balance can never go negative.
+src\modules\inventory\inventory.service.ts|324|branchId: string;
+src\modules\inventory\inventory.service.ts|341|const stock = await this.ensureAndLockStock(manager, p.itemId, p.branchId);
+src\modules\inventory\inventory.service.ts|365|branch_id: p.branchId,
+src\modules\inventory\inventory.service.ts|390|this.assertBranchAccess(actor, dto.branch_id);
+src\modules\inventory\inventory.service.ts|395|branchId: dto.branch_id,
+src\modules\inventory\inventory.service.ts|408|return this.findOne(itemId, dto.branch_id, actor);
+src\modules\inventory\inventory.service.ts|413|this.assertBranchAccess(actor, dto.branch_id);
+src\modules\inventory\inventory.service.ts|419|branchId: dto.branch_id,
+src\modules\inventory\inventory.service.ts|427|return this.findOne(itemId, dto.branch_id, actor);
+src\modules\inventory\inventory.service.ts|430|/** Branch-to-branch transfer: both legs commit together or not at all. */
+src\modules\inventory\inventory.service.ts|432|if (dto.from_branch_id === dto.to_branch_id) {
+src\modules\inventory\inventory.service.ts|433|throw new BadRequestException('Source and destination branches must be different');
+src\modules\inventory\inventory.service.ts|435|this.assertBranchAccess(actor, dto.from_branch_id);
+src\modules\inventory\inventory.service.ts|436|const reason = dto.reason?.trim() || 'branch transfer';
+src\modules\inventory\inventory.service.ts|439|// Lock rows in a fixed order (by branch id) so two opposite transfers cannot deadlock.
+src\modules\inventory\inventory.service.ts|440|for (const b of [dto.from_branch_id, dto.to_branch_id].sort()) {
+src\modules\inventory\inventory.service.ts|444|itemId, branchId: dto.from_branch_id, type: StockMoveType.TRANSFER_OUT,
+src\modules\inventory\inventory.service.ts|448|itemId, branchId: dto.to_branch_id, type: StockMoveType.TRANSFER_IN,
+src\modules\inventory\inventory.service.ts|457|item_id?: string; branch_id?: string; type?: string; from?: string; to?: string; page?: number; limit?: number;
+src\modules\inventory\inventory.service.ts|461|const branchId = this.resolveReadBranch(actor, filters.branch_id);
+src\modules\inventory\inventory.service.ts|468|.leftJoinAndSelect('move.branch', 'branch')
+src\modules\inventory\inventory.service.ts|475|if (branchId) qb.andWhere('move.branch_id = :b', { b: branchId });
+src\modules\inventory\inventory.service.ts|487|this.assertBranchAccess(actor, dto.branch_id);
+src\modules\inventory\inventory.service.ts|501|branch_id: dto.branch_id,
+src\modules\inventory\inventory.service.ts|509|branchId: dto.branch_id,
+src\modules\inventory\inventory.service.ts|525|filters: { student_id?: string; branch_id?: string; open_only?: boolean; page?: number; limit?: number },
+src\modules\inventory\inventory.service.ts|528|const branchId = this.resolveReadBranch(actor, filters.branch_id);
+src\modules\inventory\inventory.service.ts|542|if (branchId) qb.andWhere('issue.branch_id = :b', { b: branchId });
+src\modules\inventory\inventory.service.ts|575|this.assertBranchAccess(actor, issue.branch_id);
+src\modules\inventory\inventory.service.ts|585|branchId: issue.branch_id,
+src\modules\inventory\inventory.service.ts|601|/** Active items at or below reorder level, per branch (SRS 4.12 low-stock alerts). */
+src\modules\inventory\inventory.service.ts|602|async lowStockAlerts(branchIdIn?: string, actor?: InventoryActor) {
+src\modules\inventory\inventory.service.ts|603|const branchId = this.resolveReadBranch(actor, branchIdIn);
+src\modules\inventory\inventory.service.ts|606|b.id AS branch_id, b.name AS branch_name,
+src\modules\inventory\inventory.service.ts|609|CROSS JOIN branches b
+src\modules\inventory\inventory.service.ts|610|LEFT JOIN stock_levels sl ON sl.item_id = i.id AND sl.branch_id = b.id
+src\modules\inventory\inventory.service.ts|616|[branchId ?? null],
+src\modules\inventory\inventory.service.ts|626|/** Stock value at unit cost, per branch with per-item lines (SRS 4.12 valuation). */
+src\modules\inventory\inventory.service.ts|627|async valuationReport(branchIdIn?: string, actor?: InventoryActor) {
+src\modules\inventory\inventory.service.ts|628|const branchId = this.resolveReadBranch(actor, branchIdIn);
+src\modules\inventory\inventory.service.ts|630|`SELECT b.id AS branch_id, b.name AS branch_name,
+src\modules\inventory\inventory.service.ts|636|JOIN branches b ON b.id = sl.branch_id
+src\modules\inventory\inventory.service.ts|637|WHERE sl.quantity > 0 AND ($1::uuid IS NULL OR sl.branch_id = $1::uuid)
+src\modules\inventory\inventory.service.ts|639|[branchId ?? null],
+src\modules\inventory\inventory.service.ts|641|const byBranch = new Map<string, any>();
+src\modules\inventory\inventory.service.ts|643|const b = byBranch.get(l.branch_id) ?? {
+src\modules\inventory\inventory.service.ts|644|branch_id: l.branch_id, branch_name: l.branch_name, total_quantity: 0, total_cost: 0, items: [],
+src\modules\inventory\inventory.service.ts|649|byBranch.set(l.branch_id, b);
+src\modules\inventory\inventory.service.ts|651|const branches = [...byBranch.values()].map((b) => ({ ...b, total_cost: Math.round(b.total_cost * 100) / 100 }));
+src\modules\inventory\inventory.service.ts|652|const grand_total_cost = Math.round(branches.reduce((s, b) => s + b.total_cost, 0) * 100) / 100;
+src\modules\inventory\inventory.service.ts|653|return { branches, grand_total_cost };
+src\modules\inventory\inventory.service.ts|657|async movementReport(filters: { branch_id?: string; from?: string; to?: string }, actor?: InventoryActor) {
+src\modules\inventory\inventory.service.ts|658|const branchId = this.resolveReadBranch(actor, filters.branch_id);
+src\modules\inventory\inventory.service.ts|665|WHERE ($1::uuid IS NULL OR m.branch_id = $1::uuid)
+src\modules\inventory\inventory.service.ts|670|[branchId ?? null, filters.from ?? null, filters.to ?? null],
+src\modules\kb\kb.controller.ts|14|@Roles('super_admin', 'hr', 'branch_manager')
+src\modules\kb\kb.controller.ts|33|@Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+src\modules\kb\kb.controller.ts|41|@Roles('super_admin', 'hr', 'branch_manager', 'teacher')
+src\modules\kb\kb.controller.ts|61|@Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+src\modules\kb\kb.controller.ts|69|@Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+src\modules\kb\kb.controller.ts|79|@Roles('super_admin', 'hr', 'branch_manager', 'teacher')
+src\modules\leads\dto\assign-lead.dto.ts|11|branch_id?: string;
+src\modules\leads\dto\convert-lead.dto.ts|6|branch_id?: string;
+src\modules\leads\dto\create-lead.dto.ts|58|branch_id?: string;
+src\modules\leads\dto\lead-query.dto.ts|34|branch_id?: string;
+src\modules\leads\leads.controller.ts|22|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|29|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|36|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|43|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|50|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|57|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|66|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|73|@Roles('super_admin', 'branch_manager')
+src\modules\leads\leads.controller.ts|79|return this.service.autoAssign(id, dto.branch_id);
+src\modules\leads\leads.controller.ts|83|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|92|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|99|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|106|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|113|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|120|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|127|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts|134|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.service.ts|46|.leftJoinAndSelect('lead.branch', 'branch')
+src\modules\leads\leads.service.ts|62|if (query.branch_id) qb.andWhere('lead.branch_id = :branchId', { branchId: query.branch_id });
+src\modules\leads\leads.service.ts|75|'branch',
+src\modules\leads\leads.service.ts|152|async autoAssign(id: string, branchId?: string) {
+src\modules\leads\leads.service.ts|154|where: branchId ? { branch_id: branchId } : {},
+src\modules\leads\leads.service.ts|192|branch_id: dto.branch_id ?? lead.branch_id,
+src\modules\leads\leads.service.ts|201|branch_id: dto.branch_id ?? lead.branch_id,
+src\modules\leads\leads.service.ts|285|this.tagRepo.create({ name: dto.name, color: dto.color ?? '#000000', branch_id: lead.branch_id }),
+src\modules\lms\lms.service.ts|103|relations: ['course', 'branch', 'teacher', 'schedules'],
+src\modules\lms\lms.service.ts|123|relations: ['group', 'group.course', 'group.branch', 'group.teacher', 'group.schedules'],
+src\modules\lms\lms.service.ts|134|* (level, duration, syllabus, price), instructor, branch and schedule;
+src\modules\lms\lms.service.ts|145|relations: ['course', 'branch', 'teacher', 'schedules'],
+src\modules\lms\lms.service.ts|160|'group.branch',
+src\modules\notifications\dto\broadcast-notification.dto.ts|48|*  - Admin/Branch Manager: any target_type.
+src\modules\notifications\notifications.controller.ts|7|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\notifications\notifications.controller.ts|61|@Roles('super_admin', 'branch_manager', 'admin', 'hr', 'academic', 'teacher')
+src\modules\notifications\notifications.service.ts|17|import type { AuthUser } from '../../common/utils/branch-scope';
+src\modules\notifications\notifications.service.ts|33|'branch_manager',
+src\modules\placement-tests\dto\create-slot.dto.ts|7|branch_id: string;
+src\modules\placement-tests\dto\instant-placement-booking.dto.ts|28|@ApiPropertyOptional({ format: 'uuid', description: 'Preferred branch' })
+src\modules\placement-tests\dto\instant-placement-booking.dto.ts|31|branch_id?: string;
+src\modules\placement-tests\placement-tests.controller.ts|7|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\placement-tests\placement-tests.controller.ts|50|@Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\placement-tests\placement-tests.controller.ts|73|@Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\placement-tests\placement-tests.controller.ts|81|@Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\placement-tests\placement-tests.controller.ts|119|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\placement-tests\placement-tests.controller.ts|142|@Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\placement-tests\placement-tests.controller.ts|166|@Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\placement-tests\placement-tests.service.spec.ts|53|branch_id: 'b-1',
+src\modules\placement-tests\placement-tests.service.spec.ts|65|branch_id: 'b-1',
+src\modules\placement-tests\placement-tests.service.spec.ts|401|branch_id: 'b-1',
+src\modules\placement-tests\placement-tests.service.spec.ts|416|branch_id: 'b-1',
+src\modules\placement-tests\placement-tests.service.ts|16|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\placement-tests\placement-tests.service.ts|73|// 2. Ø¬Ù„Ø¨ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù€ Slot Ù„Ø§Ø³ØªÙƒÙ…Ø§Ù„ Ø§Ù„Ù†ÙˆØ§Ù‚Øµ (examiner_id, branch_id, scheduled_at)
+src\modules\placement-tests\placement-tests.service.ts|81|if (!data.branch_id && slot.branch_id) {
+src\modules\placement-tests\placement-tests.service.ts|82|data.branch_id = slot.branch_id;
+src\modules\placement-tests\placement-tests.service.ts|278|branch_id: student.branch_id,
+src\modules\placement-tests\placement-tests.service.ts|312|relations: ['slot', 'slot.branch', 'slot.examiner', 'examiner'],
+src\modules\placement-tests\placement-tests.service.ts|340|branch_id: dto.branch_id,
+src\modules\placement-tests\placement-tests.service.ts|439|['super_admin', 'admin', 'academic', 'teacher', 'branch_manager'].includes(r),
+src\modules\placement-tests\placement-tests.service.ts|497|branch_id: student?.branch_id,
+src\modules\public\dto\capture-lead.dto.ts|46|branch_id?: string;
+src\modules\public\dto\public-lead.dto.ts|40|branch_id?: string;
+src\modules\public\dto\public-registration.dto.ts|29|branch_id: string;
+src\modules\public\public.controller.ts|75|@ApiQuery({ name: 'branch_id', required: false, type: String })
+src\modules\public\public.controller.ts|76|listPlacementSlots(@Query('branch_id') branchId?: string) {
+src\modules\public\public.controller.ts|77|return this.service.listPlacementSlots(branchId);
+src\modules\public\public.service.spec.ts|169|branch: { id: 'b-1', name: 'Nasr City' },
+src\modules\public\public.service.spec.ts|177|expect(out[0].branch.name).toBe('Nasr City');
+src\modules\public\public.service.spec.ts|190|id: 's-1', branch_id: 'b-1', examiner_id: 'exam-1',
+src\modules\public\public.service.spec.ts|278|{ id: 'lead-7', status: LeadStatus.TEST_SCHEDULED, email: dto.email, branch_id: 'b-1' },
+src\modules\public\public.service.ts|145|branch_id: dto.branch_id,
+src\modules\public\public.service.ts|178|async listPlacementSlots(branchId?: string) {
+src\modules\public\public.service.ts|181|.innerJoin('slot.branch', 'branch')
+src\modules\public\public.service.ts|186|if (branchId) qb.andWhere('slot.branch_id = :branchId', { branchId });
+src\modules\public\public.service.ts|227|branch_id: slot.branch_id,
+src\modules\public\public.service.ts|295|branch_id: dto.branch_id,
+src\modules\public\public.service.ts|324|branch_id: dto.branch_id,
+src\modules\public\public.service.ts|346|branch_id: dto.branch_id,
+src\modules\reports\reports.controller.ts|14|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\reports\reports.controller.ts|21|const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
+src\modules\reports\reports.controller.ts|22|return this.service.salesFunnel(branchId, new Date(from), new Date(to));
+src\modules\reports\reports.controller.ts|26|@Roles('super_admin', 'branch_manager', 'sales')
+src\modules\reports\reports.controller.ts|33|const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
+src\modules\reports\reports.controller.ts|34|return this.service.leadSourceRoi(branchId, new Date(from), new Date(to));
+src\modules\reports\reports.controller.ts|38|@Roles('super_admin', 'branch_manager', 'academic')
+src\modules\reports\reports.controller.ts|41|const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
+src\modules\reports\reports.controller.ts|42|return this.service.groupFillRate(branchId);
+src\modules\reports\reports.controller.ts|46|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\reports\reports.controller.ts|52|const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
+src\modules\reports\reports.controller.ts|53|return this.service.teacherUtilization(branchId, month);
+src\modules\reports\reports.controller.ts|57|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\reports\reports.controller.ts|64|@Roles('super_admin', 'branch_manager', 'finance')
+src\modules\reports\reports.controller.ts|71|const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
+src\modules\reports\reports.controller.ts|72|return this.service.revenueByPeriod(branchId, new Date(from), new Date(to));
+src\modules\reports\reports.controller.ts|76|@Roles('super_admin', 'branch_manager', 'finance')
+src\modules\reports\reports.controller.ts|79|const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
+src\modules\reports\reports.controller.ts|80|return this.service.outstandingPayments(branchId);
+src\modules\reports\reports.controller.ts|84|@Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\reports\reports.service.ts|28|async salesFunnel(branchId: string | null, from: Date, to: Date) {
+src\modules\reports\reports.service.ts|33|if (branchId) qb.andWhere('l.branch_id = :bid', { bid: branchId });
+src\modules\reports\reports.service.ts|37|async leadSourceRoi(branchId: string | null, from: Date, to: Date) {
+src\modules\reports\reports.service.ts|44|if (branchId) qb.andWhere('l.branch_id = :bid', { bid: branchId });
+src\modules\reports\reports.service.ts|48|async groupFillRate(branchId: string | null) {
+src\modules\reports\reports.service.ts|56|if (branchId) qb.andWhere('g.branch_id = :bid', { bid: branchId });
+src\modules\reports\reports.service.ts|60|async teacherUtilization(branchId: string | null, month: string) {
+src\modules\reports\reports.service.ts|69|if (branchId) qb.andWhere('g.branch_id = :bid', { bid: branchId });
+src\modules\reports\reports.service.ts|86|async revenueByPeriod(branchId: string | null, from: Date, to: Date) {
+src\modules\reports\reports.service.ts|92|if (branchId) {
+src\modules\reports\reports.service.ts|93|qb.innerJoin('p.invoice', 'i').andWhere('i.branch_id = :bid', { bid: branchId });
+src\modules\reports\reports.service.ts|98|async outstandingPayments(branchId: string | null) {
+src\modules\reports\reports.service.ts|108|if (branchId) qb.andWhere('i.branch_id = :bid', { bid: branchId });
+src\modules\roles\roles.controller.ts|13|@Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.controller.ts|21|@Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.controller.ts|28|@Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.controller.ts|35|@Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.service.ts|65|branch_id: true,
+src\modules\sessions\sessions.controller.ts|19|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|43|@Roles('super_admin', 'academic', 'branch_manager', 'teacher', 'student')
+src\modules\sessions\sessions.controller.ts|57|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|67|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|77|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|99|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|111|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|121|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|132|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|143|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts|166|@Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.service.ts|231|['super_admin', 'academic', 'branch_manager', 'teacher'].includes(role),
+src\modules\students\dto\create-student.dto.ts|8|@IsOptional() @IsUUID() branch_id?: string;
+src\modules\students\dto\student-query.dto.ts|8|@IsOptional() @IsUUID() branch_id?: string;
+src\modules\students\dto\update-student.dto.ts|6|@IsOptional() @IsUUID() branch_id?: string;
+src\modules\students\students.controller.ts|8|import { AuthUser } from '../../common/utils/branch-scope';
+src\modules\students\students.service.ts|33|* booking flow to resolve current_level / branch). Returns null when the
+src\modules\students\students.service.ts|40|relations: ['branch', 'profile'],
+src\modules\students\students.service.ts|54|`INSERT INTO students (user_id, branch_id, enrollment_date, status)
+src\modules\students\students.service.ts|55|SELECT u.id, u.branch_id, CURRENT_DATE, 'active'
+src\modules\students\students.service.ts|68|branchId?: string;
+src\modules\students\students.service.ts|80|'student.branch',
+src\modules\students\students.service.ts|81|'branch',
+src\modules\students\students.service.ts|123|if (filters.branchId) {
+src\modules\students\students.service.ts|125|'branch.id = :branchId',
+src\modules\students\students.service.ts|127|branchId: filters.branchId,
+src\modules\students\students.service.ts|164|'branch',
+src\modules\students\students.service.ts|208|'groups.branch',
+src\modules\test-slots\test-slots.service.ts|17|relations: ['branch', 'examiner'],
+src\modules\test-slots\test-slots.service.ts|25|relations: ['branch', 'examiner'],
+src\modules\users\dto\create-user.dto.ts|30|branch_id?: string;
+src\modules\users\dto\update-user.dto.ts|31|branch_id?: string;
+src\modules\users\users.controller.ts|26|branchId: string;
+src\modules\users\users.controller.ts|38|* Branch-scoped rule: super_admin can create users in ANY branch.
+src\modules\users\users.controller.ts|39|* branch_manager / hr can only create users inside their OWN branch.
+src\modules\users\users.controller.ts|42|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|46|@ApiResponse({ status: 403, description: 'Forbidden: cross-branch creation.' })
+src\modules\users\users.controller.ts|48|if (!user.roles.includes('super_admin') && dto.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|50|'You can only create users in your own branch',
+src\modules\users\users.controller.ts|57|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|62|// Non-super-admins see only their own branch's users.
+src\modules\users\users.controller.ts|64|return this.service.findAll({ branchId: user.branchId });
+src\modules\users\users.controller.ts|70|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|77|if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|78|throw new ForbiddenException('User belongs to a different branch');
+src\modules\users\users.controller.ts|109|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|113|@ApiResponse({ status: 403, description: 'Forbidden: cross-branch edit.' })
+src\modules\users\users.controller.ts|121|if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|122|throw new ForbiddenException('User belongs to a different branch');
+src\modules\users\users.controller.ts|124|if (!user.roles.includes('super_admin') && dto.branch_id && dto.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|125|throw new ForbiddenException('You can only move users within your own branch');
+src\modules\users\users.controller.ts|135|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|145|if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|146|throw new ForbiddenException('User belongs to a different branch');
+src\modules\users\users.controller.ts|152|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|162|if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|163|throw new ForbiddenException('User belongs to a different branch');
+src\modules\users\users.controller.ts|169|@Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts|173|@ApiResponse({ status: 403, description: 'Forbidden: cross-branch delete or HR-linked user.' })
+src\modules\users\users.controller.ts|177|if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
+src\modules\users\users.controller.ts|178|throw new ForbiddenException('User belongs to a different branch');
+src\modules\users\users.service.ts|14|branchId?: string;
+src\modules\users\users.service.ts|23|branch_id?: string;
+src\modules\users\users.service.ts|46|branchId?: string | null,
+src\modules\users\users.service.ts|66|branch_id: branchId || null,
+src\modules\users\users.service.ts|121|branch_id: dto.branch_id,
+src\modules\users\users.service.ts|135|await this.ensureStudentProfile(em, created.id, dto.branch_id);
+src\modules\users\users.service.ts|144|relations: ['branch'],
+src\modules\users\users.service.ts|150|where: filter.branchId ? { branch_id: filter.branchId } : {},
+src\modules\users\users.service.ts|151|relations: ['branch'],
+src\modules\users\users.service.ts|158|relations: ['branch'],
+src\modules\users\users.service.ts|190|await this.ensureStudentProfile(em, id, user.branch_id);
+src\modules\users\users.service.ts|222|if (dto.branch_id !== undefined) patch.branch_id = dto.branch_id || (null as unknown as string);
+src\modules\waitlists\waitlists.controller.ts|15|@Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\waitlists\waitlists.controller.ts|16|@ApiOperation({ summary: 'List waitlist entries (filter by branch / level / status / course)' })
+src\modules\waitlists\waitlists.controller.ts|17|@ApiQuery({ name: 'branch_id', required: false })
+src\modules\waitlists\waitlists.controller.ts|22|@Query('branch_id') branchId?: string,
+src\modules\waitlists\waitlists.controller.ts|27|return this.service.findAll({ branchId, level, status, courseId });
+src\modules\waitlists\waitlists.controller.ts|31|@Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\waitlists\waitlists.controller.ts|32|@ApiOperation({ summary: 'Levels/branches with enough waiting students to open a new class' })
+src\modules\waitlists\waitlists.controller.ts|39|@Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\waitlists\waitlists.controller.ts|46|@Roles('super_admin', 'branch_manager', 'academic', 'sales')
+src\modules\waitlists\waitlists.controller.ts|57|@Roles('super_admin', 'branch_manager', 'academic', 'sales')
+src\modules\waitlists\waitlists.controller.ts|64|@Roles('super_admin', 'branch_manager', 'academic', 'sales')
+src\modules\waitlists\waitlists.service.ts|24|async findAll(filters: { branchId?: string; level?: string; status?: string; courseId?: string }): Promise<Waitlist[]> {
+src\modules\waitlists\waitlists.service.ts|28|.leftJoinAndSelect('waitlist.branch', 'branch')
+src\modules\waitlists\waitlists.service.ts|33|if (filters.branchId) query.andWhere('waitlist.branch_id = :branchId', { branchId: filters.branchId });
+src\modules\waitlists\waitlists.service.ts|44|relations: ['student', 'student.user', 'branch', 'course'],
+src\modules\waitlists\waitlists.service.ts|107|.addSelect('waitlist.branch_id', 'branch_id')
+src\modules\waitlists\waitlists.service.ts|111|.addGroupBy('waitlist.branch_id')
+src\shared\entities\activity.entity.ts|14|import { Branch } from './branch.entity';
+src\shared\entities\activity.entity.ts|47|branch_id: string;
+src\shared\entities\activity.entity.ts|49|@ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+src\shared\entities\activity.entity.ts|50|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\activity.entity.ts|51|branch: Branch;
+src\shared\entities\branch.entity.ts|6|@Entity('branches')
+src\shared\entities\branch.entity.ts|7|export class Branch {
+src\shared\entities\branch.entity.ts|45|@OneToMany(() => Classroom, (c) => c.branch)
+src\shared\entities\classroom.entity.ts|2|import { Branch } from './branch.entity';
+src\shared\entities\classroom.entity.ts|11|branch_id: string;
+src\shared\entities\classroom.entity.ts|13|@ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+src\shared\entities\classroom.entity.ts|14|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\classroom.entity.ts|15|branch: Branch;
+src\shared\entities\course-branch-pricing.entity.ts|3|import { Branch } from './branch.entity';
+src\shared\entities\course-branch-pricing.entity.ts|6|* Per-branch price override for a course (multi-branch academies charge
+src\shared\entities\course-branch-pricing.entity.ts|9|@Entity('course_branch_pricing')
+src\shared\entities\course-branch-pricing.entity.ts|10|@Unique(['course_id', 'branch_id'])
+src\shared\entities\course-branch-pricing.entity.ts|11|export class CourseBranchPricing {
+src\shared\entities\course-branch-pricing.entity.ts|23|branch_id: string;
+src\shared\entities\course-branch-pricing.entity.ts|25|@ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+src\shared\entities\course-branch-pricing.entity.ts|26|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\course-branch-pricing.entity.ts|27|branch: Branch;
+src\shared\entities\financial-transaction.entity.ts|2|import { Branch } from './branch.entity';
+src\shared\entities\financial-transaction.entity.ts|16|branch_id: string;
+src\shared\entities\financial-transaction.entity.ts|18|@ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+src\shared\entities\financial-transaction.entity.ts|19|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\financial-transaction.entity.ts|20|branch: Branch;
+src\shared\entities\group.entity.ts|4|import { Branch } from './branch.entity';
+src\shared\entities\group.entity.ts|42|branch_id: string;
+src\shared\entities\group.entity.ts|44|@ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
+src\shared\entities\group.entity.ts|45|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\group.entity.ts|46|branch: Branch;
+src\shared\entities\index.ts|1|export * from './branch.entity';
+src\shared\entities\inventory-item.entity.ts|8|* the table has NO branch_id (stock is per branch in `stock_levels`)
+src\shared\entities\invoice.entity.ts|4|import { Branch } from './branch.entity';
+src\shared\entities\invoice.entity.ts|35|branch_id: string;
+src\shared\entities\invoice.entity.ts|37|@ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
+src\shared\entities\invoice.entity.ts|38|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\invoice.entity.ts|39|branch: Branch;
+src\shared\entities\lead-tag.entity.ts|2|import { Branch } from './branch.entity';
+src\shared\entities\lead-tag.entity.ts|18|branch_id: string;
+src\shared\entities\lead-tag.entity.ts|20|@ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+src\shared\entities\lead-tag.entity.ts|21|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\lead-tag.entity.ts|22|branch: Branch;
+src\shared\entities\lead.entity.ts|3|import { Branch } from './branch.entity';
+src\shared\entities\lead.entity.ts|58|branch_id: string;
+src\shared\entities\lead.entity.ts|60|@ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+src\shared\entities\lead.entity.ts|61|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\lead.entity.ts|62|branch: Branch;
+src\shared\entities\promo-code.entity.ts|35|applicable_branches: any;
+src\shared\entities\stock-level.entity.ts|3|import { Branch } from './branch.entity';
+src\shared\entities\stock-level.entity.ts|6|@Unique(['item_id', 'branch_id'])
+src\shared\entities\stock-level.entity.ts|19|branch_id: string;
+src\shared\entities\stock-level.entity.ts|21|@ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+src\shared\entities\stock-level.entity.ts|22|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\stock-level.entity.ts|23|branch: Branch;
+src\shared\entities\stock-move.entity.ts|3|import { Branch } from './branch.entity';
+src\shared\entities\stock-move.entity.ts|20|branch_id: string;
+src\shared\entities\stock-move.entity.ts|22|@ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
+src\shared\entities\stock-move.entity.ts|23|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\stock-move.entity.ts|24|branch: Branch;
+src\shared\entities\student-item-issue.entity.ts|4|import { Branch } from './branch.entity';
+src\shared\entities\student-item-issue.entity.ts|28|branch_id: string;
+src\shared\entities\student-item-issue.entity.ts|30|@ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
+src\shared\entities\student-item-issue.entity.ts|31|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\student-item-issue.entity.ts|32|branch: Branch;
+src\shared\entities\student.entity.ts|15|import { Branch } from './branch.entity';
+src\shared\entities\student.entity.ts|51|branch_id: string;
+src\shared\entities\student.entity.ts|53|@ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+src\shared\entities\student.entity.ts|54|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\student.entity.ts|55|branch: Branch;
+src\shared\entities\test-slot.entity.ts|2|import { Branch } from './branch.entity';
+src\shared\entities\test-slot.entity.ts|13|branch_id: string;
+src\shared\entities\test-slot.entity.ts|15|@ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+src\shared\entities\test-slot.entity.ts|16|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\test-slot.entity.ts|17|branch: Branch;
+src\shared\entities\user.entity.ts|2|import { Branch } from './branch.entity';
+src\shared\entities\user.entity.ts|33|branch_id: string;
+src\shared\entities\user.entity.ts|35|@ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+src\shared\entities\user.entity.ts|36|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\user.entity.ts|37|branch: Branch;
+src\shared\entities\waitlist.entity.ts|4|import { Branch } from './branch.entity';
+src\shared\entities\waitlist.entity.ts|29|branch_id: string;
+src\shared\entities\waitlist.entity.ts|31|@ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+src\shared\entities\waitlist.entity.ts|32|@JoinColumn({ name: 'branch_id' })
+src\shared\entities\waitlist.entity.ts|33|branch: Branch;
+src\app.module.ts|8|import { BranchesModule } from './modules/branches/branches.module';
+src\app.module.ts|46|BranchesModule,

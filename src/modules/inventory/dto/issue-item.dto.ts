@@ -10,9 +10,6 @@ export class IssueItemDto {
   @ApiProperty() @IsUUID()
   student_id: string;
 
-  @ApiProperty() @IsUUID()
-  branch_id: string;
-
   @ApiPropertyOptional({ default: 1 })
   @IsOptional() @Type(() => Number) @IsInt() @Min(1)
   quantity?: number;

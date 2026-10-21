@@ -3,7 +3,6 @@ import { StudentStatus } from '../../../common/enums/student-status.enum';
 
 export class UpdateStudentDto {
   @IsOptional() @IsString() @MaxLength(10) current_level?: string;
-  @IsOptional() @IsUUID() branch_id?: string;
   @IsOptional() @IsEnum(StudentStatus) status?: StudentStatus;
   @IsOptional() @IsDateString() enrollment_date?: string;
 

@@ -10,7 +10,7 @@ export class DashboardController {
   constructor(private readonly service: DashboardService) {}
 
   @Get('stats')
-  @ApiOperation({ summary: 'Aggregated KPIs for the dashboard (branch-scoped)' })
+  @ApiOperation({ summary: 'Aggregated KPIs for the dashboard' })
   getStats(@CurrentUser() user: any) {
     return this.service.getStats(user);
   }

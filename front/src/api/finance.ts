@@ -13,7 +13,6 @@ export interface RevenueReport {
   totalRevenue: number;
   timeline: { total?: string | number; type?: string; month?: string }[];
   byMethod: Record<string, number>;
-  byBranch: Record<string, number>;
 }
 
 /** Raw invoice entity fields used by the receivables adapter. */
@@ -51,7 +50,7 @@ export interface OutstandingReceivables {
 
 export const financeApi = {
   createInvoice: async (dto: {
-    student_id: string; branch_id: string; enrollment_id?: string;
+    student_id: string; enrollment_id?: string;
     items: InvoiceItemInput[]; discount_amount?: number; promo_code?: string;
     installments_count?: number; due_days?: number; notes?: string;
   }): Promise<any> => {
@@ -59,7 +58,7 @@ export const financeApi = {
     return data;
   },
   listInvoices: async (params?: {
-    student_id?: string; branch_id?: string; status?: string;
+    student_id?: string; status?: string;
     from?: string; to?: string; due_from?: string; due_to?: string; offset?: number; limit?: number;
   }): Promise<any> => {
     const { data } = await apiClient.get("/finance/invoices", { params });
@@ -72,7 +71,7 @@ export const financeApi = {
   createPromo: async (dto: {
     code: string; type: "percentage" | "fixed"; value: number;
     max_discount?: number; expiry_date: string; usage_limit?: number;
-    applicable_courses?: string[]; applicable_branches?: string[];
+    applicable_courses?: string[];
   }): Promise<any> => {
     const { data } = await apiClient.post("/finance/promo-codes", dto);
     return data;
@@ -92,7 +91,7 @@ export const financeApi = {
     const { data } = await apiClient.post("/finance/payments", dto);
     return data;
   },
-  listPayments: async (params?: { invoice_id?: string; branch_id?: string; from?: string; to?: string }): Promise<any[]> => {
+  listPayments: async (params?: { invoice_id?: string; from?: string; to?: string }): Promise<any[]> => {
     const { data } = await apiClient.get("/finance/payments", { params });
     return Array.isArray(data) ? data : data?.items ?? [];
   },
@@ -108,7 +107,7 @@ export const financeApi = {
     const { data } = await apiClient.post("/finance/refunds", dto);
     return data;
   },
-  listRefunds: async (params?: { status?: string; branch_id?: string }): Promise<any[]> => {
+  listRefunds: async (params?: { status?: string }): Promise<any[]> => {
     const { data } = await apiClient.get("/finance/refunds", { params });
     return Array.isArray(data) ? data : [];
   },
@@ -120,12 +119,12 @@ export const financeApi = {
     const { data } = await apiClient.post(`/finance/refunds/${id}/process`);
     return data;
   },
-  ledger: async (params?: { from?: string; to?: string; branch_id?: string }): Promise<any> => {
+  ledger: async (params?: { from?: string; to?: string }): Promise<any> => {
     const { data } = await apiClient.get("/finance/ledger", { params });
     return data;
   },
-  receivables: async (branch_id?: string): Promise<any> => {
-    const { data } = await apiClient.get("/finance/receivables", { params: branch_id ? { branch_id } : {} });
+  receivables: async (): Promise<any> => {
+    const { data } = await apiClient.get("/finance/receivables");
     return data;
   },
   /**
@@ -135,14 +134,12 @@ export const financeApi = {
   getRevenueReport: async (params?: {
     startDate?: string;
     endDate?: string;
-    branchId?: string;
     groupBy?: string;
   }): Promise<RevenueReport> => {
     const { data } = await apiClient.get("/finance/ledger", {
       params: {
         from: params?.startDate,
         to: params?.endDate,
-        branch_id: params?.branchId,
       },
     });
     const rows: { total?: string | number; type?: string; month?: string }[] = Array.isArray(data)
@@ -160,19 +157,14 @@ export const financeApi = {
       totalRevenue,
       timeline: rows,
       byMethod: byType,
-      // The ledger endpoint is not branch-split for the caller's scope;
-      // the By-Branch panel stays empty rather than showing wrong numbers.
-      byBranch: {},
     };
   },
   /**
    * GET /finance/receivables adapter (backend returns Invoice entities).
    * Normalized to the shape FinanceDashboard renders (aging buckets + rows).
    */
-  getOutstandingReceivables: async (branchId?: string): Promise<OutstandingReceivables> => {
-    const { data } = await apiClient.get("/finance/receivables", {
-      params: branchId ? { branch_id: branchId } : {},
-    });
+  getOutstandingReceivables: async (): Promise<OutstandingReceivables> => {
+    const { data } = await apiClient.get("/finance/receivables");
     const invoices: RawInvoice[] = Array.isArray(data) ? data : [];
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;

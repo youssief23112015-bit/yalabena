@@ -5,20 +5,6 @@ import { Permission } from '../../shared/entities/permission.entity';
 const matrix: Record<string, string[]> = {
   super_admin: ['*'],
 
-  branch_manager: [
-    'crm:view', 'crm:create', 'crm:edit', 'crm:delete', 'crm:assign',
-    'sales:view', 'placement:view',
-    'groups:view', 'groups:create', 'groups:edit', 'groups:delete',
-    'attendance:view', 'attendance:create', 'attendance:edit',
-    'lms:view', 'finance:view', 'finance:create',
-    'certificates:view', 'certificates:create',
-    'activities:view', 'activities:create', 'activities:edit', 'activities:delete',
-    'inventory:view', 'inventory:create', 'inventory:edit', 'inventory:issue',
-    'kb:view', 'reports:view', 'reports:export', 'branches:view',
-    'users:read', 'users:create', 'users:edit',
-    'chat:view', 'chat:send', 'system:view',
-  ],
-
   sales: [
     'crm:view', 'crm:create', 'crm:edit',
     'sales:view', 'sales:create', 'sales:edit',
@@ -65,7 +51,7 @@ const matrix: Record<string, string[]> = {
     'crm:view', 'sales:view', 'placement:view', 'groups:view', 'attendance:view',
     'lms:view', 'finance:view', 'certificates:view', 'hr:view',
     'activities:view', 'inventory:view', 'kb:view', 'reports:view',
-    'branches:view', 'system:view', 'chat:view',
+    'system:view', 'chat:view',
   ],
 };
 

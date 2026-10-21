@@ -6,8 +6,7 @@
   "tabIssues": "المصروف للطلاب",
   "tabAlerts": "نقص المخزون",
   "tabReports": "التقارير",
-  "allBranches": "كل الفروع",
-  "branch": "الفرع",
+
   "searchPh": "ابحث بالاسم أو الكود أو الوصف",
   "allCategories": "كل التصنيفات",
   "category": "التصنيف",
@@ -25,14 +24,14 @@
   "notReturned": "لم يُرجع بعد",
   "colItem": "الصنف",
   "colCategory": "التصنيف",
-  "colOnHandBranch": "المتاح (الفرع)",
+
   "colOnHandAll": "المتاح (الكل)",
   "colReorder": "حد إعادة الطلب",
   "colCost": "التكلفة",
   "colPrice": "السعر",
   "colStatus": "الحالة",
   "colDate": "التاريخ",
-  "colBranch": "الفرع",
+
   "colType": "النوع",
   "colQty": "الكمية",
   "colReason": "السبب",
@@ -86,7 +85,7 @@
   "detailsCode": "الكود",
   "detailsCostPrice": "التكلفة / السعر",
   "detailsTotal": "إجمالي المتاح",
-  "stockByBranch": "المخزون حسب الفرع",
+
   "noStockRecords": "لا توجد سجلات مخزون.",
   "recentMoves": "آخر الحركات",
   "noMovesYet": "لا توجد حركات بعد.",
@@ -100,7 +99,7 @@
   "fUom": "وحدة القياس",
   "fReorder": "حد إعادة الطلب",
   "fStatusDiscontinued": "متوقف (غير نشط)",
-  "fOpeningBranch": "فرع الرصيد الافتتاحي",
+
   "fOpeningQty": "الكمية الافتتاحية",
   "qtyNotEditable": "لا يمكن تعديل الكميات هنا. استخدم استلام أو تسوية أو تحويل ليتم تسجيل كل تغيير.",
   "itemUpdated": "تم تحديث الصنف",
@@ -112,11 +111,8 @@
   "errOpeningBranch": "اختر فرعًا للرصيد الافتتاحي",
   "titleReceive": "استلام مخزون",
   "titleAdjust": "تسوية المخزون",
-  "titleTransfer": "تحويل بين الفروع",
   "titleIssue": "صرف لطالب",
-  "fromBranch": "من فرع",
-  "toBranch": "إلى فرع",
-  "selectBranch": "اختر الفرع",
+
   "filterStudent": "ابحث بالاسم أو الرقم",
   "quantity": "الكمية",
   "changeQty": "التغيير (+ زيادة، − نقص)",
@@ -126,11 +122,10 @@
   "reasonReq": "السبب *",
   "errQty": "الكمية يجب أن تكون عددًا صحيحًا غير صفري",
   "errQtyPos": "الكمية يجب أن تكون موجبة",
-  "errBranch": "اختر فرعًا",
+
   "errCostNeg": "التكلفة لا يمكن أن تكون سالبة",
   "errReasonAdj": "السبب مطلوب عند التسوية",
-  "errDest": "اختر فرع الوجهة",
-  "errSame": "فرع المصدر والوجهة يجب أن يختلفا",
+
   "errStudent": "اختر طالبًا",
   "errChargeNeg": "المبلغ لا يمكن أن يكون سالبًا"
 }

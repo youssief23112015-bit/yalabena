@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/store/authStore";
 
-export const HR_VIEW_ROLES = ["super_admin", "hr", "branch_manager"];
+export const HR_VIEW_ROLES = ["super_admin", "hr"];
 export const HR_PAYROLL_ROLES = ["super_admin", "hr", "finance"];
 
 export function useUserRoles(): string[] {

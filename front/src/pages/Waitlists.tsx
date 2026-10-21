@@ -109,7 +109,7 @@ export default function WaitlistsPage() {
           <div className="flex flex-wrap gap-2">
             {(th.data?.ready_to_open ?? []).map((r: any, i: number) => (
               <Badge key={i} className="bg-green-100 text-green-800">
-                {(r.branch_id ?? "").slice(0, 8)} · {r.level} · {r.waiting}
+                {r.level} · {r.waiting}
               </Badge>
             ))}
             {(th.data?.ready_to_open?.length ?? 0) === 0 && (

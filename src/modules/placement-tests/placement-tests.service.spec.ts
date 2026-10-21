@@ -50,7 +50,6 @@ describe('PlacementTestsService', () => {
     id: 'stu-1',
     user_id: 'user-1',
     status: 'active',
-    branch_id: 'b-1',
     current_level: 'B1',
     user: {
       id: 'user-1',
@@ -62,7 +61,6 @@ describe('PlacementTestsService', () => {
   };
   const openSlot = {
     id: 's-1',
-    branch_id: 'b-1',
     examiner_id: 'exam-1',
     date: TOMORROW,
     start_time: '10:00',
@@ -394,7 +392,12 @@ describe('PlacementTestsService', () => {
   // Public onboarding — Path A: instant guest test
   // ═════════════════════════════════════════════
   describe('bookInstant', () => {
-    const dto = { name: 'Omar Saad', phone: '01022223333', email: 'omar@x.com', branch_id: 'b-1' };
+    const dto = {
+      name: 'Omar Saad',
+      phone: '01022223333',
+      email: 'omar@x.com',
+      level_interest: 'B1', // course context handed over from /catalog/:id
+    };
 
     it('upserts the Lead (TEST_SCHEDULED) and creates a lead-only session', async () => {
       const out = await service.bookInstant(dto);
@@ -407,7 +410,7 @@ describe('PlacementTestsService', () => {
           last_name: 'Saad',
           phone: '01022223333',
           email: 'omar@x.com',
-          branch_id: 'b-1',
+          level_interest: 'B1',
           source: LeadSource.WEBSITE,
           status: LeadStatus.TEST_SCHEDULED,
         }),

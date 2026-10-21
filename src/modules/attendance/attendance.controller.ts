@@ -43,7 +43,7 @@ export class AttendancesController {
   }
 
   @Get('sessions/:sessionId')
-  @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+  @Roles('super_admin', 'teacher', 'academic')
   @ApiOperation({ summary: 'Get attendance records for a session' })
   async getForSession(@Param('sessionId') sessionId: string) {
     return this.service.getForSession(sessionId);
@@ -64,7 +64,7 @@ export class AttendancesController {
   }
 
   @Get('students/:studentId/report')
-  @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+  @Roles('super_admin', 'teacher', 'academic')
   @ApiOperation({ summary: 'Attendance summary for a student' })
   @ApiQuery({ name: 'from', required: false, type: String })
   @ApiQuery({ name: 'to', required: false, type: String })
@@ -77,7 +77,7 @@ export class AttendancesController {
   }
 
   @Get('groups/:groupId/report')
-  @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+  @Roles('super_admin', 'teacher', 'academic')
   @ApiOperation({ summary: 'Attendance report for a whole group' })
   @ApiQuery({ name: 'from', required: false, type: String })
   @ApiQuery({ name: 'to', required: false, type: String })
@@ -90,7 +90,7 @@ export class AttendancesController {
   }
 
   @Get('alerts/absences')
-  @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+  @Roles('super_admin', 'teacher', 'academic')
   @ApiOperation({ summary: 'Students who exceeded the absence threshold' })
   @ApiQuery({ name: 'threshold', required: false, type: Number })
   @ApiQuery({ name: 'group_id', required: false, type: String })

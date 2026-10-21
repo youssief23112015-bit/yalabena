@@ -7,7 +7,7 @@ import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { AddStudentDto } from './dto/add-student.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/auth-user';
 
 @ApiTags('Groups')
 @ApiBearerAuth('JWT')
@@ -16,7 +16,7 @@ export class GroupsController {
   constructor(private readonly service: GroupsService) {}
 
   @Post()
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Create a new group/class schedule' })
   @ApiBody({ type: CreateGroupDto })
   @ApiResponse({ status: 201, description: 'Group created successfully.' })
@@ -25,20 +25,18 @@ export class GroupsController {
   }
 
   @Get()
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
-  @ApiOperation({ summary: 'Get all groups with optional branch or course filters' })
-  @ApiQuery({ name: 'branchId', required: false })
+  @Roles('super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Get all groups with optional course filter' })
   @ApiQuery({ name: 'courseId', required: false })
   async findAll(
-    @Query('branchId') branchId?: string,
     @Query('courseId') courseId?: string,
   ) {
-    return this.service.findAll({ branchId, courseId });
+    return this.service.findAll({ courseId });
   }
 
   // STATIC ROUTES MUST COME BEFORE :id PARAMETER ROUTE
   @Get('check-conflicts')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Check for scheduling conflicts' })
   @ApiQuery({ name: 'teacherId', required: false })
   @ApiQuery({ name: 'classroomId', required: false })
@@ -69,25 +67,23 @@ export class GroupsController {
   }
 
   @Get('calendar')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Get group calendar' })
   @ApiQuery({ name: 'view', required: true })
   @ApiQuery({ name: 'date', required: true })
   @ApiQuery({ name: 'teacherId', required: false })
   @ApiQuery({ name: 'classroomId', required: false })
-  @ApiQuery({ name: 'branchId', required: false })
   async getCalendar(
     @Query('view') view: 'day' | 'week' | 'month',
     @Query('date') date: string,
     @Query('teacherId') teacherId?: string,
     @Query('classroomId') classroomId?: string,
-    @Query('branchId') branchId?: string,
   ) {
-    return this.service.getCalendar({ view, date, teacherId, classroomId, branchId });
+    return this.service.getCalendar({ view, date, teacherId, classroomId });
   }
 
   @Get(':id')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Get group details by id with relations' })
   @ApiParam({ name: 'id', description: 'Group UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns group details.' })
@@ -97,7 +93,7 @@ export class GroupsController {
   }
 
   @Put(':id')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Update group details' })
   @ApiParam({ name: 'id', description: 'Group UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({ type: UpdateGroupDto })
@@ -108,7 +104,7 @@ export class GroupsController {
   }
 
   @Delete(':id')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Delete a group' })
   @ApiParam({ name: 'id', description: 'Group UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Group deleted successfully.' })
@@ -118,7 +114,7 @@ export class GroupsController {
   }
 
   @Post(':id/schedule')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Add schedule to group' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   async addSchedule(@Param('id') id: string, @Body() schedule: any) {
@@ -126,7 +122,7 @@ export class GroupsController {
   }
 
   @Delete(':id/schedule/:scheduleId')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Remove schedule from group' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'scheduleId', description: 'Schedule UUID' })
@@ -135,11 +131,11 @@ export class GroupsController {
   }
 
   /**
-   * Business Rule 1 — direct teacher assignment (staff only, branch-scoped).
+   * Business Rule 1 — direct teacher assignment (staff only).
    * 409 on schedule/room conflicts unless body.force = true.
    */
   @Patch(':id/assign-teacher')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Assign / replace the teacher of a group (conflict-checked, force-able)' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({ type: AssignTeacherDto })
@@ -156,7 +152,7 @@ export class GroupsController {
    * row in one call (capacity → 409 unless body.force = true).
    */
   @Post(':id/students')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Directly enroll a student into the group roster (ACTIVE)' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiBody({ type: AddStudentDto })
@@ -169,7 +165,7 @@ export class GroupsController {
   }
 
   @Delete(':id/students/:studentId')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Remove student from group' })
   @ApiParam({ name: 'id', description: 'Group UUID' })
   @ApiParam({ name: 'studentId', description: 'Student UUID' })

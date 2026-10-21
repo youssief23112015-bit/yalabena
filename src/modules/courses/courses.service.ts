@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { Course } from '../../shared/entities/course.entity';
 import { CoursePrerequisite } from '../../shared/entities/course-prerequisite.entity';
 import { CourseMaterial } from '../../shared/entities/course-material.entity';
-import { CourseBranchPricing } from '../../shared/entities/course-branch-pricing.entity';
 
 @Injectable()
 export class CoursesService {
@@ -15,8 +14,6 @@ export class CoursesService {
     private readonly prerequisiteRepo: Repository<CoursePrerequisite>,
     @InjectRepository(CourseMaterial)
     private readonly materialRepo: Repository<CourseMaterial>,
-    @InjectRepository(CourseBranchPricing)
-    private readonly branchPricingRepo: Repository<CourseBranchPricing>,
   ) {}
 
   async create(data: Partial<Course>): Promise<Course> {
@@ -137,35 +134,5 @@ export class CoursesService {
     }
     await this.materialRepo.remove(material);
     return { deleted: true };
-  }
-
-  // ─── Per-branch pricing overrides ─────────────────────────────
-
-  async listBranchPricing(courseId: string): Promise<CourseBranchPricing[]> {
-    await this.findOne(courseId);
-    return this.branchPricingRepo.find({
-      where: { course_id: courseId },
-      relations: ['branch'],
-    });
-  }
-
-  async setBranchPricing(
-    courseId: string,
-    dto: { branch_id: string; price: number },
-  ): Promise<CourseBranchPricing> {
-    await this.findOne(courseId);
-    const existing = await this.branchPricingRepo.findOne({
-      where: { course_id: courseId, branch_id: dto.branch_id },
-    });
-    if (existing) {
-      existing.price = dto.price;
-      return this.branchPricingRepo.save(existing);
-    }
-    const pricing = this.branchPricingRepo.create({
-      course_id: courseId,
-      branch_id: dto.branch_id,
-      price: dto.price,
-    });
-    return this.branchPricingRepo.save(pricing);
   }
 }

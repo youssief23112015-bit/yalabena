@@ -11,77 +11,67 @@ export class ReportsController {
   constructor(private readonly service: ReportsService) {}
 
   @Get('sales-funnel')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Sales funnel report' })
   salesFunnel(
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.salesFunnel(branchId, new Date(from), new Date(to));
+    return this.service.salesFunnel(new Date(from), new Date(to));
   }
 
   @Get('lead-source-roi')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Lead source ROI' })
   leadSourceRoi(
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.leadSourceRoi(branchId, new Date(from), new Date(to));
+    return this.service.leadSourceRoi(new Date(from), new Date(to));
   }
 
   @Get('group-fill-rate')
-  @Roles('super_admin', 'branch_manager', 'academic')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Group fill rate' })
-  groupFillRate(@CurrentUser() user: any) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.groupFillRate(branchId);
+  groupFillRate() {
+    return this.service.groupFillRate();
   }
 
   @Get('teacher-utilization')
-  @Roles('super_admin', 'branch_manager', 'hr')
+  @Roles('super_admin', 'hr')
   @ApiOperation({ summary: 'Teacher utilization' })
   teacherUtilization(
     @Query('month') month: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.teacherUtilization(branchId, month);
+    return this.service.teacherUtilization(month);
   }
 
   @Get('student-progress')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Student progress' })
   studentProgress(@Query('student_id') studentId: string) {
     return this.service.studentProgress(studentId);
   }
 
   @Get('revenue')
-  @Roles('super_admin', 'branch_manager', 'finance')
+  @Roles('super_admin', 'finance')
   @ApiOperation({ summary: 'Revenue by period' })
   revenue(
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.revenueByPeriod(branchId, new Date(from), new Date(to));
+    return this.service.revenueByPeriod(new Date(from), new Date(to));
   }
 
   @Get('outstanding-payments')
-  @Roles('super_admin', 'branch_manager', 'finance')
+  @Roles('super_admin', 'finance')
   @ApiOperation({ summary: 'Outstanding payments' })
-  outstandingPayments(@CurrentUser() user: any) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.outstandingPayments(branchId);
+  outstandingPayments() {
+    return this.service.outstandingPayments();
   }
 
   @Get('attendance')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Attendance report' })
   attendanceReport(
     @Query('group_id') groupId: string,

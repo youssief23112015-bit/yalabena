@@ -129,11 +129,6 @@ export default function EnrollmentsPage() {
       ),
     },
     {
-      key: "branch",
-      header: "Branch",
-      render: (e: any) => e?.group?.branch?.name ?? e?.student?.branch?.name ?? "—",
-    },
-    {
       key: "status",
       header: t("common.status"),
       render: (e: any) => (

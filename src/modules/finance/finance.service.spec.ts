@@ -37,7 +37,6 @@ describe('FinanceService', () => {
 
   const invoice = {
     id: 'inv-1',
-    branch_id: 'b-1',
     total_amount: 1000,
     due_date: new Date(Date.now() + 86400_000),
     status: InvoiceStatus.UNPAID,
@@ -232,7 +231,6 @@ describe('FinanceService', () => {
       usage_limit: 10,
       used_count: 3,
       applicable_courses: null,
-      applicable_branches: null,
     };
 
     it('rejects unknown codes', async () => {
@@ -265,7 +263,7 @@ describe('FinanceService', () => {
     });
   });
 
-  describe('getInvoice — branch isolation', () => {
+  describe('getInvoice — access', () => {
     it('throws NotFoundException for missing invoice', async () => {
       invoiceRepo.findOne.mockResolvedValue(null);
       await expect(service.getInvoice('inv-x', { roles: ['super_admin'] })).rejects.toThrow(
@@ -273,15 +271,14 @@ describe('FinanceService', () => {
       );
     });
 
-    it('forbids cross-branch access for non-super-admins', async () => {
-      invoiceRepo.findOne.mockResolvedValue({ ...invoice, branch_id: 'b-other' });
-      await expect(
-        service.getInvoice('inv-1', { roles: ['branch_manager'], branchId: 'b-1' }),
-      ).rejects.toThrow(ForbiddenException);
+    it('allows any staff member to read an invoice (no branch scoping online)', async () => {
+      invoiceRepo.findOne.mockResolvedValue({ ...invoice });
+      const res = await service.getInvoice('inv-1', { roles: ['academic'] });
+      expect(res.id).toBe('inv-1');
     });
 
-    it('allows super_admin across branches', async () => {
-      invoiceRepo.findOne.mockResolvedValue({ ...invoice, branch_id: 'b-other' });
+    it('allows super_admin', async () => {
+      invoiceRepo.findOne.mockResolvedValue({ ...invoice });
       const res = await service.getInvoice('inv-1', { roles: ['super_admin'] });
       expect(res.id).toBe('inv-1');
     });

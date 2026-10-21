@@ -42,12 +42,4 @@ export const coursesApi = {
     const { data } = await apiClient.delete(`/courses/${id}/materials/${materialId}`);
     return data;
   },
-  getBranchPricing: async (id: string): Promise<Course['branch_pricing']> => {
-    const { data } = await apiClient.get(`/courses/${id}/branch-pricing`);
-    return data;
-  },
-  setBranchPricing: async (id: string, branchId: string, price: number): Promise<unknown> => {
-    const { data } = await apiClient.post(`/courses/${id}/branch-pricing`, { branch_id: branchId, price });
-    return data;
-  },
 };

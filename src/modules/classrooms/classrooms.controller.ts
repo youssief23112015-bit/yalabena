@@ -11,7 +11,7 @@ export class ClassroomsController {
   constructor(private readonly service: ClassroomsService) {}
 
   @Post()
-  @Roles('super_admin', 'branch_manager', 'academic')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Create a new classroom' })
   @ApiBody({ 
     description: 'Classroom creation payload',
@@ -20,7 +20,6 @@ export class ClassroomsController {
       properties: {
         name: { type: 'string', example: 'Room A1' },
         capacity: { type: 'number', example: 20 },
-        branchId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
         room_type: { type: 'string', example: 'Physical' }, // أو Online حسب الـ Entity عندك
       },
       required: ['name', 'capacity']
@@ -32,15 +31,14 @@ export class ClassroomsController {
   }
 
   @Get()
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
-  @ApiOperation({ summary: 'Get all classrooms with optional branch filter' })
-  @ApiQuery({ name: 'branchId', required: false, description: 'Filter classrooms by branch' })
-  async findAll(@Query('branchId') branchId?: string) {
-    return this.service.findAll(branchId);
+  @Roles('super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Get all classrooms' })
+  async findAll() {
+    return this.service.findAll();
   }
 
   @Get(':id')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Get classroom details by id' })
   @ApiParam({ name: 'id', description: 'Classroom UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns classroom details.' })
@@ -50,7 +48,7 @@ export class ClassroomsController {
   }
 
   @Put(':id')
-  @Roles('super_admin', 'branch_manager', 'academic')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Update classroom details' })
   @ApiParam({ name: 'id', description: 'Classroom UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({ 
@@ -60,7 +58,6 @@ export class ClassroomsController {
       properties: {
         name: { type: 'string', example: 'Room A1 - Updated' },
         capacity: { type: 'number', example: 25 },
-        branchId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
       },
     }
   })
@@ -71,7 +68,7 @@ export class ClassroomsController {
   }
 
   @Delete(':id')
-  @Roles('super_admin', 'branch_manager', 'academic')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Delete a classroom' })
   @ApiParam({ name: 'id', description: 'Classroom UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Classroom deleted successfully.' })

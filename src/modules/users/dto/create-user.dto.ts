@@ -24,11 +24,6 @@ export class CreateUserDto {
   @IsString()
   phone?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsUUID()
-  branch_id?: string;
-
   @ApiPropertyOptional({ enum: UserStatus })
   @IsOptional()
   @IsEnum(UserStatus)

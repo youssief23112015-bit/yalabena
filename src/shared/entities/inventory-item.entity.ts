@@ -5,7 +5,7 @@ import { InventoryStatus } from '../../common/enums/inventory-status.enum';
 /**
  * Master catalog of training materials (SRS 4.12).
  * Matches `inventory_items` in database/speakup_tms_full_schema.sql:
- * the table has NO branch_id (stock is per branch in `stock_levels`)
+ * the table has NO branch scoping (single global stock pool in `stock_levels`)
  * and the price column is `sale_price`.
  */
 @Entity('inventory_items')

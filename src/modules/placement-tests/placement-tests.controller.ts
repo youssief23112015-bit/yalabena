@@ -4,7 +4,7 @@ import { PlacementTestsService } from './placement-tests.service';
 import { PlacementTest } from '../../shared/entities/placement-test.entity';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/auth-user';
 import { SubmitWrittenDto } from './dto/submit-written.dto';
 import { BookTestDto } from './dto/book-test.dto';
 import { EvaluateTestDto } from './dto/evaluate-test.dto';
@@ -47,7 +47,7 @@ export class PlacementTestsController {
   }
 
   @Post()
-  @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+  @Roles('super_admin', 'sales', 'academic')
   @ApiOperation({ summary: 'Schedule or submit a placement test slot/result' })
   @ApiBody({ 
     description: 'Placement test creation/scheduling payload',
@@ -70,7 +70,7 @@ export class PlacementTestsController {
   }
 
   @Get()
-  @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+  @Roles('super_admin', 'sales', 'academic')
   @ApiOperation({ summary: 'Get all placement tests with optional lead filter' })
   @ApiQuery({ name: 'leadId', required: false, description: 'Filter placement tests by lead ID' })
   async findAll(@Query('leadId') leadId?: string) {
@@ -78,7 +78,7 @@ export class PlacementTestsController {
   }
 
   @Get(':id')
-  @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+  @Roles('super_admin', 'sales', 'academic')
   @ApiOperation({ summary: 'Get placement test details by id' })
   @ApiParam({ name: 'id', description: 'Placement Test UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns placement test details.' })
@@ -116,7 +116,7 @@ export class PlacementTestsController {
    * Student's current_level.
    */
   @Patch(':id/evaluate')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Evaluate a placement test: score + level → Lead/Student sync' })
   @ApiParam({ name: 'id', description: 'Placement Test UUID' })
   @ApiBody({
@@ -139,7 +139,7 @@ export class PlacementTestsController {
   // ------------------------------------------------------------------
 
   @Post(':id/written/paper')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+  @Roles('super_admin', 'academic', 'teacher', 'student')
   @ApiOperation({ summary: 'Generate a randomized written-test paper (no correct answers exposed)' })
   @ApiParam({ name: 'id', description: 'Placement Test UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({
@@ -163,7 +163,7 @@ export class PlacementTestsController {
   }
 
   @Post(':id/written/submit')
-  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+  @Roles('super_admin', 'academic', 'teacher', 'student')
   @ApiOperation({ summary: 'Submit written-test answers; objective questions auto-scored' })
   @ApiParam({ name: 'id', description: 'Placement Test UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   async submitWritten(

@@ -4,7 +4,7 @@ import { seedRoles } from './role.seed';
 import { seedPermissions } from './permission.seed';
 import { seedRolePermissions } from './role-permission.seed';
 import { seedSettings } from './setting.seed';
-import { seedBranch } from './branch.seed';
+import { seedDefaults } from './default-academy.seed';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 
 import { seedSuperUser } from './superuser.seed'; // تأكد من المسار الصحيح لو الملف باسم تاني
@@ -28,7 +28,7 @@ async function runSeeds() {
   await seedRoles(dataSource);
   await seedRolePermissions(dataSource);
   await seedSettings(dataSource);
-  await seedBranch(dataSource);
+  await seedDefaults(dataSource);
   await seedSuperUser(dataSource); // <-- أضفناها هنا
   console.log('All seeds completed successfully.');
   await dataSource.destroy();

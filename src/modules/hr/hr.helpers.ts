@@ -54,7 +54,7 @@ export function pickUser(u: any) {
   if (!u) return u;
   return {
     id: u.id, first_name: u.first_name, last_name: u.last_name, email: u.email,
-    phone: u.phone, branch_id: u.branch_id, avatar_url: u.avatar_url, status: u.status,
+    phone: u.phone, avatar_url: u.avatar_url, status: u.status,
   };
 }
 

@@ -7,13 +7,11 @@ import { dashboardApi } from "@/api/dashboard";
 import { leadsApi } from "@/api/leads";
 import { studentsApi } from "@/api/students";
 import { coursesApi } from "@/api/courses";
-import { branchesApi } from "@/api/branches";
 import { groupsApi } from "@/api/groups";
 import { sessionsApi } from "@/api/sessions";
 import {
   Users,
   BookOpen,
-  Building2,
   CalendarDays,
   Clock,
   TrendingUp,
@@ -30,17 +28,16 @@ const normalizeArray = <T,>(res: any): T[] => {
   if (res && Array.isArray(res.leads)) return res.leads;
   if (res && Array.isArray(res.students)) return res.students;
   if (res && Array.isArray(res.courses)) return res.courses;
-  if (res && Array.isArray(res.branches)) return res.branches;
   if (res && Array.isArray(res.groups)) return res.groups;
   if (res && Array.isArray(res.sessions)) return res.sessions;
   return [];
 };
 
 /**
- * Full administrative dashboard (Leads, students, courses, branches, groups,
+ * Full administrative dashboard (Leads, students, courses, groups,
  * sessions, conversion / fill-rate KPIs, attendance summary).
  *
- * Rendered for: super_admin, branch_manager, sales, finance, academic
+ * Rendered for: super_admin, sales, finance, academic
  * (plus auditor / moderator / unknown roles) — see pages/Dashboard.tsx.
  */
 export default function AdminDashboard() {
@@ -72,12 +69,6 @@ export default function AdminDashboard() {
   });
   const courses = normalizeArray<any>(rawCourses);
 
-  const { data: rawBranches, isLoading: branchesLoading } = useQuery({
-    queryKey: ["dashboard-branches"],
-    queryFn: () => branchesApi.findAll(),
-  });
-  const branches = normalizeArray<any>(rawBranches);
-
   const { data: rawGroups, isLoading: groupsLoading } = useQuery({
     queryKey: ["dashboard-groups"],
     queryFn: () => groupsApi.findAll(),
@@ -106,13 +97,12 @@ export default function AdminDashboard() {
     enabled: !sessionsLoading && sessionIds.length > 0,
   });
 
-  const isLoading = leadsLoading || studentsLoading || coursesLoading || branchesLoading || groupsLoading || sessionsLoading;
+  const isLoading = leadsLoading || studentsLoading || coursesLoading || groupsLoading || sessionsLoading;
 
   // Compute stats safely from normalized arrays
   const totalLeads = serverStats?.total_leads ?? leads.length;
   const totalStudents = serverStats?.total_students ?? students.length;
   const totalCourses = serverStats?.total_courses ?? courses.length;
-  const totalBranches = serverStats?.total_branches ?? branches.length;
   const totalGroups = serverStats?.total_groups ?? groups.length;
   const totalSessions = serverStats?.total_sessions ?? sessions.length;
 
@@ -145,7 +135,6 @@ export default function AdminDashboard() {
     { title: t("nav.leads"), value: totalLeads, icon: Users, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
     { title: t("nav.students"), value: totalStudents, icon: GraduationCap, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
     { title: t("nav.courses"), value: totalCourses, icon: BookOpen, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
-    { title: t("nav.branches"), value: totalBranches, icon: Building2, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10" },
     { title: t("nav.groups"), value: totalGroups, icon: CalendarDays, color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10" },
     { title: t("nav.sessions"), value: totalSessions, icon: Clock, color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
   ];

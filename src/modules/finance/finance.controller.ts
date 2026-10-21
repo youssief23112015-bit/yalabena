@@ -9,7 +9,7 @@ import { ApproveRefundDto } from './dto/approve-refund.dto';
 import { QueryInvoiceDto } from './dto/query-invoice.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/auth-user';
 import { buildPdf } from '../../common/utils/pdf.helper';
 
 @Controller('finance')
@@ -18,69 +18,68 @@ export class FinanceController {
 
   // ---- Invoices ----
   @Post('invoices')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   createInvoice(@Body() dto: CreateInvoiceDto, @CurrentUser() user: AuthUser) {
     return this.service.createManualInvoice(dto, user);
   }
 
   @Get('invoices')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   listInvoices(@Query() dto: QueryInvoiceDto, @CurrentUser() user: AuthUser) {
     return this.service.listInvoices(dto, user);
   }
 
   @Get('invoices/:id')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   getInvoice(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
     return this.service.getInvoice(id, user);
   }
 
   // ---- Promo codes ----
   @Post('promo-codes')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   createPromo(@Body() dto: CreatePromoCodeDto, @CurrentUser() user: AuthUser) {
     return this.service.createPromo(dto, user);
   }
 
   @Get('promo-codes')
-  @Roles('super_admin', 'finance', 'branch_manager', 'sales')
+  @Roles('super_admin', 'finance', 'sales')
   listPromos() {
     return this.service.listPromos();
   }
 
   @Post('promo-codes/:id/status')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   setPromoStatus(@Param('id', ParseUUIDPipe) id: string, @Body('status') status: 'active' | 'inactive') {
     return this.service.setPromoStatus(id, status);
   }
 
   // ---- Payments ----
   @Post('payments')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   recordPayment(@Body() dto: CreatePaymentDto, @CurrentUser() user: AuthUser) {
     return this.service.recordPayment(dto, user);
   }
 
   @Get('payments')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   listPayments(
     @CurrentUser() user: AuthUser,
     @Query('invoice_id') invoice_id?: string,
-    @Query('branch_id') branch_id?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.service.listPayments(user, { invoice_id, branch_id, from, to });
+    return this.service.listPayments(user, { invoice_id, from, to });
   }
 
   @Get('payments/:id')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   getPayment(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
     return this.service.getPayment(id, user);
   }
 
   @Get('payments/:id/receipt.pdf')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   async receiptPdf(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser, @Res() res: Response) {
     const p: any = await this.service.getPayment(id, user);
     const inv = p.invoice;
@@ -111,9 +110,9 @@ export class FinanceController {
   }
 
   @Get('refunds')
-  @Roles('super_admin', 'finance', 'branch_manager')
-  listRefunds(@CurrentUser() user: AuthUser, @Query('status') status?: string, @Query('branch_id') branch_id?: string) {
-    return this.service.listRefunds(user, { status, branch_id });
+  @Roles('super_admin', 'finance')
+  listRefunds(@CurrentUser() user: AuthUser, @Query('status') status?: string) {
+    return this.service.listRefunds(user, { status });
   }
 
   @Post('refunds/:id/decision')
@@ -130,19 +129,18 @@ export class FinanceController {
 
   // ---- Ledger / receivables ----
   @Get('ledger')
-  @Roles('super_admin', 'finance', 'branch_manager')
+  @Roles('super_admin', 'finance')
   ledger(
     @CurrentUser() user: AuthUser,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('branch_id') branch_id?: string,
   ) {
-    return this.service.ledger(user, from, to, branch_id);
+    return this.service.ledger(user, from, to);
   }
 
   @Get('receivables')
-  @Roles('super_admin', 'finance', 'branch_manager')
-  receivables(@CurrentUser() user: AuthUser, @Query('branch_id') branch_id?: string) {
-    return this.service.receivables(user, branch_id);
+  @Roles('super_admin', 'finance')
+  receivables(@CurrentUser() user: AuthUser) {
+    return this.service.receivables(user);
   }
 }

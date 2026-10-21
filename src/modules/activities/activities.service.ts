@@ -13,11 +13,7 @@ import { Student } from '../../shared/entities/student.entity';
 import { GroupStudent } from '../../shared/entities/group-student.entity';
 import { RegistrationStatus } from '../../common/enums/registration-status.enum';
 import { ActivityStatus } from '../../common/enums/activity-status.enum';
-import {
-  AuthUser,
-  assertBranchAccess,
-  effectiveBranchFilter,
-} from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/auth-user';
 import { FinanceService } from '../finance/finance.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
@@ -37,7 +33,6 @@ const OCCUPYING_STATUSES = [
 /** Roles that may register a student other than themselves. */
 const STAFF_ROLES = [
   'super_admin',
-  'branch_manager',
   'sales',
   'academic',
   'teacher',
@@ -63,11 +58,10 @@ export class ActivitiesService {
     return user.userId ?? user.id;
   }
 
-  private async loadActivity(id: string, user: AuthUser): Promise<Activity> {
+  private async loadActivity(id: string, _user: AuthUser): Promise<Activity> {
     const activity = await this.repo.findOne({
       where: { id },
       relations: [
-        'branch',
         'registrations',
         'registrations.student',
         'registrations.student.user',
@@ -75,7 +69,6 @@ export class ActivitiesService {
       ],
     });
     if (!activity) throw new NotFoundException('Activity not found');
-    assertBranchAccess(user, activity.branch_id);
     return activity;
   }
 
@@ -122,10 +115,6 @@ export class ActivitiesService {
   // ─── ACTIVITIES (SRS 4.11) ───
 
   async create(dto: CreateActivityDto, user: AuthUser) {
-    const branchFilter = effectiveBranchFilter(user, dto.branch_id);
-    if (branchFilter && branchFilter !== dto.branch_id) {
-      throw new ForbiddenException('Cannot create activities outside your branch');
-    }
     const activity = this.repo.create({
       ...dto,
       date: new Date(dto.date) as any,
@@ -135,13 +124,8 @@ export class ActivitiesService {
     return this.loadActivity(saved.id, user);
   }
 
-  async findAll(query: ActivityQueryDto, user: AuthUser) {
-    const qb = this.repo
-      .createQueryBuilder('a')
-      .leftJoinAndSelect('a.branch', 'branch');
-
-    const branchFilter = effectiveBranchFilter(user, query.branch_id);
-    if (branchFilter) qb.andWhere('a.branch_id = :branchId', { branchId: branchFilter });
+  async findAll(query: ActivityQueryDto, _user: AuthUser) {
+    const qb = this.repo.createQueryBuilder('a');
 
     if (query.type) qb.andWhere('a.type = :type', { type: query.type });
     if (query.status) qb.andWhere('a.status = :status', { status: query.status });
@@ -251,11 +235,6 @@ export class ActivitiesService {
       throw new BadRequestException('Student is already registered for this activity');
     }
 
-    // Branch rule: a student may only join their own branch's activity.
-    if (student.branch_id && activity.branch_id && student.branch_id !== activity.branch_id) {
-      throw new BadRequestException('Student belongs to a different branch than this activity');
-    }
-
     // Level/group targeting rules (skipped when the activity is open to all).
     if (!activity.is_open_to_all) {
       const levels = activity.target_levels ?? [];
@@ -306,7 +285,6 @@ export class ActivitiesService {
     // Finance integration: book the optional fee into the ledger.
     if (fee > 0 && dto.mark_paid && !saved.payment_id) {
       const tx = await this.finance.recordActivityFee({
-        branch_id: activity.branch_id,
         amount: fee,
         description: `Activity fee — ${activity.title} (${student.student_number})`,
         created_by: this.actorId(user),
@@ -330,7 +308,6 @@ export class ActivitiesService {
       relations: ['activity'],
     });
     if (!registration) throw new NotFoundException('Registration not found');
-    assertBranchAccess(user, registration.activity?.branch_id);
 
     if (registration.status === RegistrationStatus.CANCELLED) {
       throw new BadRequestException('Registration is already cancelled');
@@ -359,7 +336,6 @@ export class ActivitiesService {
       relations: ['activity', 'student', 'student.user'],
     });
     if (!registration) throw new NotFoundException('Registration not found');
-    assertBranchAccess(user, registration.activity?.branch_id);
 
     const fee = Number(registration.activity?.fee ?? 0);
     if (fee <= 0) throw new BadRequestException('This activity has no fee');
@@ -370,7 +346,6 @@ export class ActivitiesService {
     const amount = Math.min(Number(dto.amount ?? outstanding), outstanding);
 
     const tx = await this.finance.recordActivityFee({
-      branch_id: registration.activity!.branch_id,
       amount,
       description: `Activity fee — ${registration.activity!.title} (${
         registration.student?.student_number ?? registration.student_id
@@ -488,7 +463,6 @@ export class ActivitiesService {
       relations: ['activity'],
     });
     if (!photo) throw new NotFoundException('Photo not found');
-    assertBranchAccess(user, photo.activity?.branch_id);
     await this.photoRepo.remove(photo);
     return { id: photoId, deleted: true };
   }

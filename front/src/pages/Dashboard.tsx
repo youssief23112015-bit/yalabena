@@ -11,7 +11,6 @@ import HrDashboard from "@/pages/dashboards/HrDashboard";
  */
 const ADMIN_DASHBOARD_ROLES = [
   "super_admin",
-  "branch_manager",
   "sales",
   "finance",
   "academic",

@@ -22,7 +22,6 @@ import { PromoCodeService } from './promo-code.service';
 import { InstallmentStatus } from '../../common/enums/installment-status.enum';
 import { InvoiceItemType } from '../../common/enums/invoice-item-type.enum';
 import { round2 } from '../../common/utils/math.util';
-import { effectiveBranchFilter } from '../../common/utils/branch-scope';
 
 
 @Injectable()
@@ -49,7 +48,7 @@ export class FinanceService {
    * and `due_days` (invoice due date, default 7 days).
    */
   async createInvoiceForEnrollment(data: any) {
-    return this.createInvoice(data, data.created_by, data.branch_id);
+    return this.createInvoice(data, data.created_by);
   }
 
   /**
@@ -67,8 +66,7 @@ export class FinanceService {
 
   async createManualInvoice(dto: CreateInvoiceDto, user: any) {
     const userId = typeof user === 'string' ? user : user?.id;
-    const branchId = typeof user === 'object' ? user?.branch_id || user?.branchId : undefined;
-    return this.createInvoice(dto, userId, branchId);
+    return this.createInvoice(dto, userId);
   }
 
   async listInvoices(query: QueryInvoiceDto, user: any) {
@@ -90,28 +88,18 @@ export class FinanceService {
   }
 
   async listPayments(
-    user: any,
-    filter: { invoice_id?: string; branch_id?: string; from?: string; to?: string } = {},
+    _user: any,
+    filter: { invoice_id?: string; from?: string; to?: string } = {},
   ) {
-    // Payment has NO branch_id / from / to columns — passing those keys to
-    // find({ where }) throws EntityPropertyNotFoundError. Branch scoping
-    // goes through the invoice relation; the date range maps to paid_at.
+    // Payment has NO from / to columns — the date range maps to paid_at.
     const qb = this.paymentRepo
       .createQueryBuilder('p')
       .innerJoinAndSelect('p.invoice', 'invoice')
       .leftJoinAndSelect('invoice.student', 'student')
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('invoice.branch', 'branch')
       .leftJoinAndSelect('p.recorder', 'recorder')
       .orderBy('p.paid_at', 'DESC');
 
-    const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
-    // '__none__' = branchless non-admin: return nothing rather than running
-    // an invalid uuid comparison against the invoice.branch_id column.
-    if (branchFilter === '__none__') return [];
-    if (branchFilter) {
-      qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
-    }
     if (filter?.invoice_id) {
       qb.andWhere('p.invoice_id = :invoiceId', { invoiceId: filter.invoice_id });
     }
@@ -131,31 +119,21 @@ export class FinanceService {
   }
 
   /**
-   * Refund list (SRS §4.8). Refund has NO branch_id column — the previous
-   * find({ where: { branch_id } }) crashed with EntityPropertyNotFoundError.
-   * Branch scoping runs through invoice.branch_id; the response carries the
-   * invoice/branch/payment and approver/processor details for the UI.
+   * Refund list (SRS §4.8). The response carries the invoice/payment and
+   * approver/processor details for the UI.
    */
   async listRefunds(
-    user: any,
-    filter: { status?: string; branch_id?: string } = {},
+    _user: any,
+    filter: { status?: string } = {},
   ) {
     const qb = this.refundRepo
       .createQueryBuilder('r')
       .innerJoinAndSelect('r.invoice', 'invoice')
-      .leftJoinAndSelect('invoice.branch', 'branch')
       .leftJoinAndSelect('r.payment', 'payment')
       .leftJoinAndSelect('r.approver', 'approver')
       .leftJoinAndSelect('r.processor', 'processor')
       .orderBy('r.created_at', 'DESC');
 
-    const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
-    // '__none__' = branchless non-admin: return nothing rather than running
-    // an invalid uuid comparison against the invoice.branch_id column.
-    if (branchFilter === '__none__') return [];
-    if (branchFilter) {
-      qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
-    }
     if (filter?.status) {
       qb.andWhere('r.status = :status', { status: filter.status });
     }
@@ -179,12 +157,12 @@ export class FinanceService {
     return { success: true };
   }
 
-  async ledger(user: any, from?: string, to?: string, branchId?: string) {
-    return this.getRevenueReport(branchId || user?.branchId || null, from ? new Date(from) : new Date(0), to ? new Date(to) : new Date());
+  async ledger(_user: any, from?: string, to?: string) {
+    return this.getRevenueReport(from ? new Date(from) : new Date(0), to ? new Date(to) : new Date());
   }
 
-  async receivables(user: any, branchId?: string) {
-    return this.getOutstandingPayments(branchId || user?.branchId || null);
+  async receivables(_user: any) {
+    return this.getOutstandingPayments();
   }
 
   // ─── RECEIPTS (SRS 4.8) ───
@@ -196,7 +174,6 @@ export class FinanceService {
         'invoice',
         'invoice.student',
         'invoice.student.user',
-        'invoice.branch',
         'invoice.items',
       ],
     });
@@ -206,7 +183,7 @@ export class FinanceService {
 
   // ─── INVOICES ───
 
-  async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string) {
+  async createInvoice(dto: CreateInvoiceDto, userId: string) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -231,7 +208,7 @@ export class FinanceService {
       // Field-mismatch fix: enrollments send `manual_discount`, the manual
       // invoice DTO sends `discount_amount` — both feed the same column.
       // When a promo_code is provided it is validated (expiry, usage limit,
-      // branch/course scoping) and its discount replaces the manual one.
+      // course scoping) and its discount replaces the manual one.
       let discountAmount = round2(
         Number(
           (invoiceData as any).manual_discount ??
@@ -248,7 +225,6 @@ export class FinanceService {
         promo = await this.validatePromoCode(
           String(promoCodeInput),
           courseId,
-          branchId ?? (invoiceData as any).branch_id,
         );
         discountAmount = this.promoCodeService.computeDiscount(
           promo,
@@ -272,9 +248,6 @@ export class FinanceService {
       const invoice = this.invoiceRepo.create({
         ...invoiceData,
         invoice_number: await this.generateInvoiceNumber(),
-        // Super admins have no branch of their own — fall back to the
-        // payload's branch (always present on the manual DTO).
-        branch_id: branchId ?? (invoiceData as any).branch_id ?? null,
         created_by: userId,
         status: InvoiceStatus.UNPAID,
         paid_amount: 0,
@@ -384,9 +357,6 @@ export class FinanceService {
       .leftJoinAndSelect('student.user', 'user')
       .orderBy('i.created_at', 'DESC');
 
-    if (!user?.roles?.includes('super_admin') && user?.branchId) {
-      qb.andWhere('i.branch_id = :branchId', { branchId: user.branchId });
-    }
     if (query.status) qb.andWhere('i.status = :status', { status: query.status });
     if (query.student_id) qb.andWhere('i.student_id = :studentId', { studentId: query.student_id });
     if (query.due_from) qb.andWhere('i.due_date >= :from', { from: query.due_from });
@@ -402,9 +372,6 @@ export class FinanceService {
       relations: ['items', 'payments', 'installments', 'student', 'student.user'],
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (!user?.roles?.includes('super_admin') && invoice.branch_id !== user?.branchId) {
-      throw new ForbiddenException('Access denied');
-    }
     return invoice;
   }
 
@@ -431,7 +398,6 @@ export class FinanceService {
     await this.syncInvoice(invoice.id);
 
     await this.ftRepo.save({
-      branch_id: invoice.branch_id,
       invoice_id: invoice.id,
       payment_id: saved.id,
       transaction_type: FinancialTransactionType.PAYMENT,
@@ -455,14 +421,12 @@ export class FinanceService {
    * is NOT NULL in the schema).
    */
   async recordActivityFee(data: {
-    branch_id: string;
     amount: number;
     description: string;
     created_by?: string;
     transaction_date?: Date;
   }) {
     return this.ftRepo.save({
-      branch_id: data.branch_id,
       transaction_type: FinancialTransactionType.PAYMENT,
       direction: TransactionDirection.IN,
       amount: data.amount,
@@ -513,9 +477,7 @@ export class FinanceService {
 
     await this.syncInvoice(refund.invoice_id);
 
-    const invoice = await this.invoiceRepo.findOne({ where: { id: refund.invoice_id } });
     await this.ftRepo.save({
-      branch_id: invoice?.branch_id,
       invoice_id: refund.invoice_id,
       refund_id: refund.id,
       transaction_type: FinancialTransactionType.REFUND,
@@ -536,16 +498,16 @@ export class FinanceService {
     return this.promoRepo.save(promo);
   }
 
-  async validatePromoCode(code: string, courseId?: string, branchId?: string) {
+  async validatePromoCode(code: string, courseId?: string) {
     // Delegates to PromoCodeService — the single source of truth for
-    // expiry / usage-limit / branch / course scoping rules (kept as a
+    // expiry / usage-limit / course scoping rules (kept as a
     // facade for the existing controller endpoint and tests).
-    return this.promoCodeService.validatePromoCode(code, courseId, branchId);
+    return this.promoCodeService.validatePromoCode(code, courseId);
   }
 
   // ─── REPORTS ───
 
-  async getRevenueReport(branchId: string | null, from: Date, to: Date) {
+  async getRevenueReport(from: Date, to: Date) {
     const qb = this.ftRepo.createQueryBuilder('ft')
       .select('SUM(ft.amount)', 'total')
       .addSelect('ft.transaction_type', 'type')
@@ -556,17 +518,15 @@ export class FinanceService {
       .addGroupBy("TO_CHAR(ft.transaction_date, 'YYYY-MM')")
       .orderBy('month', 'DESC');
 
-    if (branchId) qb.andWhere('ft.branch_id = :branchId', { branchId });
     return qb.getRawMany();
   }
 
-  async getOutstandingPayments(branchId: string | null) {
+  async getOutstandingPayments() {
     const qb = this.invoiceRepo.createQueryBuilder('i')
       .leftJoinAndSelect('i.student', 'student')
       .leftJoinAndSelect('student.user', 'user')
       .where('i.status IN (:...statuses)', { statuses: [InvoiceStatus.UNPAID, InvoiceStatus.PARTIAL, InvoiceStatus.OVERDUE] });
 
-    if (branchId) qb.andWhere('i.branch_id = :branchId', { branchId });
     return qb.orderBy('i.due_date', 'ASC').getMany();
   }
 

@@ -25,7 +25,6 @@ import {
 export interface HrActor {
   userId: string;
   roles: string[];
-  branchId?: string | null;
 }
 
 const HR_ADMIN = ['super_admin', 'hr'];
@@ -49,19 +48,6 @@ export class HrService {
 
   private canSeeCompensation(actor?: HrActor) {
     return has(actor, COMPENSATION_ROLES);
-  }
-
-  /** Branch managers only work with employees of their own branch. HR / admin see all. */
-  private branchScope(actor?: HrActor): string | null {
-    if (!actor || has(actor, HR_ADMIN)) return null;
-    return actor.branchId ?? null;
-  }
-
-  private async assertEmployeeInScope(emp: Employee, actor?: HrActor) {
-    const b = this.branchScope(actor);
-    if (!b) return;
-    const user = emp.user ?? (await this.userRepo.findOne({ where: { id: emp.user_id } }));
-    if (user?.branch_id !== b) throw new ForbiddenException('Employee belongs to another branch');
   }
 
   private rethrowUnique(err: any, msg: string): never {
@@ -134,8 +120,6 @@ export class HrService {
         { q: `%${query.search.trim()}%` },
       );
     }
-    const scope = this.branchScope(actor);
-    if (scope) qb.andWhere('user.branch_id = :scope', { scope });
     qb.orderBy('user.first_name', 'ASC').addOrderBy('e.id', 'ASC');
 
     const canComp = this.canSeeCompensation(actor);
@@ -145,7 +129,6 @@ export class HrService {
   async findOneEmployee(id: string, actor?: HrActor) {
     const emp = await this.empRepo.findOne({ where: { id }, relations: ['user'] });
     if (!emp) throw new NotFoundException('Employee not found');
-    await this.assertEmployeeInScope(emp, actor);
     return presentEmployee(emp, this.canSeeCompensation(actor));
   }
 
@@ -206,10 +189,9 @@ export class HrService {
     );
   }
 
-  async findDocuments(employeeId: string, actor?: HrActor) {
+  async findDocuments(employeeId: string, _actor?: HrActor) {
     const emp = await this.empRepo.findOne({ where: { id: employeeId } });
     if (!emp) throw new NotFoundException('Employee not found');
-    await this.assertEmployeeInScope(emp, actor);
     return this.docRepo.find({ where: { employee_id: employeeId }, order: { created_at: 'DESC' } });
   }
 
@@ -368,8 +350,6 @@ export class HrService {
       .orderBy('l.created_at', 'DESC');
     if (query.status) qb.andWhere('l.status = :status', { status: query.status });
     if (query.employee_id) qb.andWhere('employee.id = :eid', { eid: query.employee_id });
-    const scope = this.branchScope(actor);
-    if (scope) qb.andWhere('user.branch_id = :scope', { scope });
     return (await qb.getMany()).map(presentLeave);
   }
 
@@ -391,8 +371,6 @@ export class HrService {
     if (leave.employee?.user_id === actor.userId && !has(actor, ['super_admin'])) {
       throw new ForbiddenException('You cannot approve or reject your own leave request');
     }
-    // Branch managers decide only for their own branch.
-    await this.assertEmployeeInScope(leave.employee, actor);
 
     const res = await this.leaveRepo.update(
       { id, status: LeaveStatus.PENDING },

@@ -55,10 +55,6 @@ export class CreateActivityDto {
   @MaxLength(255)
   location?: string;
 
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID()
-  branch_id: string;
-
   @ApiProperty({ example: 30, description: 'Capacity limit' })
   @IsInt()
   @Min(1)

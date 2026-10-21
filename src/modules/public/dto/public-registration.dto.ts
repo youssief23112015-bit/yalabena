@@ -25,9 +25,6 @@ export class PublicRegistrationDto {
   @IsUUID()
   course_id: string;
 
-  @IsUUID()
-  branch_id: string;
-
   @IsOptional()
   @IsString()
   @MaxLength(10)

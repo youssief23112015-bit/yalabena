@@ -4,9 +4,6 @@ import { GroupMode } from '../../../common/enums/group-mode.enum';
 
 export class CreateSlotDto {
   @IsUUID()
-  branch_id: string;
-
-  @IsUUID()
   examiner_id: string;
 
   @IsDateString()

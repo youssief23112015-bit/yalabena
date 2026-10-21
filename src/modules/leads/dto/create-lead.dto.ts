@@ -54,10 +54,6 @@ export class CreateLeadDto {
   assigned_to?: string;
 
   @IsOptional()
-  @IsUUID()
-  branch_id?: string;
-
-  @IsOptional()
   @IsArray()
   @IsString({ each: true })
   tags?: string[];

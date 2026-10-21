@@ -244,7 +244,7 @@ export default function LmsPage() {
     : ['student'];
 
   const isTeacherOrAdmin = userRoles.some((r) =>
-    ['super_admin', 'academic', 'branch_manager', 'teacher'].includes(r)
+    ['super_admin', 'academic', 'teacher'].includes(r)
   );
 
   // Active UI States

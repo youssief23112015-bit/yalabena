@@ -72,9 +72,8 @@ export class PublicController {
   @Public()
   @Get('placement-slots')
   @ApiOperation({ summary: 'Open placement-test slots for self-booking' })
-  @ApiQuery({ name: 'branch_id', required: false, type: String })
-  listPlacementSlots(@Query('branch_id') branchId?: string) {
-    return this.service.listPlacementSlots(branchId);
+  listPlacementSlots() {
+    return this.service.listPlacementSlots();
   }
 
   @Public()

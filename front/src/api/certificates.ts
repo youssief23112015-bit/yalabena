@@ -29,7 +29,7 @@ export const certificatesApi = {
     const { data } = await apiClient.post(`/certificates/${id}/revoke`, { reason });
     return data;
   },
-  list: async (params?: { student_id?: string; course_id?: string; group_id?: string; status?: string; branch_id?: string }): Promise<any[]> => {
+  list: async (params?: { student_id?: string; course_id?: string; group_id?: string; status?: string }): Promise<any[]> => {
     const { data } = await apiClient.get("/certificates", { params });
     return Array.isArray(data) ? data : data?.items ?? [];
   },

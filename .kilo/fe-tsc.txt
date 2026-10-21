@@ -1,0 +1,117 @@
+﻿src/components/inventory/ItemFormDialog.tsx(10,15): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/components/inventory/ItemFormDialog.tsx(62,46): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'ItemInput'.
+src/components/inventory/StockActionDialog.tsx(8,15): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/components/inventory/StockActionDialog.tsx(69,48): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ quantity: number; unit_cost?: number | undefined; reason?: string | undefined; }'.
+src/components/inventory/StockActionDialog.tsx(73,47): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ quantity: number; reason: string; }'.
+src/components/inventory/StockActionDialog.tsx(78,29): error TS2339: Property 'transfer' does not exist on type '{ items: (params?: { search?: string | undefined; category?: string | undefined; status?: string | undefined; low_stock_only?: boolean | undefined; sort?: string | undefined; order?: "ASC" | "DESC" | undefined; page?: number | undefined; limit?: number | undefined; } | undefined) => Promise<...>; ... 12 more ...; mo...'.
+src/components/inventory/StockActionDialog.tsx(83,74): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ item_id: string; student_id: string; quantity?: number | undefined; cost?: number | undefined; }'.
+src/components/public/LeadCaptureForm.tsx(15,29): error TS2305: Module '"@/api/public"' has no exported member 'fetchPublicBranches'.
+src/components/public/LeadCaptureForm.tsx(61,7): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'PublicLeadInput'.
+src/components/public/LeadCaptureForm.tsx(134,35): error TS2339: Property 'map' does not exist on type '{}'.
+src/components/public/LeadCaptureForm.tsx(134,40): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/Activities.tsx(8,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Activities.tsx(169,9): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'ActivityFilters'.
+src/pages/Activities.tsx(335,24): error TS2339: Property 'branch_id' does not exist on type 'Activity'.
+src/pages/Activities.tsx(347,42): error TS2339: Property 'branch_id' does not exist on type 'User'.
+src/pages/Activities.tsx(435,40): error TS2339: Property 'branch' does not exist on type 'Activity'.
+src/pages/Activities.tsx(435,60): error TS2339: Property 'branch_id' does not exist on type 'Activity'.
+src/pages/Activities.tsx(550,31): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/Activities.tsx(654,37): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/activities/ActivityFormPage.tsx(4,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/activities/ActivityFormPage.tsx(54,5): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'CreateActivityDto | (() => CreateActivityDto)'.
+src/pages/activities/ActivityFormPage.tsx(82,13): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'SetStateAction<CreateActivityDto>'.
+src/pages/activities/ActivityFormPage.tsx(82,33): error TS2339: Property 'branch_id' does not exist on type 'Activity'.
+src/pages/activities/ActivityFormPage.tsx(180,29): error TS2339: Property 'branch_id' does not exist on type 'CreateActivityDto'.
+src/pages/activities/ActivityFormPage.tsx(181,46): error TS2345: Argument of type '"branch_id"' is not assignable to parameter of type 'keyof CreateActivityDto'.
+src/pages/Courses.tsx(8,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Courses.tsx(20,23): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/pages/Courses.tsx(87,31): error TS2339: Property 'getBranchPricing' does not exist on type '{ findAll: () => Promise<Course[]>; findOne: (id: string) => Promise<Course>; create: (dto: Partial<Course>) => Promise<Course>; ... 6 more ...; removeMaterial: (id: string, materialId: string) => Promise<...>; }'.
+src/pages/Courses.tsx(151,106): error TS2339: Property 'setBranchPricing' does not exist on type '{ findAll: () => Promise<Course[]>; findOne: (id: string) => Promise<Course>; create: (dto: Partial<Course>) => Promise<Course>; ... 6 more ...; removeMaterial: (id: string, materialId: string) => Promise<...>; }'.
+src/pages/Courses.tsx(397,34): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/dashboards/AdminDashboard.tsx(10,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/dashboards/AdminDashboard.tsx(115,38): error TS2339: Property 'total_branches' does not exist on type 'DashboardStats'.
+src/pages/Finance.tsx(6,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Finance.tsx(42,39): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ student_id: string; enrollment_id?: string | undefined; items: InvoiceItemInput[]; discount_amount?: number | undefined; promo_code?: string | undefined; installments_count?: number | undefined; due_days?: number | undefined; notes?: string | undefined; }'.
+src/pages/finance/FinanceDashboard.tsx(7,32): error TS2307: Cannot find module '../../components/common/BranchSelector' or its corresponding type declarations.
+src/pages/finance/FinanceDashboard.tsx(25,7): error TS2353: Object literal may only specify known properties, and 'branchId' does not exist in type '{ startDate?: string | undefined; endDate?: string | undefined; groupBy?: string | undefined; }'.
+src/pages/finance/FinanceDashboard.tsx(32,57): error TS2554: Expected 0 arguments, but got 1.
+src/pages/finance/FinanceDashboard.tsx(166,46): error TS2339: Property 'byBranch' does not exist on type 'RevenueReport'.
+src/pages/Groups.tsx(9,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Groups.tsx(22,30): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/pages/Groups.tsx(504,32): error TS2339: Property 'branchId' does not exist on type 'Group'.
+src/pages/Groups.tsx(541,84): error TS2339: Property 'branch' does not exist on type 'Group'.
+src/pages/Groups.tsx(541,104): error TS2339: Property 'branchId' does not exist on type 'Group'.
+src/pages/Groups.tsx(679,149): error TS2339: Property 'branch' does not exist on type 'Group'.
+src/pages/Groups.tsx(679,179): error TS2339: Property 'branchId' does not exist on type 'Group'.
+src/pages/Groups.tsx(804,94): error TS2339: Property 'branch' does not exist on type 'Group'.
+src/pages/Groups.tsx(867,32): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/inventory/InventoryPage.tsx(12,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/inventory/InventoryPage.tsx(65,41): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ search?: string | undefined; category?: string | undefined; status?: string | undefined; low_stock_only?: boolean | undefined; sort?: string | undefined; order?: "ASC" | "DESC" | undefined; page?: number | undefined; limit?: number | undefined; }'.
+src/pages/inventory/InventoryPage.tsx(70,41): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ item_id?: string | undefined; type?: string | undefined; from?: string | undefined; to?: string | undefined; page?: number | undefined; limit?: number | undefined; }'.
+src/pages/inventory/InventoryPage.tsx(75,42): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ student_id?: string | undefined; open_only?: boolean | undefined; page?: number | undefined; limit?: number | undefined; }'.
+src/pages/inventory/InventoryPage.tsx(78,110): error TS2554: Expected 0 arguments, but got 1.
+src/pages/inventory/InventoryPage.tsx(79,117): error TS2554: Expected 0 arguments, but got 1.
+src/pages/inventory/InventoryPage.tsx(82,50): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type '{ from?: string | undefined; to?: string | undefined; }'.
+src/pages/inventory/InventoryPage.tsx(87,50): error TS2554: Expected 1 arguments, but got 2.
+src/pages/inventory/InventoryPage.tsx(110,25): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/inventory/InventoryPage.tsx(110,68): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/inventory/InventoryPage.tsx(141,63): error TS2339: Property 'branch' does not exist on type 'StockMove'.
+src/pages/inventory/InventoryPage.tsx(241,52): error TS2339: Property 'branch_id' does not exist on type 'LowStockRow'.
+src/pages/inventory/InventoryPage.tsx(248,73): error TS2339: Property 'branches' does not exist on type 'Valuation'.
+src/pages/inventory/InventoryPage.tsx(250,32): error TS2339: Property 'branches' does not exist on type 'Valuation'.
+src/pages/inventory/InventoryPage.tsx(250,57): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/inventory/InventoryPage.tsx(250,76): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/pages/inventory/InventoryPage.tsx(255,38): error TS2339: Property 'branches' does not exist on type 'Valuation'.
+src/pages/inventory/InventoryPage.tsx(257,28): error TS2339: Property 'branches' does not exist on type 'Valuation'.
+src/pages/inventory/InventoryPage.tsx(257,42): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/inventory/InventoryPage.tsx(261,37): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/pages/inventory/InventoryPage.tsx(336,34): error TS2339: Property 'branch_id' does not exist on type 'ItemStock'.
+src/pages/inventory/InventoryPage.tsx(336,91): error TS2339: Property 'branch_name' does not exist on type 'ItemStock'.
+src/pages/inventory/InventoryPage.tsx(336,108): error TS2339: Property 'branch_id' does not exist on type 'ItemStock'.
+src/pages/Leads.tsx(8,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Leads.tsx(20,21): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/pages/Leads.tsx(248,7): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'CreateLeadDto'.
+src/pages/Leads.tsx(266,7): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'UpdateLeadDto'.
+src/pages/Leads.tsx(286,38): error TS2339: Property 'branch_id' does not exist on type 'Lead'.
+src/pages/Leads.tsx(298,7): error TS2353: Object literal may only specify known properties, and 'branch_id' does not exist in type 'SetStateAction<LeadFilters>'.
+src/pages/Leads.tsx(391,62): error TS2339: Property 'branch' does not exist on type 'Lead'.
+src/pages/Leads.tsx(498,41): error TS2339: Property 'branch' does not exist on type 'Lead'.
+src/pages/Leads.tsx(665,26): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/Leads.tsx(726,32): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/public/CourseDetailPage.tsx(163,21): error TS2339: Property 'branch_pricing' does not exist on type 'Course'.
+src/pages/public/CourseDetailPage.tsx(163,46): error TS2339: Property 'branch_pricing' does not exist on type 'Course'.
+src/pages/public/CourseDetailPage.tsx(170,29): error TS2339: Property 'branch_pricing' does not exist on type 'Course'.
+src/pages/public/CourseDetailPage.tsx(170,49): error TS7006: Parameter 'bp' implicitly has an 'any' type.
+src/pages/public/PlacementBookingPage.tsx(32,3): error TS2305: Module '"@/api/public"' has no exported member 'fetchPublicBranches'.
+src/pages/public/PlacementBookingPage.tsx(91,41): error TS2554: Expected 0 arguments, but got 1.
+src/pages/public/PlacementBookingPage.tsx(278,43): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/public/PlacementBookingPage.tsx(278,48): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/public/PlacementBookingPage.tsx(345,33): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/public/PlacementBookingPage.tsx(345,38): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/public/PlacementBookingPage.tsx(379,29): error TS2339: Property 'branch' does not exist on type 'PublicTestSlot'.
+src/pages/public/PlacementBookingPage.tsx(382,33): error TS2339: Property 'branch' does not exist on type 'PublicTestSlot'.
+src/pages/public/PlacementBookingPage.tsx(415,31): error TS2339: Property 'branch' does not exist on type 'PublicTestSlot'.
+src/pages/public/PlacementBookingPage.tsx(415,59): error TS2339: Property 'branch' does not exist on type 'PublicTestSlot'.
+src/pages/public/RegisterOnlinePage.tsx(22,3): error TS2305: Module '"@/api/public"' has no exported member 'fetchPublicBranches'.
+src/pages/public/RegisterOnlinePage.tsx(204,41): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/public/RegisterOnlinePage.tsx(204,46): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/pages/Students.tsx(15,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Students.tsx(46,3): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/pages/Students.tsx(225,9): error TS2353: Object literal may only specify known properties, and 'branchId' does not exist in type 'StudentFilters'.
+src/pages/Students.tsx(550,15): error TS2339: Property 'branch_id' does not exist on type 'Student'.
+src/pages/Students.tsx(661,16): error TS2339: Property 'branch' does not exist on type 'Student'.
+src/pages/Students.tsx(979,34): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/Students.tsx(1312,41): error TS2339: Property 'branch' does not exist on type 'Student'.
+src/pages/Students.tsx(1392,39): error TS2339: Property 'branch' does not exist on type 'Group'.
+src/pages/Students.tsx(1977,24): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/TestSlotsPage.tsx(8,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/TestSlotsPage.tsx(104,34): error TS2339: Property 'branch' does not exist on type 'TestSlot'.
+src/pages/TestSlotsPage.tsx(104,52): error TS2339: Property 'branch_id' does not exist on type 'TestSlot'.
+src/pages/TestSlotsPage.tsx(131,28): error TS2339: Property 'branch_id' does not exist on type 'TestSlot'.
+src/pages/Users.tsx(8,29): error TS2307: Cannot find module '@/api/branches' or its corresponding type declarations.
+src/pages/Users.tsx(19,21): error TS2305: Module '"@/types"' has no exported member 'Branch'.
+src/pages/Users.tsx(84,7): error TS2353: Object literal may only specify known properties, and 'branchId' does not exist in type '{ roleId?: string | undefined; status?: string | undefined; search?: string | undefined; }'.
+src/pages/Users.tsx(210,38): error TS2339: Property 'branch_id' does not exist on type 'User'.
+src/pages/Users.tsx(258,83): error TS2339: Property 'branch_id' does not exist on type 'User'.
+src/pages/Users.tsx(315,24): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/Users.tsx(382,32): error TS2339: Property 'map' does not exist on type '{}'.

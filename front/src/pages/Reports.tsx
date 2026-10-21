@@ -12,14 +12,14 @@ import { reportsApi } from "@/api/reports";
 type ReportKey = "sales-funnel" | "lead-source-roi" | "group-fill-rate" | "teacher-utilization" | "student-progress" | "revenue" | "outstanding-payments" | "attendance";
 interface ReportDefinition { key: ReportKey; label: string; description: string; roles: string[]; needsDates?: boolean; needsStudent?: boolean; needsGroup?: boolean; }
 const REPORTS: ReportDefinition[] = [
-  { key: "sales-funnel", label: "Sales funnel", description: "Lead volume grouped by current CRM status.", roles: ["super_admin", "branch_manager", "sales"], needsDates: true },
-  { key: "lead-source-roi", label: "Lead source ROI", description: "Leads and enrolled conversions by acquisition source.", roles: ["super_admin", "branch_manager", "sales"], needsDates: true },
-  { key: "group-fill-rate", label: "Group fill rate", description: "Current capacity and active enrollment by group.", roles: ["super_admin", "branch_manager", "academic"] },
-  { key: "teacher-utilization", label: "Teacher utilization", description: "Scheduled sessions and teaching hours for a month.", roles: ["super_admin", "branch_manager", "hr"] },
-  { key: "student-progress", label: "Student progress", description: "Enrollment and attendance summary for one student.", roles: ["super_admin", "branch_manager", "academic", "teacher"], needsStudent: true },
-  { key: "revenue", label: "Revenue", description: "Completed payments grouped by month.", roles: ["super_admin", "branch_manager", "finance"], needsDates: true },
-  { key: "outstanding-payments", label: "Outstanding payments", description: "Invoices with unpaid balances, ordered by due date.", roles: ["super_admin", "branch_manager", "finance"] },
-  { key: "attendance", label: "Attendance", description: "Attendance status counts by session date for a group.", roles: ["super_admin", "branch_manager", "academic", "teacher"], needsDates: true, needsGroup: true },
+  { key: "sales-funnel", label: "Sales funnel", description: "Lead volume grouped by current CRM status.", roles: ["super_admin", "sales"], needsDates: true },
+  { key: "lead-source-roi", label: "Lead source ROI", description: "Leads and enrolled conversions by acquisition source.", roles: ["super_admin", "sales"], needsDates: true },
+  { key: "group-fill-rate", label: "Group fill rate", description: "Current capacity and active enrollment by group.", roles: ["super_admin", "academic"] },
+  { key: "teacher-utilization", label: "Teacher utilization", description: "Scheduled sessions and teaching hours for a month.", roles: ["super_admin", "hr"] },
+  { key: "student-progress", label: "Student progress", description: "Enrollment and attendance summary for one student.", roles: ["super_admin", "academic", "teacher"], needsStudent: true },
+  { key: "revenue", label: "Revenue", description: "Completed payments grouped by month.", roles: ["super_admin", "finance"], needsDates: true },
+  { key: "outstanding-payments", label: "Outstanding payments", description: "Invoices with unpaid balances, ordered by due date.", roles: ["super_admin", "finance"] },
+  { key: "attendance", label: "Attendance", description: "Attendance status counts by session date for a group.", roles: ["super_admin", "academic", "teacher"], needsDates: true, needsGroup: true },
 ];
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 const monthStart = () => `${today().slice(0, 7)}-01`;

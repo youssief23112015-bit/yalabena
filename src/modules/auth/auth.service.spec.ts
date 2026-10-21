@@ -33,7 +33,6 @@ describe('AuthService', () => {
     password_hash: 'stored-hash',
     first_name: 'Ahmed',
     last_name: 'Ali',
-    branch_id: 'b-1',
     language: 'ar',
   };
 

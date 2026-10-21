@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 
 export class QueryInvoiceDto {
   @IsOptional() @IsUUID() student_id?: string;
-  @IsOptional() @IsUUID() branch_id?: string;
   @IsOptional() @IsIn(['UNPAID', 'PARTIAL', 'PAID', 'CANCELLED', 'OVERDUE']) status?: string;
   @IsOptional() @IsString() from?: string;
   @IsOptional() @IsString() to?: string;

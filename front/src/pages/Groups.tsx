@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { groupsApi } from "@/api/groups";
 import { coursesApi } from "@/api/courses";
-import { branchesApi } from "@/api/branches";
 import { usersApi } from "@/api/users";
 import { studentsApi } from "@/api/students";
 import { DataTable } from "@/components/common/DataTable";
@@ -19,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import type { Group, Course, Branch, User, GroupSchedule } from "@/types";
+import type { Group, Course, User, GroupSchedule } from "@/types";
 import {
   Plus, X, Pencil, Trash2, Eye, ChevronLeft, CalendarDays,
   Clock, AlertTriangle, MapPin, Video, Monitor, UserCog, UserPlus
@@ -32,7 +31,6 @@ const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fri
 const groupSchema = z.object({
   name: z.string().min(1, "Name is required"),
   courseId: z.string().min(1, "Course is required"),
-  branchId: z.string().min(1, "Branch is required"),
   teacherId: z.string().min(1, "Teacher is required"),
   substitute_teacher_id: z.string().optional(),
   capacity: z.coerce.number().min(1, "Capacity must be at least 1"),
@@ -92,7 +90,6 @@ export default function GroupsPage() {
   });
 
   const { data: courses } = useQuery({ queryKey: ["courses"], queryFn: coursesApi.findAll });
-  const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: branchesApi.findAll });
   const { data: teachers } = useQuery({ queryKey: ["users", "teachers"], queryFn: () => usersApi.findAll({ roleId: "teacher" }) });
 
   const {
@@ -477,7 +474,6 @@ export default function GroupsPage() {
     const dto = {
       name: data.name,
       courseId: data.courseId,
-      branchId: data.branchId,
       teacherId: data.teacherId,
       substitute_teacher_id: data.substitute_teacher_id || undefined,
       capacity: Number(data.capacity),
@@ -501,7 +497,6 @@ export default function GroupsPage() {
     setShowForm(true);
     setValue("name", group.name);
     setValue("courseId", group.courseId || "");
-    setValue("branchId", group.branchId || "");
     setValue("teacherId", group.teacherId || "");
     setValue("substitute_teacher_id", group.substitute_teacher_id || "");
     setValue("capacity", group.capacity || 20);
@@ -534,11 +529,6 @@ export default function GroupsPage() {
       key: "course",
       header: "Course",
       render: (row: Group) => <span className="text-sm">{row.course?.name || row.courseId || "—"}</span>,
-    },
-    {
-      key: "branch",
-      header: "Branch",
-      render: (row: Group) => <span className="text-xs text-muted-foreground">{row.branch?.name || row.branchId || "—"}</span>,
     },
     {
       key: "teacher",
@@ -673,10 +663,9 @@ export default function GroupsPage() {
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Students</p><p className="text-lg font-bold">{selectedGroup.student_count ?? 0} / {selectedGroup.capacity ?? "—"}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Teacher</p><p className="text-lg font-bold">{selectedGroup.teacher ? `${selectedGroup.teacher.first_name} ${selectedGroup.teacher.last_name}` : "Unassigned"}</p></CardContent></Card>
-          <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Branch</p><p className="text-lg font-bold">{selectedGroup.branch?.name || selectedGroup.branchId || "—"}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Mode</p><p className="text-lg font-bold capitalize">{selectedGroup.mode || "in_person"}</p></CardContent></Card>
         </div>
 
@@ -801,7 +790,6 @@ export default function GroupsPage() {
               <CardContent className="p-4 space-y-2 text-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <span className="text-muted-foreground">Course:</span><span>{selectedGroup.course?.name || "—"}</span>
-                  <span className="text-muted-foreground">Branch:</span><span>{selectedGroup.branch?.name || "—"}</span>
                   <span className="text-muted-foreground">Teacher:</span><span>{selectedGroup.teacher ? `${selectedGroup.teacher.first_name} ${selectedGroup.teacher.last_name}` : "—"}</span>
                   <span className="text-muted-foreground">Substitute:</span><span>{selectedGroup.substitute_teacher ? `${selectedGroup.substitute_teacher.first_name} ${selectedGroup.substitute_teacher.last_name}` : "—"}</span>
                   <span className="text-muted-foreground">Capacity:</span><span>{selectedGroup.capacity || "—"}</span>
@@ -855,18 +843,6 @@ export default function GroupsPage() {
                     {courses?.map((c: Course) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   {errors.courseId && <p className="text-sm text-destructive">{errors.courseId.message}</p>}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Branch *</Label>
-                  <select 
-                    {...register("branchId")} 
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="">Select branch</option>
-                    {branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                  {errors.branchId && <p className="text-sm text-destructive">{errors.branchId.message}</p>}
                 </div>
 
                 <div className="space-y-2">

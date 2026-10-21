@@ -10,9 +10,6 @@ export class CreateGroupDto {
   courseId: string;
 
   @IsUUID()
-  branchId: string;
-
-  @IsUUID()
   teacherId: string;
 
   @IsUUID()

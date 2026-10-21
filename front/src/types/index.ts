@@ -19,7 +19,6 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  branch_id?: string;
   language: string;
   avatar_url?: string;
   phone?: string;
@@ -38,26 +37,9 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface Branch {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  email?: string;
-  manager_id?: string;
-  manager?: User;
-  classroom_count: number;
-  classrooms?: Classroom[];
-  logo_url?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Classroom {
   id: string;
   name: string;
-  branch_id: string;
   capacity: number;
   status: string;
   created_at?: string;
@@ -101,8 +83,6 @@ export interface Lead {
   notes?: string;
   assigned_to?: string;
   assigned_to_user?: User;
-  branch_id?: string;
-  branch?: Branch;
   converted_to_student_id?: string;
   converted_at?: string;
   tags?: string[];
@@ -136,7 +116,6 @@ export interface Course {
   status: string;
   prerequisites?: Course[];
   materials?: CourseMaterial[];
-  branch_pricing?: CourseBranchPricing[];
   created_at: string;
   updated_at: string;
 }
@@ -148,15 +127,6 @@ export interface CourseMaterial {
   inventory_item?: InventoryItem;
   quantity: number;
   required: boolean;
-}
-
-export interface CourseBranchPricing {
-  id: string;
-  course_id: string;
-  branch_id: string;
-  branch?: Branch;
-  price: number;
-  currency: string;
 }
 
 export interface InventoryItem {
@@ -176,10 +146,7 @@ export interface Group {
   /** snake_case ids as serialized by the backend entities. */
   course_id?: string;
   teacher_id?: string;
-  branch_id?: string;
   course?: Course;
-  branchId?: string;
-  branch?: Branch;
   teacherId?: string;
   teacher?: User;
   substitute_teacher_id?: string;
@@ -265,9 +232,6 @@ export interface Student {
   email?: string;
   phone?: string;
 
-  branch_id?: string;
-  branch?: Branch;
-
   current_level?: string;
   status?: string;
 
@@ -345,7 +309,6 @@ export interface DashboardStats {
   total_leads: number;
   total_students: number;
   total_courses: number;
-  total_branches: number;
   total_groups: number;
   total_sessions: number;
   revenue_today: number;
@@ -377,7 +340,6 @@ export interface RegisterDto {
   first_name: string;
   last_name: string;
   phone?: string;
-  branch_id?: string;
   role_slug?: string;
   language?: string;
 }
@@ -495,8 +457,6 @@ export interface Activity {
   start_time?: string | null;
   end_time?: string | null;
   location?: string | null;
-  branch_id: string;
-  branch?: Branch;
   capacity: number;
   fee: number;
   target_levels?: string[] | null;

@@ -43,7 +43,6 @@ export class LeadsService {
     const limit = Math.min(query.limit ?? 20, 100);
 
     const qb = this.repo.createQueryBuilder('lead')
-      .leftJoinAndSelect('lead.branch', 'branch')
       // ✅ FIXED: Use the TypeScript entity property name 'assigned_agent', 
       // NOT the database column name 'assigned_to'
       .leftJoinAndSelect('lead.assigned_agent', 'assigned_agent') 
@@ -59,7 +58,6 @@ export class LeadsService {
     }
     if (query.status) qb.andWhere('lead.status = :status', { status: query.status });
     if (query.source) qb.andWhere('lead.source = :source', { source: query.source });
-    if (query.branch_id) qb.andWhere('lead.branch_id = :branchId', { branchId: query.branch_id });
     if (query.assigned_to) qb.andWhere('lead.assigned_to = :assignedTo', { assignedTo: query.assigned_to });
     if (query.level_interest) qb.andWhere('lead.level_interest = :level', { level: query.level_interest });
 
@@ -72,7 +70,6 @@ export class LeadsService {
       where: { id },
       // ✅ FIXED: Use 'assigned_agent' for relations
       relations: [
-        'branch', 
         'assigned_agent', 
         'activities', 
         'activities.created_by', 
@@ -149,9 +146,8 @@ export class LeadsService {
     return saved;
   }
 
-  async autoAssign(id: string, branchId?: string) {
+  async autoAssign(id: string) {
     const candidates = await this.userRepo.find({
-      where: branchId ? { branch_id: branchId } : {},
       order: { created_at: 'ASC' },
     });
     
@@ -189,7 +185,6 @@ export class LeadsService {
         last_name: lead.last_name,
         password_hash: tempPassword,
         language: 'ar',
-        branch_id: dto.branch_id ?? lead.branch_id,
       } as Partial<User>),
     );
 
@@ -198,7 +193,6 @@ export class LeadsService {
       this.studentRepo.create({
         user_id: user.id,
         current_level: dto.level ?? lead.level_interest,
-        branch_id: dto.branch_id ?? lead.branch_id,
         enrollment_date: new Date(),
       } as Partial<Student>),
     );
@@ -282,7 +276,7 @@ export class LeadsService {
     let tag = await this.tagRepo.findOne({ where: { name: dto.name } });
     if (!tag) {
       tag = await this.tagRepo.save(
-        this.tagRepo.create({ name: dto.name, color: dto.color ?? '#000000', branch_id: lead.branch_id }),
+        this.tagRepo.create({ name: dto.name, color: dto.color ?? '#000000' }),
       );
     }
 

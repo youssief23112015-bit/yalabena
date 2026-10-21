@@ -12,7 +12,7 @@ export class CoursesController {
   constructor(private readonly service: CoursesService) {}
 
   @Post()
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Create a new course (with name, level, duration, syllabus, default price)' })
   @ApiResponse({ status: 201, description: 'Course created successfully.' })
   @ApiBody({ 
@@ -52,7 +52,7 @@ export class CoursesController {
   }
 
   @Put(':id')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Update course details' })
   @ApiParam({ name: 'id', description: 'Course UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({ 
@@ -75,7 +75,7 @@ export class CoursesController {
   }
 
   @Delete(':id')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Delete a course' })
   @ApiParam({ name: 'id', description: 'Course UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Course deleted successfully.' })
@@ -87,7 +87,7 @@ export class CoursesController {
   // ==================== Prerequisites Endpoints ====================
 
   @Post(':id/prerequisites')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Add a prerequisite course to a course' })
   @ApiParam({ name: 'id', description: 'Course UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({
@@ -110,7 +110,7 @@ export class CoursesController {
   }
 
   @Delete(':id/prerequisites/:prerequisiteId')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Remove a prerequisite course from a course' })
   @ApiParam({ name: 'id', description: 'Course UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiParam({ name: 'prerequisiteId', description: 'Prerequisite Course UUID', example: '987e6543-e21b-12d3-a456-426614174000' })
@@ -133,7 +133,7 @@ export class CoursesController {
   }
 
   @Post(':id/materials')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Link an inventory item as course material' })
   @ApiParam({ name: 'id', description: 'Course UUID' })
   @ApiBody({
@@ -152,38 +152,11 @@ export class CoursesController {
   }
 
   @Delete(':id/materials/:materialId')
-  @Roles('super_admin', 'academic', 'branch_manager')
+  @Roles('super_admin', 'academic')
   @ApiOperation({ summary: 'Unlink a material from a course' })
   @ApiParam({ name: 'id', description: 'Course UUID' })
   @ApiParam({ name: 'materialId', description: 'CourseMaterial UUID' })
   removeMaterial(@Param('id') id: string, @Param('materialId') materialId: string) {
     return this.service.removeMaterial(id, materialId);
-  }
-
-  // ==================== Branch Pricing Endpoints ====================
-
-  @Get(':id/branch-pricing')
-  @ApiOperation({ summary: 'Per-branch price overrides for a course' })
-  @ApiParam({ name: 'id', description: 'Course UUID' })
-  listBranchPricing(@Param('id') id: string) {
-    return this.service.listBranchPricing(id);
-  }
-
-  @Post(':id/branch-pricing')
-  @Roles('super_admin', 'academic', 'branch_manager')
-  @ApiOperation({ summary: 'Create or update a branch price override' })
-  @ApiParam({ name: 'id', description: 'Course UUID' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['branch_id', 'price'],
-      properties: {
-        branch_id: { type: 'string', format: 'uuid' },
-        price: { type: 'number', example: 1500 },
-      },
-    },
-  })
-  setBranchPricing(@Param('id') id: string, @Body() body: { branch_id: string; price: number }) {
-    return this.service.setBranchPricing(id, body);
   }
 }

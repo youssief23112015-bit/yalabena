@@ -19,42 +19,42 @@ export class LeadsController {
   constructor(private readonly service: LeadsService) {}
 
   @Get()
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'List leads with search, filters & pagination' })
   async findAll(@Query() query: LeadQueryDto) {
     return this.service.findAll(query);
   }
 
   @Get('pipeline')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Lead pipeline summary (count per stage)' })
   async pipeline() {
     return this.service.pipeline();
   }
 
   @Get('source-report')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Lead counts per source channel (ROI report)' })
   async sourceReport() {
     return this.service.sourceReport();
   }
 
   @Get('follow-ups/overdue')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Overdue follow-ups across all leads' })
   async overdueFollowUps() {
     return this.service.overdueFollowUps();
   }
 
   @Get(':id')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Get one lead with activities, follow-ups and tags' })
   async findOne(@Param('id') id: string) {
     return this.service.findOne(id);
   }
 
   @Post()
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Create a lead (rejects duplicates by phone/email/national ID)' })
   @ApiResponse({ status: 201, description: 'Lead created.' })
   @ApiResponse({ status: 409, description: 'Duplicate lead detected.' })
@@ -63,24 +63,24 @@ export class LeadsController {
   }
 
   @Patch(':id')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Update a lead (status changes are logged automatically)' })
   async update(@Param('id') id: string, @Body() dto: UpdateLeadDto, @CurrentUser('id') userId: string) {
     return this.service.update(id, dto, userId);
   }
 
   @Post(':id/assign')
-  @Roles('super_admin', 'branch_manager')
+  @Roles('super_admin')
   @ApiOperation({ summary: 'Assign lead to an agent (manual or auto round-robin)' })
   async assign(@Param('id') id: string, @Body() dto: AssignLeadDto, @CurrentUser('id') userId: string) {
     if (dto.assigned_to) {
       return this.service.assign(id, dto.assigned_to, userId);
     }
-    return this.service.autoAssign(id, dto.branch_id);
+    return this.service.autoAssign(id);
   }
 
   @Post(':id/convert')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Convert lead to student (creates user + student profile)' })
   @ApiResponse({ status: 201, description: 'Lead converted.' })
   @ApiResponse({ status: 409, description: 'Lead already converted.' })
@@ -89,49 +89,49 @@ export class LeadsController {
   }
 
   @Post(':id/activities')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Log an activity on a lead (call, note, meeting...)' })
   async addActivity(@Param('id') id: string, @Body() dto: AddActivityDto, @CurrentUser('id') userId: string) {
     return this.service.addActivity(id, dto, userId);
   }
 
   @Get(':id/activities')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'List all activities of a lead' })
   async listActivities(@Param('id') id: string) {
     return this.service.listActivities(id);
   }
 
   @Post(':id/follow-ups')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Schedule a follow-up for a lead' })
   async createFollowUp(@Param('id') id: string, @Body() dto: CreateFollowUpDto) {
     return this.service.createFollowUp(id, dto);
   }
 
   @Get(':id/follow-ups')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'List follow-ups of a lead' })
   async listFollowUps(@Param('id') id: string) {
     return this.service.listFollowUps(id);
   }
 
   @Patch('follow-ups/:id/complete')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Mark a follow-up as done' })
   async completeFollowUp(@Param('id') id: string) {
     return this.service.completeFollowUp(id);
   }
 
   @Post(':id/tags')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Attach a tag to a lead (creates the tag if new)' })
   async addTag(@Param('id') id: string, @Body() dto: AddTagDto) {
     return this.service.addTag(id, dto);
   }
 
   @Delete(':id/tags/:tagId')
-  @Roles('super_admin', 'branch_manager', 'sales')
+  @Roles('super_admin', 'sales')
   @ApiOperation({ summary: 'Remove a tag from a lead' })
   async removeTag(@Param('id') id: string, @Param('tagId') tagId: string) {
     return this.service.removeTag(id, tagId);

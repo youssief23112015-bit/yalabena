@@ -6,8 +6,7 @@
   "tabIssues": "Student issues",
   "tabAlerts": "Low stock",
   "tabReports": "Reports",
-  "allBranches": "All branches",
-  "branch": "Branch",
+
   "searchPh": "Search name, code, description",
   "allCategories": "All categories",
   "category": "Category",
@@ -25,14 +24,14 @@
   "notReturned": "Not yet returned",
   "colItem": "Item",
   "colCategory": "Category",
-  "colOnHandBranch": "On hand (branch)",
+
   "colOnHandAll": "On hand (all)",
   "colReorder": "Reorder at",
   "colCost": "Cost",
   "colPrice": "Price",
   "colStatus": "Status",
   "colDate": "Date",
-  "colBranch": "Branch",
+
   "colType": "Type",
   "colQty": "Qty",
   "colReason": "Reason",
@@ -86,7 +85,7 @@
   "detailsCode": "Code",
   "detailsCostPrice": "Unit cost / price",
   "detailsTotal": "Total on hand",
-  "stockByBranch": "Stock by branch",
+
   "noStockRecords": "No stock records.",
   "recentMoves": "Recent movements",
   "noMovesYet": "No movements yet.",
@@ -100,7 +99,7 @@
   "fUom": "Unit of measure",
   "fReorder": "Reorder level",
   "fStatusDiscontinued": "discontinued (deactivated)",
-  "fOpeningBranch": "Opening branch",
+
   "fOpeningQty": "Opening quantity",
   "qtyNotEditable": "Quantities are not editable here. Use Receive, Adjust or Transfer so every change is recorded.",
   "itemUpdated": "Item updated",
@@ -112,11 +111,8 @@
   "errOpeningBranch": "Choose a branch for the opening stock",
   "titleReceive": "Receive stock",
   "titleAdjust": "Adjust stock",
-  "titleTransfer": "Transfer between branches",
   "titleIssue": "Issue to student",
-  "fromBranch": "From branch",
-  "toBranch": "To branch",
-  "selectBranch": "Select branch",
+
   "filterStudent": "Filter by name or number",
   "quantity": "Quantity",
   "changeQty": "Change (+ adds, − removes)",
@@ -126,11 +122,10 @@
   "reasonReq": "Reason *",
   "errQty": "Quantity must be a non-zero whole number",
   "errQtyPos": "Quantity must be positive",
-  "errBranch": "Choose a branch",
+
   "errCostNeg": "Unit cost cannot be negative",
   "errReasonAdj": "A reason is required for adjustments",
-  "errDest": "Choose a destination branch",
-  "errSame": "Source and destination must differ",
+
   "errStudent": "Choose a student",
   "errChargeNeg": "Charge cannot be negative"
 }

@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { leadsApi, type CreateLeadDto, type UpdateLeadDto, type LeadFilters } from "@/api/leads";
-import { branchesApi } from "@/api/branches";
 import { usersApi } from "@/api/users";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import type { Lead, Branch, User, LeadActivity } from "@/types";
+import type { Lead, User, LeadActivity } from "@/types";
 import {
   Plus, X, Pencil, Trash2, Search, Filter, Download, Upload,
   Eye, Phone, Mail, Calendar, UserCheck,
@@ -55,7 +54,6 @@ const createLeadSchema = z.object({
   level_interest: z.string().optional(),
   notes: z.string().optional(),
   assigned_to: z.string().optional(),
-  branch_id: z.string().optional(),
   tags: z.string().optional(),
   follow_up_date: z.string().optional(),
 });
@@ -70,7 +68,6 @@ const updateLeadSchema = z.object({
   level_interest: z.string().optional(),
   notes: z.string().optional(),
   assigned_to: z.string().optional(),
-  branch_id: z.string().optional(),
   tags: z.string().optional(),
   follow_up_date: z.string().optional(),
   status: z.string().optional(),
@@ -93,7 +90,6 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterSource, setFilterSource] = useState("");
-  const [filterBranchId, setFilterBranchId] = useState("");
   const [appliedFilters, setAppliedFilters] = useState<LeadFilters>({});
   const [activityForm, setActivityForm] = useState({ type: "note" as LeadActivity["type"], description: "" });
 
@@ -106,11 +102,6 @@ export default function LeadsPage() {
   } = useQuery({
     queryKey: ["leads", appliedFilters],
     queryFn: () => leadsApi.findAll(appliedFilters),
-  });
-
-  const { data: branches } = useQuery({
-    queryKey: ["branches"],
-    queryFn: branchesApi.findAll,
   });
 
   const { data: salesAgents } = useQuery({
@@ -245,7 +236,6 @@ export default function LeadsPage() {
       level_interest: data.level_interest || undefined,
       notes: data.notes || undefined,
       assigned_to: data.assigned_to || undefined,
-      branch_id: data.branch_id || undefined,
       tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : undefined,
       follow_up_date: data.follow_up_date || undefined,
     };
@@ -263,7 +253,6 @@ export default function LeadsPage() {
       level_interest: data.level_interest || undefined,
       notes: data.notes || undefined,
       assigned_to: data.assigned_to || undefined,
-      branch_id: data.branch_id || undefined,
       status: data.status,
       tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : undefined,
       follow_up_date: data.follow_up_date || undefined,
@@ -283,7 +272,6 @@ export default function LeadsPage() {
     setUpdateValue("level_interest", lead.level_interest || "");
     setUpdateValue("notes", lead.notes || "");
     setUpdateValue("assigned_to", lead.assigned_to || "");
-    setUpdateValue("branch_id", lead.branch_id || "");
     setUpdateValue("tags", lead.tags?.join(", ") || "");
     setUpdateValue("follow_up_date", lead.follow_up_date ? lead.follow_up_date.slice(0, 16) : "");
     setUpdateValue("status", lead.status);
@@ -295,7 +283,6 @@ export default function LeadsPage() {
       search: search || undefined,
       status: filterStatus || undefined,
       source: filterSource || undefined,
-      branch_id: filterBranchId || undefined,
     });
   };
 
@@ -303,7 +290,6 @@ export default function LeadsPage() {
     setSearch("");
     setFilterStatus("");
     setFilterSource("");
-    setFilterBranchId("");
     setAppliedFilters({});
   };
 
@@ -382,13 +368,6 @@ export default function LeadsPage() {
         <span className="text-xs text-muted-foreground">
           {row.assigned_to_user ? `${row.assigned_to_user.first_name} ${row.assigned_to_user.last_name}` : "Unassigned"}
         </span>
-      ),
-    },
-    {
-      key: "branch",
-      header: "Branch",
-      render: (row: Lead) => (
-        <span className="text-xs text-muted-foreground">{row.branch?.name || "—"}</span>
       ),
     },
     {
@@ -494,8 +473,6 @@ export default function LeadsPage() {
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <span className="text-muted-foreground">Assigned To:</span>
                     <span>{selectedLead.assigned_to_user ? `${selectedLead.assigned_to_user.first_name} ${selectedLead.assigned_to_user.last_name}` : "Unassigned"}</span>
-                    <span className="text-muted-foreground">Branch:</span>
-                    <span>{selectedLead.branch?.name || "—"}</span>
                     <span className="text-muted-foreground">Level Interest:</span>
                     <span>{selectedLead.level_interest || "—"}</span>
                     <span className="text-muted-foreground">Follow-up Date:</span>
@@ -658,13 +635,6 @@ export default function LeadsPage() {
               {leadSources.map((s) => <option key={s} value={s}>{s.replace("_", " ").toUpperCase()}</option>)}
             </select>
           </div>
-          <div className="w-48">
-            <Label className="text-xs mb-1 block">Branch</Label>
-            <select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-              <option value="">All Branches</option>
-              {branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
-            </select>
-          </div>
           <Button onClick={handleSearch}><Filter className="h-4 w-4 mr-1" /> Filter</Button>
           <Button variant="outline" onClick={handleClearFilters}>Clear</Button>
         </div>
@@ -717,13 +687,6 @@ export default function LeadsPage() {
                   <select {...(editingId ? registerUpdate("assigned_to") : registerCreate("assigned_to"))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">Unassigned</option>
                     {salesAgents?.map((u: User) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Branch</Label>
-                  <select {...(editingId ? registerUpdate("branch_id") : registerCreate("branch_id"))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                    <option value="">Select branch</option>
-                    {branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
                 {editingId && (

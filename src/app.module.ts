@@ -5,7 +5,6 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
-import { BranchesModule } from './modules/branches/branches.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { StudentsModule } from './modules/students/students.module';
 import { CoursesModule } from './modules/courses/courses.module';
@@ -43,7 +42,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     AuthModule,
     UsersModule,
     RolesModule,
-    BranchesModule,
     LeadsModule,
     StudentsModule,
     CoursesModule,

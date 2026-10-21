@@ -11,7 +11,7 @@ export class KbController {
   constructor(private readonly service: KbService) {}
 
   @Post('categories')
-  @Roles('super_admin', 'hr', 'branch_manager')
+  @Roles('super_admin', 'hr')
   @ApiOperation({ summary: 'Create KB category' })
   @ApiBody({ 
     description: 'KB category creation payload',
@@ -30,7 +30,7 @@ export class KbController {
   }
 
   @Get('categories')
-  @Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+  @Roles('super_admin', 'hr', 'teacher', 'sales', 'finance')
   @ApiOperation({ summary: 'List KB categories' })
   @ApiResponse({ status: 200, description: 'Returns KB categories list.' })
   findCategories(@Query() query: any) {
@@ -38,7 +38,7 @@ export class KbController {
   }
 
   @Post('articles')
-  @Roles('super_admin', 'hr', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'hr', 'teacher')
   @ApiOperation({ summary: 'Create KB article' })
   @ApiBody({ 
     description: 'KB article creation payload',
@@ -58,7 +58,7 @@ export class KbController {
   }
 
   @Get('articles')
-  @Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+  @Roles('super_admin', 'hr', 'teacher', 'sales', 'finance')
   @ApiOperation({ summary: 'List KB articles' })
   @ApiResponse({ status: 200, description: 'Returns KB articles list.' })
   findArticles(@Query() query: any) {
@@ -66,7 +66,7 @@ export class KbController {
   }
 
   @Get('articles/:id')
-  @Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+  @Roles('super_admin', 'hr', 'teacher', 'sales', 'finance')
   @ApiOperation({ summary: 'Get KB article' })
   @ApiParam({ name: 'id', description: 'KB Article UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns KB article details.' })
@@ -76,7 +76,7 @@ export class KbController {
   }
 
   @Put('articles/:id')
-  @Roles('super_admin', 'hr', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'hr', 'teacher')
   @ApiOperation({ summary: 'Update KB article' })
   @ApiParam({ name: 'id', description: 'KB Article UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({ 

@@ -18,11 +18,10 @@ import { ListEmployeesQueryDto, ListLeavesQueryDto } from './dto/query.dto';
 const toActor = (u: any): HrActor => ({
   userId: u?.userId ?? u?.id,
   roles: u?.roles ?? [],
-  branchId: u?.branchId ?? null,
 });
 
 // Authorization is enforced here by the global RolesGuard (and again, where it matters,
-// in HrService: branch scoping, own-record checks, compensation visibility).
+// in HrService: own-record checks, compensation visibility).
 @ApiTags('HR')
 @ApiBearerAuth('JWT')
 @Controller('hr')
@@ -38,14 +37,14 @@ export class HrController {
   }
 
   @Get('employees')
-  @Roles('super_admin', 'hr', 'branch_manager')
+  @Roles('super_admin', 'hr')
   @ApiOperation({ summary: 'List employees (search/filter). Compensation only for HR/finance/admin.' })
   findEmployees(@Query() query: ListEmployeesQueryDto, @CurrentUser() user: any) {
     return this.service.findEmployees(query, toActor(user));
   }
 
   @Get('employees/:id')
-  @Roles('super_admin', 'hr', 'branch_manager')
+  @Roles('super_admin', 'hr')
   @ApiOperation({ summary: 'Get employee' })
   findOneEmployee(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
     return this.service.findOneEmployee(id, toActor(user));
@@ -140,8 +139,8 @@ export class HrController {
   }
 
   @Get('leaves')
-  @Roles('super_admin', 'hr', 'branch_manager')
-  @ApiOperation({ summary: 'List leave requests (branch managers: own branch)' })
+  @Roles('super_admin', 'hr')
+  @ApiOperation({ summary: 'List leave requests' })
   findLeaves(@Query() query: ListLeavesQueryDto, @CurrentUser() user: any) {
     return this.service.findLeaves(query, toActor(user));
   }
@@ -154,14 +153,14 @@ export class HrController {
   }
 
   @Put('leaves/:id/approve')
-  @Roles('super_admin', 'hr', 'branch_manager')
+  @Roles('super_admin', 'hr')
   @ApiOperation({ summary: 'Approve a pending leave (not your own)' })
   approveLeave(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DecideLeaveDto, @CurrentUser() user: any) {
     return this.service.approveLeave(id, toActor(user), dto?.note);
   }
 
   @Put('leaves/:id/reject')
-  @Roles('super_admin', 'hr', 'branch_manager')
+  @Roles('super_admin', 'hr')
   @ApiOperation({ summary: 'Reject a pending leave (not your own)' })
   rejectLeave(@Param('id', ParseUUIDPipe) id: string, @Body() dto: DecideLeaveDto, @CurrentUser() user: any) {
     return this.service.rejectLeave(id, toActor(user), dto?.note);

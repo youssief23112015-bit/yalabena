@@ -55,7 +55,6 @@ export class AuthService {
           password_hash: hash,
           first_name: dto.first_name,
           last_name: dto.last_name,
-          branch_id: dto.branch_id,
           language: dto.language || 'ar',
           status: UserStatus.ACTIVE,
         }),
@@ -76,7 +75,6 @@ export class AuthService {
       await em.getRepository(Student).save(
         em.getRepository(Student).create({
           user_id: created.id,
-          branch_id: dto.branch_id,
           enrollment_date: new Date(),
         } as Partial<Student>),
       );
@@ -265,7 +263,6 @@ export class AuthService {
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
-        branch_id: user.branch_id,
         language: user.language,
         role: roles[0],
         roles,

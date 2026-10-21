@@ -5,7 +5,7 @@ import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentQueryDto } from './dto/student-query.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/auth-user';
 
 @Controller('students')
 export class StudentsController {

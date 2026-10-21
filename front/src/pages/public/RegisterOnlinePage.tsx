@@ -19,7 +19,6 @@ import {
 } from "@/components/ui/select";
 import { useChatToast } from "@/hooks/useChatToast";
 import {
-  fetchPublicBranches,
   fetchPublicCourses,
   registerPublicStudent,
   type PublicRegistrationResult,
@@ -31,7 +30,6 @@ const schema = z.object({
   phone: z.string().min(8, "Valid phone number is required"),
   email: z.string().email().optional().or(z.literal("")),
   course_id: z.string().min(1, "Course is required"),
-  branch_id: z.string().min(1, "Branch is required"),
   level_interest: z.string().optional(),
 });
 
@@ -47,11 +45,6 @@ export default function RegisterOnlinePage() {
   const { data: courses } = useQuery({
     queryKey: ["public-courses"],
     queryFn: fetchPublicCourses,
-  });
-
-  const { data: branches } = useQuery({
-    queryKey: ["public-branches"],
-    queryFn: fetchPublicBranches,
   });
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
@@ -100,7 +93,7 @@ export default function RegisterOnlinePage() {
             {t("public.registerOnline.title", "Register Online")}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {t("public.registerOnline.subtitle", "Pick a course and branch, and we will create your invoice instantly.")}
+            {t("public.registerOnline.subtitle", "Pick a course, and we will create your invoice instantly.")}
           </p>
         </div>
         {result && (
@@ -193,23 +186,6 @@ export default function RegisterOnlinePage() {
                   </Select>
                   {errors.course_id && (
                     <p className="mt-1 text-xs text-red-500">{errors.course_id.message}</p>
-                  )}
-                </div>
-                <div>
-                  <Select onValueChange={(val) => setValue("branch_id", val)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={t("public.registerOnline.branch", "Branch")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(branches ?? []).map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.branch_id && (
-                    <p className="mt-1 text-xs text-red-500">{errors.branch_id.message}</p>
                   )}
                 </div>
               </div>

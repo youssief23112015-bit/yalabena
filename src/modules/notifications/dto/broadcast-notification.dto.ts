@@ -45,7 +45,7 @@ export class BroadcastNotificationDto {
 /**
  * Payload for the "Send Broadcast" modal (SRS 4.18), extended with explicit
  * targeting (Business Rules 1–2):
- *  - Admin/Branch Manager: any target_type.
+ *  - Admin: any target_type.
  *  - Teacher: ONLY `group` — and only for groups they are assigned to.
  */
 export type BroadcastTargetType =

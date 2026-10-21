@@ -45,14 +45,13 @@ describe('GroupsService', () => {
   };
   let chat: { syncGroupChatRoom: jest.Mock };
 
-  const admin = { id: 'admin-1', roles: ['branch_manager'], branchId: 'b-1' };
+  const admin = { id: 'admin-1', roles: ['academic'] };
   const teacher = { id: 't-1', status: 'active', first_name: 'Tina', last_name: 'Teacher' };
 
   const group = () => ({
     id: 'g-1',
     name: 'B1 Morning',
     course_id: 'c-1',
-    branch_id: 'b-1',
     teacher_id: 't-0',
     capacity: 10,
     status: 'upcoming',
@@ -201,14 +200,6 @@ describe('GroupsService', () => {
         service.assignTeacher('g-1', { teacher_id: 't-1' }, admin),
       ).rejects.toThrow(BadRequestException);
     });
-
-    it('blocks cross-branch assignment for branch managers', async () => {
-      const branchManager = { id: 'admin-2', roles: ['branch_manager'], branchId: 'b-OTHER' };
-      await expect(
-        service.assignTeacher('g-1', { teacher_id: 't-1' }, branchManager),
-      ).rejects.toThrow(/cross-branch/);
-      expect(groupRepo.save).not.toHaveBeenCalled();
-    });
   });
 
   // ═════════════════════════════════════════════
@@ -285,14 +276,6 @@ describe('GroupsService', () => {
       expect(enrollments.approve).toHaveBeenCalledWith('enr-9', admin);
       expect(enrollments.create).not.toHaveBeenCalled();
       expect(out.approved_pending).toBe(true);
-    });
-
-    it('blocks cross-branch enrollment for branch managers', async () => {
-      const branchManager = { id: 'admin-2', roles: ['branch_manager'], branchId: 'b-OTHER' };
-      await expect(
-        service.addStudent('g-1', { student_id: 'stu-1' }, branchManager),
-      ).rejects.toThrow(/cross-branch/);
-      expect(enrollments.create).not.toHaveBeenCalled();
     });
   });
 

@@ -228,7 +228,7 @@ export class SessionsService {
     // @Roles on the controller already guarantees which of these can arrive.
     const roles = (user?.roles ?? []).map((role) => String(role).toLowerCase());
     const isStaff = roles.some((role) =>
-      ['super_admin', 'academic', 'branch_manager', 'teacher'].includes(role),
+      ['super_admin', 'academic', 'teacher'].includes(role),
     );
     if (user && !isStaff) {
       const studentRepo = this.repo.manager.getRepository(Student);

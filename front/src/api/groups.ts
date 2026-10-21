@@ -2,7 +2,7 @@ import apiClient from "./client";
 import type { Group, GroupSchedule } from "@/types";
 
 export const groupsApi = {
-  findAll: async (params?: { branchId?: string; courseId?: string; status?: string; teacherId?: string }): Promise<Group[]> => {
+  findAll: async (params?: { courseId?: string; status?: string; teacherId?: string }): Promise<Group[]> => {
     const { data } = await apiClient.get<Group[]>("/groups", { params });
     return data;
   },
@@ -65,7 +65,7 @@ export const groupsApi = {
     const { data } = await apiClient.get<{ conflicts: boolean; details: string[] }>("/groups/check-conflicts", { params });
     return data;
   },
-  getCalendar: async (params: { view: 'day' | 'week' | 'month'; date: string; teacherId?: string; classroomId?: string; branchId?: string }): Promise<Group[]> => {
+  getCalendar: async (params: { view: 'day' | 'week' | 'month'; date: string; teacherId?: string; classroomId?: string }): Promise<Group[]> => {
     const { data } = await apiClient.get<Group[]>("/groups/calendar", { params });
     return data;
   },

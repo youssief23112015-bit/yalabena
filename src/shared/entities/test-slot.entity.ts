@@ -1,5 +1,4 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Branch } from './branch.entity';
 import { User } from './user.entity';
 import { SlotStatus } from '../../common/enums/slot-status.enum';
 import { GroupMode } from '../../common/enums/group-mode.enum';
@@ -8,13 +7,6 @@ import { GroupMode } from '../../common/enums/group-mode.enum';
 export class TestSlot {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column({ type: 'uuid' })
-  branch_id: string;
-
-  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'branch_id' })
-  branch: Branch;
 
   @Column({ type: 'uuid' })
   examiner_id: string;

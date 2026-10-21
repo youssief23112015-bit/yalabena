@@ -361,7 +361,7 @@ export default function StudentDashboard() {
                         return (
                           <option key={s.id} value={s.id} disabled={seats <= 0}>
                             {s.date ?? ""} {String(s.start_time ?? "").slice(0, 5)}
-                            {s.branch ? ` — ${s.branch.name}` : ""} ({seats}{" "}
+                            "" ({seats}{" "}
                             {t("studentDashboard.placement.seats", "seats")})
                           </option>
                         );
@@ -404,8 +404,7 @@ export default function StudentDashboard() {
                               : t("studentDashboard.placement.unknownTime", "Scheduled test")}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {pt.slot?.branch?.name ??
-                              pt.slot?.mode ??
+                            {pt.slot?.mode ??
                               t("studentDashboard.placement.awaitingNotes", "Awaiting evaluation results")}
                           </p>
                         </div>

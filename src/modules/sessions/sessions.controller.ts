@@ -16,7 +16,7 @@ export class SessionsController {
   ) {}
 
   @Post()
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Create a new session (in_person, online, or hybrid with meeting links)' })
   @ApiBody({ 
     description: 'Session creation payload',
@@ -40,7 +40,7 @@ export class SessionsController {
   }
 
   @Get()
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher', 'student')
+  @Roles('super_admin', 'academic', 'teacher', 'student')
   @ApiOperation({
     summary:
       'Get all sessions with optional group filter (students: scoped to their own groups)',
@@ -54,7 +54,7 @@ export class SessionsController {
   }
 
   @Get(':id')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Get session details by id including attendance records' })
   @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns session details.' })
@@ -64,7 +64,7 @@ export class SessionsController {
   }
 
   @Get(':id/attendance')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Get attendance records for a specific session' })
   @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns list of attendance records.' })
@@ -74,7 +74,7 @@ export class SessionsController {
   }
 
   @Put(':id')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Update session details or mark attendance' })
   @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiBody({ 
@@ -96,7 +96,7 @@ export class SessionsController {
   }
 
   @Delete(':id')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Delete a session' })
   @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Session deleted successfully.' })
@@ -108,7 +108,7 @@ export class SessionsController {
   // ─── Cancel / attendance / QR check-in (frontend Sessions page) ───
 
   @Post(':id/cancel')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Cancel a session with a reason' })
   async cancel(
     @Param('id', ParseUUIDPipe) id: string,
@@ -118,7 +118,7 @@ export class SessionsController {
   }
 
   @Post(':id/attendance')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Bulk-save attendance for the session (upsert by student)' })
   async recordAttendance(
     @Param('id', ParseUUIDPipe) id: string,
@@ -129,7 +129,7 @@ export class SessionsController {
   }
 
   @Patch(':id/attendance/:attendanceId')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Update one attendance record (status/notes)' })
   async updateAttendance(
     @Param('id', ParseUUIDPipe) id: string,
@@ -140,7 +140,7 @@ export class SessionsController {
   }
 
   @Post(':id/qr-code')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: "Generate today's signed check-in code for the session QR card" })
   async generateQrCode(@Param('id', ParseUUIDPipe) id: string) {
     // The code is an HMAC of session+day; students scan/post it to self check-in.
@@ -163,7 +163,7 @@ export class SessionsController {
   }
 
   @Post(':id/lock-attendance')
-  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Lock attendance for the session (no further edits)' })
   async lockAttendance(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.lockAttendance(id);

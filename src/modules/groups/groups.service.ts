@@ -18,7 +18,7 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { AddStudentDto } from './dto/add-student.dto';
-import { AuthUser, assertBranchAccess } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/auth-user';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { ChatService } from '../chat/chat.service';
 
@@ -90,7 +90,6 @@ export class GroupsService {
     const entityData: Partial<Group> = {
       name: dto.name,
       course_id: dto.courseId,
-      branch_id: dto.branchId,
       teacher_id: dto.teacherId,
       substitute_teacher_id: dto.substitute_teacher_id || null,
       capacity: dto.capacity,
@@ -106,16 +105,11 @@ export class GroupsService {
     return saved;
   }
 
-  async findAll(filters: { branchId?: string; courseId?: string }): Promise<Group[]> {
+  async findAll(filters: { courseId?: string }): Promise<Group[]> {
     const query = this.repo.createQueryBuilder('group')
       .leftJoinAndSelect('group.course', 'course')
-      .leftJoinAndSelect('group.branch', 'branch')
       .leftJoinAndSelect('group.teacher', 'teacher')
       .leftJoinAndSelect('group.substitute_teacher', 'substituteTeacher');
-
-    if (filters.branchId) {
-      query.andWhere('branch.id = :branchId', { branchId: filters.branchId });
-    }
 
     if (filters.courseId) {
       query.andWhere('course.id = :courseId', { courseId: filters.courseId });
@@ -132,7 +126,7 @@ export class GroupsService {
   async findOne(id: string): Promise<Group & { students: Student[]; schedule: GroupSchedule[]; student_count: number }> {
     const group = await this.repo.findOne({
       where: { id },
-      relations: ['course', 'branch', 'teacher', 'substitute_teacher', 'schedules'],
+      relations: ['course', 'teacher', 'substitute_teacher', 'schedules'],
     });
 
     if (!group) {
@@ -197,7 +191,6 @@ export class GroupsService {
 
     if (dto.name !== undefined) group.name = dto.name;
     if (dto.courseId !== undefined) group.course_id = dto.courseId;
-    if (dto.branchId !== undefined) group.branch_id = dto.branchId;
     if (dto.teacherId !== undefined) group.teacher_id = dto.teacherId;
     if (dto.substitute_teacher_id !== undefined) group.substitute_teacher_id = dto.substitute_teacher_id || null;
     if (dto.capacity !== undefined) group.capacity = dto.capacity;
@@ -336,16 +329,10 @@ export class GroupsService {
     date: string;
     teacherId?: string;
     classroomId?: string;
-    branchId?: string;
   }): Promise<Group[]> {
     const query = this.repo.createQueryBuilder('group')
       .leftJoinAndSelect('group.course', 'course')
-      .leftJoinAndSelect('group.branch', 'branch')
       .leftJoinAndSelect('group.teacher', 'teacher');
-
-    if (filters.branchId) {
-      query.andWhere('group.branch_id = :branchId', { branchId: filters.branchId });
-    }
 
     if (filters.teacherId) {
       query.andWhere('group.teacher_id = :teacherId', { teacherId: filters.teacherId });
@@ -359,9 +346,8 @@ export class GroupsService {
    * instructor at any time; schedule/room conflicts are detected first and
    * rejected with 409 (details in the message) unless `force` is set.
    */
-  async assignTeacher(groupId: string, dto: AssignTeacherDto, user: AuthUser) {
+  async assignTeacher(groupId: string, dto: AssignTeacherDto, _user: AuthUser) {
     const group = await this.findOne(groupId);
-    assertBranchAccess(user, group.branch_id);
 
     const teacher = await this.userRepo.findOne({ where: { id: dto.teacher_id } });
     if (!teacher) throw new NotFoundException('Teacher not found');
@@ -428,7 +414,6 @@ export class GroupsService {
    */
   async addStudent(groupId: string, dto: AddStudentDto, user: AuthUser) {
     const group = await this.findOne(groupId);
-    assertBranchAccess(user, group.branch_id);
 
     if (dto.course_id && dto.course_id !== group.course_id) {
       throw new BadRequestException('Selected course does not match this group');

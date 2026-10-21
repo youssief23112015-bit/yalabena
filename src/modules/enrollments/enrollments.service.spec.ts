@@ -29,7 +29,7 @@ describe('EnrollmentsService', () => {
   let chat: { syncGroupChatRoom: jest.Mock };
   let savedEnrollment: any = null;
 
-  const admin = { id: 'admin-1', roles: ['branch_manager'], branchId: 'br-1' };
+  const admin = { id: 'admin-1', roles: ['academic'] };
   const studentAuth = { id: 'user-1', roles: ['student'] };
 
   const student = {
@@ -37,14 +37,12 @@ describe('EnrollmentsService', () => {
     user_id: 'user-1',
     current_level: 'B1',
     status: 'active',
-    branch_id: 'br-1',
   };
 
   const group = {
     id: 'grp-1',
     name: 'B1 Morning',
     course_id: 'crs-1',
-    branch_id: 'br-1',
     capacity: 10,
     status: 'upcoming',
     course: { id: 'crs-1', name: 'B1 Complete', level: 'B1', default_price: 1000 },
@@ -257,6 +255,65 @@ describe('EnrollmentsService', () => {
       });
       await expect(service.reject('enr-1', undefined, admin)).rejects.toThrow(
         BadRequestException,
+      );
+    });
+  });
+
+  describe('updateStatus — PG enum casing normalisation', () => {
+    // Regression: the enrollment_status PG enum holds ONLY lowercase labels.
+    // The dashboard sends UPPERCASE ('ACTIVE') — before normalisation this
+    // crashed with `invalid input value for enum enrollment_status: "ACTIVE"`.
+    const row = () => ({
+      id: 'enr-1',
+      student: { ...student },
+      group,
+    });
+
+    it('normalises UPPERCASE ACTIVE → lowercase "active" before save', async () => {
+      enrollRepo.findOne.mockResolvedValue({ ...row(), status: EnrollmentStatus.PENDING });
+
+      const result = await service.updateStatus(
+        'enr-1',
+        { status: 'ACTIVE' } as any,
+        admin,
+      );
+      expect(result.status).toBe('active');
+      expect(enrollRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'active' }),
+      );
+    });
+
+    it('accepts lowercase input unchanged', async () => {
+      enrollRepo.findOne.mockResolvedValue({ ...row(), status: EnrollmentStatus.PENDING });
+
+      const result = await service.updateStatus(
+        'enr-1',
+        { status: 'pending' } as any,
+        admin,
+      );
+      expect(result.status).toBe('pending');
+    });
+
+    it('normalises DROPPED and stamps dropped_at + reason', async () => {
+      enrollRepo.findOne.mockResolvedValue({ ...row(), status: EnrollmentStatus.ACTIVE });
+
+      const result = await service.updateStatus(
+        'enr-1',
+        { status: 'DROPPED', reason: 'moved abroad' } as any,
+        admin,
+      );
+      expect(result.status).toBe('dropped');
+      expect(result.dropped_at).toBeInstanceOf(Date);
+      expect(result.drop_reason).toBe('moved abroad');
+    });
+
+    it('drop() persists lowercase "dropped" (never uppercase)', async () => {
+      enrollRepo.findOne.mockResolvedValue({ ...row(), status: EnrollmentStatus.ACTIVE });
+
+      const result = await service.drop('enr-1', 'no longer interested', admin);
+      expect(result.status).toBe('dropped');
+      expect(enrollRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'dropped' }),
       );
     });
   });

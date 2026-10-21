@@ -172,7 +172,7 @@ export class ChatController {
   }
 
   @Post('sections/:id/sync')
-  @Roles('super_admin', 'academic', 'teacher', 'branch_manager')
+  @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Sync the chat room of a section (= study group): seat teacher + all active students' })
   @ApiParam({ name: 'id', description: 'Section / group UUID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 201, description: 'Section chat room synced and members broadcast over sockets.' })

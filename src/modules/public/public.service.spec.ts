@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   NotFoundException,
@@ -166,7 +166,6 @@ describe('PublicService', () => {
       const qb = qbStub(null, [{
         id: 's-1', date: TOMORROW, start_time: '10:00', end_time: '11:00',
         mode: 'in_person', capacity: 4, booked_count: 1,
-        branch: { id: 'b-1', name: 'Nasr City' },
         examiner_id: 'exam-1',
       }]);
       slotRepo.createQueryBuilder.mockReturnValue(qb);
@@ -174,7 +173,6 @@ describe('PublicService', () => {
       expect(qb.where).toHaveBeenCalledWith('slot.status = :status', { status: SlotStatus.OPEN });
       expect(out[0]).toEqual(expect.objectContaining({ remaining_capacity: 3 }));
       expect(out[0]).not.toHaveProperty('examiner_id');
-      expect(out[0].branch.name).toBe('Nasr City');
     });
   });
 
@@ -187,7 +185,7 @@ describe('PublicService', () => {
     } as any;
 
     const openSlot = {
-      id: 's-1', branch_id: 'b-1', examiner_id: 'exam-1',
+      id: 's-1', examiner_id: 'exam-1',
       date: TOMORROW, start_time: '10:00', end_time: '11:00',
       mode: 'in_person', capacity: 2, booked_count: 0, status: SlotStatus.OPEN,
     };
@@ -275,7 +273,7 @@ describe('PublicService', () => {
     it('leaves an already-scheduled, fully-populated lead untouched (no redundant save)', async () => {
       const { emLeadRepo } = wireTx(
         { ...openSlot },
-        { id: 'lead-7', status: LeadStatus.TEST_SCHEDULED, email: dto.email, branch_id: 'b-1' },
+        { id: 'lead-7', status: LeadStatus.TEST_SCHEDULED, email: dto.email },
       );
       const out = await service.bookPlacementTest(dto);
       expect(out.lead_id).toBe('lead-7');

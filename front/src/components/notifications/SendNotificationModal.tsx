@@ -35,7 +35,7 @@ const TARGET_TYPES = ["all", "students", "teachers", "specific_user", "group"] a
 type TargetType = (typeof TARGET_TYPES)[number];
 
 /** Roles that keep full targeting power even if they also hold `teacher`. */
-const ADMIN_TARGETING_ROLES = ["super_admin", "admin", "branch_manager", "hr", "academic"];
+const ADMIN_TARGETING_ROLES = ["super_admin", "admin", "hr", "academic"];
 
 const targetLabelKey: Record<TargetType, string> = {
   all: "notifications.targetAllUsers",

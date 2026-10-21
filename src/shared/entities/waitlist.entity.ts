@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from './student.entity';
 import { Course } from './course.entity';
-import { Branch } from './branch.entity';
 
 @Entity('waitlists')
 export class Waitlist {
@@ -24,13 +23,6 @@ export class Waitlist {
 
   @Column({ type: 'varchar', length: 10 })
   level: string;
-
-  @Column({ type: 'uuid', nullable: true })
-  branch_id: string;
-
-  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'branch_id' })
-  branch: Branch;
 
   @Column({ type: 'int', default: 0 })
   priority: number;

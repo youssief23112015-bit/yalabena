@@ -11,7 +11,6 @@ import {
 } from 'typeorm';
 import { ActivityEventType } from '../../common/enums/activity-event-type.enum';
 import { ActivityStatus } from '../../common/enums/activity-status.enum';
-import { Branch } from './branch.entity';
 import { ActivityRegistration } from './activity-registration.entity';
 import { ActivityPhoto } from './activity-photo.entity';
 
@@ -41,14 +40,6 @@ export class Activity {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   location: string | null;
-
-  @Index()
-  @Column({ type: 'uuid' })
-  branch_id: string;
-
-  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'branch_id' })
-  branch: Branch;
 
   @Column({ type: 'int' })
   capacity: number;

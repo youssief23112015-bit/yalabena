@@ -100,7 +100,7 @@ export class LmsService {
 
     if (isAdminOrStaff) {
       return this.groupRepo.find({
-        relations: ['course', 'branch', 'teacher', 'schedules'],
+        relations: ['course', 'teacher', 'schedules'],
         order: { created_at: 'DESC' },
       });
     }
@@ -120,7 +120,7 @@ export class LmsService {
         student_id: student.id,
         status: EnrollmentStatus.ACTIVE,
       },
-      relations: ['group', 'group.course', 'group.branch', 'group.teacher', 'group.schedules'],
+      relations: ['group', 'group.course', 'group.teacher', 'group.schedules'],
     });
 
     return enrollments
@@ -131,7 +131,7 @@ export class LmsService {
   /**
    * "My Courses" for the LMS dashboard (Business Rule 3). Students receive
    * the groups of their ACTIVE enrollments enriched with full course specs
-   * (level, duration, syllabus, price), instructor, branch and schedule;
+   * (level, duration, syllabus, price), instructor and schedule;
    * staff keep their broad view, mapped to the same shape.
    */
   async getMyCourses(userId: string, roles: string[] = []) {
@@ -142,7 +142,7 @@ export class LmsService {
 
     if (isStaff) {
       const groups = await this.groupRepo.find({
-        relations: ['course', 'branch', 'teacher', 'schedules'],
+        relations: ['course', 'teacher', 'schedules'],
         order: { created_at: 'DESC' },
       });
       return groups.map((g) => ({ group: g, enrollment: null }));
@@ -157,7 +157,6 @@ export class LmsService {
         'group',
         'group.course',
         'group.course.materials',
-        'group.branch',
         'group.teacher',
         'group.schedules',
         'group.schedules.classroom',
