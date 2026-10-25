@@ -31,12 +31,12 @@ class Repo {
   async remove(o: any) { this.rows = this.rows.filter((r) => r.id !== o.id); return o; }
 }
 
-const HR: HrActor = { userId: 'u-hr', roles: ['hr'] };
-const ADMIN: HrActor = { userId: 'u-admin', roles: ['super_admin'] };
-const TEACHER: HrActor = { userId: 'u-t1', roles: ['teacher'] };
-const TEACHER2: HrActor = { userId: 'u-t2', roles: ['teacher'] };
-const MGR_A: HrActor = { userId: 'u-mgrA', roles: ['hr'] };
-const MGR_B: HrActor = { userId: 'u-mgrB', roles: ['hr'] };
+const HR: HrActor = { userId: 'u-hr', roles: ['hr'], branchId: null };
+const ADMIN: HrActor = { userId: 'u-admin', roles: ['super_admin'], branchId: null };
+const TEACHER: HrActor = { userId: 'u-t1', roles: ['teacher'], branchId: 'br-A' };
+const TEACHER2: HrActor = { userId: 'u-t2', roles: ['teacher'], branchId: 'br-A' };
+const MGR_A: HrActor = { userId: 'u-mgrA', roles: ['branch_manager'], branchId: 'br-A' };
+const MGR_B: HrActor = { userId: 'u-mgrB', roles: ['branch_manager'], branchId: 'br-B' };
 
 describe('HrService workflows', () => {
   let svc: HrService;
@@ -45,9 +45,9 @@ describe('HrService workflows', () => {
   beforeEach(() => {
     users = new Repo(); emps = new Repo(); leaves = new Repo(); avail = new Repo(); periods = new Repo(); entries = new Repo();
     users.rows = [
-      { id: 'u-t1', first_name: 'T', last_name: 'One', password_hash: 'X' },
-      { id: 'u-t2', first_name: 'T', last_name: 'Two', password_hash: 'X' },
-      { id: 'u-hr', first_name: 'H', last_name: 'R', password_hash: 'X' },
+      { id: 'u-t1', first_name: 'T', last_name: 'One', branch_id: 'br-A', password_hash: 'X' },
+      { id: 'u-t2', first_name: 'T', last_name: 'Two', branch_id: 'br-A', password_hash: 'X' },
+      { id: 'u-hr', first_name: 'H', last_name: 'R', branch_id: 'br-A', password_hash: 'X' },
     ];
     emps.rows = [
       { id: 'e1', user_id: 'u-t1', status: 'active', salary: '0', hourly_rate: '100.00', employee_type: 'hourly', job_title: 'Teacher', contract_start: '2026-01-01' },
@@ -108,6 +108,14 @@ describe('HrService workflows', () => {
     await expect(svc.approveLeave(l.id, HR)).rejects.toBeInstanceOf(ForbiddenException);
     const done: any = await svc.approveLeave(l.id, ADMIN);
     expect(done.status).toBe(LeaveStatus.APPROVED);
+  });
+
+  it('branch manager cannot decide leave of another branch', async () => {
+    const l: any = await svc.requestLeave(lv(), TEACHER);
+    await expect(svc.approveLeave(l.id, MGR_B)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(leaves.rows[0].status).toBe('pending');
+    const ok: any = await svc.approveLeave(l.id, MGR_A);
+    expect(ok.status).toBe(LeaveStatus.APPROVED);
   });
 
   it('owner can cancel only while pending', async () => {

@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { CalendarClock, Users, Zap } from "lucide-react";
+import { CalendarClock, MapPin, Users, Zap } from "lucide-react";
 import { PublicLayout } from "@/components/public/PublicLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import { useChatToast } from "@/hooks/useChatToast";
 import {
   bookInstantPlacementTest,
   bookPublicPlacementTest,
+  fetchPublicBranches,
   fetchPublicCourse,
   fetchPublicTestSlots,
 } from "@/api/public";
@@ -58,9 +59,10 @@ export default function PlacementBookingPage() {
   const navigate = useNavigate();
 
   // Course context handed over by /catalog/:id —
-  // /placement-booking?courseId=…
+  // /placement-booking?courseId=…&branchId=…
   const [searchParams] = useSearchParams();
   const courseContextId = searchParams.get("courseId") ?? "";
+  const branchContextId = searchParams.get("branchId") ?? "";
 
   const { data: courseContext } = useQuery({
     queryKey: ["public-course", courseContextId],
@@ -69,22 +71,30 @@ export default function PlacementBookingPage() {
     retry: false,
   });
 
+  // URL context pre-selects the branch in BOTH paths.
+  const [branchId, setBranchId] = useState<string>(branchContextId);
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
+  const [instantBranchId, setInstantBranchId] = useState<string>(branchContextId);
   const [confirmation, setConfirmation] = useState<{
     test_id?: string;
     scheduled_at?: string;
     message?: string;
   } | null>(null);
 
+  const { data: branches } = useQuery({
+    queryKey: ["public-branches"],
+    queryFn: fetchPublicBranches,
+  });
+
   const { data: slots, isLoading } = useQuery({
-    queryKey: ["public-placement-slots"],
-    queryFn: () => fetchPublicTestSlots(),
+    queryKey: ["public-placement-slots", branchId],
+    queryFn: () => fetchPublicTestSlots(branchId || undefined),
   });
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } =
     useForm<FormData>({ resolver: zodResolver(schema) });
 
-  // ── Path A — instant test form (Name/Phone/Email) ──
+  // ── Path A — instant test form (Name/Phone/Email/branch) ──
   const {
     register: registerInstant,
     handleSubmit: handleInstantSubmit,
@@ -96,6 +106,7 @@ export default function PlacementBookingPage() {
       name: string;
       phone: string;
       email?: string;
+      branch_id?: string;
       level_interest?: string;
     }) => bookInstantPlacementTest(input),
     onSuccess: (res) => {
@@ -119,6 +130,7 @@ export default function PlacementBookingPage() {
       name: data.name.trim(),
       phone: data.phone.trim(),
       email: data.email?.trim() || undefined,
+      branch_id: instantBranchId || undefined,
       // Course context: the clicked course's level becomes the Lead's target.
       level_interest: courseContext?.level || undefined,
     });
@@ -186,7 +198,7 @@ export default function PlacementBookingPage() {
             {t("public.placementBook.title", "Book a Placement Test")}
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {t("public.placementBook.subtitle", "Reserve your free placement test online.")}
+            {t("public.placementBook.subtitle", "Find a slot at your preferred branch and reserve your free placement test.")}
           </p>
         </div>
 
@@ -255,6 +267,21 @@ export default function PlacementBookingPage() {
                         <p className="mt-1 text-xs text-red-500">{instantErrors.email.message}</p>
                       )}
                     </div>
+                    <Select value={instantBranchId || "none"} onValueChange={(v) => setInstantBranchId(v === "none" ? "" : v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("public.leadForm.branch", "Preferred Branch")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          {t("public.placementBook.noBranch", "No preference")}
+                        </SelectItem>
+                        {(branches ?? []).map((b) => (
+                          <SelectItem key={b.id} value={b.id}>
+                            {b.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Button
                     type="submit"
@@ -306,6 +333,23 @@ export default function PlacementBookingPage() {
             </CardContent>
           </Card>
         )}
+        <div className="mb-6 flex justify-center">
+          <Select value={branchId || "all"} onValueChange={(v) => setBranchId(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-full max-w-xs">
+              <SelectValue placeholder={t("public.placementBook.allBranches", "All Branches")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">
+                {t("public.placementBook.allBranches", "All Branches")}
+              </SelectItem>
+              {(branches ?? []).map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -332,6 +376,12 @@ export default function PlacementBookingPage() {
                         {new Date(slot.start_time).toLocaleString()} –{" "}
                         {new Date(slot.end_time).toLocaleTimeString()}
                       </p>
+                      {slot.branch && (
+                        <p className="flex items-center gap-2 text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          {slot.branch.name}
+                        </p>
+                      )}
                       <p className="flex items-center gap-2 text-muted-foreground">
                         <Users className="h-4 w-4" />
                         {slot.booked_count} / {slot.capacity}
@@ -362,6 +412,7 @@ export default function PlacementBookingPage() {
               </h2>
               <p className="mb-4 text-sm text-muted-foreground">
                 {new Date(selectedSlot.start_time).toLocaleString()}
+                {selectedSlot.branch ? ` — ${selectedSlot.branch.name}` : ""}
               </p>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">

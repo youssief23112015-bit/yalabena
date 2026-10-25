@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { groupsApi } from "@/api/groups";
 import { coursesApi } from "@/api/courses";
+import { branchesApi } from "@/api/branches";
 import { usersApi } from "@/api/users";
 import { studentsApi } from "@/api/students";
 import { DataTable } from "@/components/common/DataTable";
@@ -18,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import type { Group, Course, User, GroupSchedule } from "@/types";
+import type { Group, Course, Branch, User, GroupSchedule } from "@/types";
 import {
   Plus, X, Pencil, Trash2, Eye, ChevronLeft, CalendarDays,
   Clock, AlertTriangle, MapPin, Video, Monitor, UserCog, UserPlus
@@ -31,13 +32,28 @@ const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fri
 const groupSchema = z.object({
   name: z.string().min(1, "Name is required"),
   courseId: z.string().min(1, "Course is required"),
+  branchId: z.string().min(1, "Branch is required"),
   teacherId: z.string().min(1, "Teacher is required"),
   substitute_teacher_id: z.string().optional(),
   capacity: z.coerce.number().min(1, "Capacity must be at least 1"),
-  mode: z.string().optional(),
+  mode: z.enum(["in_person", "online", "hybrid"]).optional(),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().min(1, "End date is required"),
-  status: z.string().optional(),
+  status: z.enum(["upcoming", "active", "completed", "cancelled"]).optional(),
+  /** Recurring schedule: selected weekdays (0 = Sunday … 6 = Saturday). */
+  schedule_weekdays: z
+    .array(z.coerce.number().min(0).max(6))
+    .min(1, "Select at least one weekday"),
+  /** Recurring schedule: academy wall-clock start time (HH:MM). */
+  schedule_start_time: z.string().min(1, "Start time is required"),
+  /** Recurring schedule: academy wall-clock end time (HH:MM). */
+  schedule_end_time: z.string().min(1, "End time is required"),
+  /** The group's ONE fixed meeting URL shared by all generated sessions. */
+  zoom_link: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^https?:\/\/.+/i.test(v), "Must be a valid http(s) URL"),
 }).refine((data) => {
   if (data.start_date && data.end_date) {
     return new Date(data.end_date) >= new Date(data.start_date);
@@ -46,6 +62,22 @@ const groupSchema = z.object({
 }, {
   message: "End date must be after start date",
   path: ["end_date"],
+}).refine((data) => {
+  if (data.schedule_start_time && data.schedule_end_time) {
+    return new Date(`1970-01-01T${data.schedule_end_time}`) > new Date(`1970-01-01T${data.schedule_start_time}`);
+  }
+  return true;
+}, {
+  message: "End time must be after start time",
+  path: ["schedule_end_time"],
+}).refine((data) => {
+  if ((data.mode === "online" || data.mode === "hybrid") && !data.zoom_link) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Zoom link is required for online/hybrid groups",
+  path: ["zoom_link"],
 });
 
 type GroupForm = z.infer<typeof groupSchema>;
@@ -65,6 +97,7 @@ export default function GroupsPage() {
   const [calendarView, setCalendarView] = useState<"day" | "week" | "month">("week");
   const [calendarDate, setCalendarDate] = useState(new Date().toISOString().slice(0, 10));
   const [scheduleForm, setScheduleForm] = useState({ day_of_week: 0, start_time: "", end_time: "" });
+  const [formWeekdays, setFormWeekdays] = useState<number[]>([]);
   const [conflictWarning, setConflictWarning] = useState<string[]>([]);
 
   // ── Manage Teacher modal state (direct assignment, conflict/force flow) ──
@@ -90,6 +123,7 @@ export default function GroupsPage() {
   });
 
   const { data: courses } = useQuery({ queryKey: ["courses"], queryFn: coursesApi.findAll });
+  const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: branchesApi.findAll });
   const { data: teachers } = useQuery({ queryKey: ["users", "teachers"], queryFn: () => usersApi.findAll({ roleId: "teacher" }) });
 
   const {
@@ -181,6 +215,83 @@ export default function GroupsPage() {
     },
     onError: (err: any) => {
       toast({ variant: "destructive", title: "Error", description: err.message });
+    },
+  });
+
+  // ── Automatic recurring-session scheduling ──────────────────────
+  // Activation: validate + generate sessions server-side (idempotent).
+  const [activationProblems, setActivationProblems] = useState<string[]>([]);
+  const activateMutation = useMutation({
+    mutationFn: (id: string) => groupsApi.activate(id),
+    onSuccess: (result) => {
+      setActivationProblems([]);
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["group", selectedGroupId] });
+      toast({
+        title: result.already_active ? "Group already active" : "Group activated",
+        description: result.already_active
+          ? `Schedule already generated (${result.total_occurrences} sessions).`
+          : `${result.generated} sessions generated${result.from ? ` (${result.from} → ${result.to})` : ""}.`,
+      });
+    },
+    onError: (err: any) => {
+      const details: string[] = Array.isArray(err?.conflicts)
+        ? err.conflicts.map((c: any) => String(c?.message ?? c)).filter(Boolean)
+        : Array.isArray(err?.errorList)
+          ? err.errorList
+          : [];
+      setActivationProblems(details.length > 0 ? details : [err.message || "Activation failed"]);
+      toast({ variant: "destructive", title: "Activation blocked", description: err.message });
+    },
+  });
+
+  // Reschedule: replace weekly windows from an effective date.
+  const [rescheduleTarget, setRescheduleTarget] = useState<Group | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleWindows, setRescheduleWindows] = useState<
+    Array<{ day_of_week: number; start_time: string; end_time: string }>
+  >([]);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+
+  const openRescheduleDialog = (group: Group) => {
+    setRescheduleTarget(group);
+    setRescheduleDate(group.start_date ? group.start_date.slice(0, 10) : "");
+    setRescheduleWindows(
+      (group.schedule ?? []).map((s) => ({
+        day_of_week: s.day_of_week,
+        start_time: String(s.start_time ?? "").slice(0, 5),
+        end_time: String(s.end_time ?? "").slice(0, 5),
+      })),
+    );
+    setRescheduleError(null);
+  };
+
+  const closeRescheduleDialog = () => {
+    setRescheduleTarget(null);
+    setRescheduleError(null);
+  };
+
+  const rescheduleMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: { effective_date: string; windows: typeof rescheduleWindows } }) =>
+      groupsApi.reschedule(id, payload),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["groups"] });
+      queryClient.invalidateQueries({ queryKey: ["group", result.group_id] });
+      toast({
+        title: "Schedule updated",
+        description: `${result.created} sessions created, ${result.deleted} replaced` +
+          (result.preserved.length > 0 ? `, ${result.preserved.length} preserved (with history)` : "") + ".",
+      });
+      closeRescheduleDialog();
+    },
+    onError: (err: any) => {
+      const details: string[] = Array.isArray(err?.conflicts)
+        ? err.conflicts.map((c: any) => String(c?.message ?? c)).filter(Boolean)
+        : Array.isArray(err?.errorList)
+          ? err.errorList
+          : [];
+      setRescheduleError(details.length > 0 ? details.join(" • ") : err.message || "Reschedule failed");
+      toast({ variant: "destructive", title: "Reschedule blocked", description: err.message });
     },
   });
 
@@ -395,7 +506,7 @@ export default function GroupsPage() {
             <option value="">
               {(enrollableStudents ?? []).length === 0 ? "No students match" : "Select student…"}
             </option>
-            {(enrollableStudents ?? []).map((s: any) => {
+            {(enrollableStudents ?? []).map((s) => {
               const label = s.user
                 ? `${s.user.first_name ?? ""} ${s.user.last_name ?? ""}`.trim()
                 : s.id.slice(0, 8);
@@ -456,6 +567,136 @@ export default function GroupsPage() {
     </div>
   ) : null;
 
+  // ── Reschedule dialog: new weekly windows from an effective date ──
+  const rescheduleDialog = rescheduleTarget ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-background p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <CalendarDays className="h-5 w-5" /> Update Schedule From Date
+          </h2>
+          <Button variant="ghost" size="icon" onClick={closeRescheduleDialog}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">{rescheduleTarget.name}</p>
+
+        <div className="mt-4 space-y-3">
+          <div>
+            <Label className="text-xs mb-1 block">Effective date — sessions before this date stay unchanged</Label>
+            <Input
+              type="date"
+              value={rescheduleDate}
+              min={rescheduleTarget.start_date?.slice(0, 10)}
+              max={rescheduleTarget.end_date?.slice(0, 10)}
+              onChange={(e) => setRescheduleDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs">New weekly windows</Label>
+            {rescheduleWindows.map((w, idx) => (
+              <div key={idx} className="flex items-end gap-2">
+                <select
+                  value={w.day_of_week}
+                  onChange={(e) =>
+                    setRescheduleWindows((ws) =>
+                      ws.map((x, i) => (i === idx ? { ...x, day_of_week: Number(e.target.value) } : x)),
+                    )
+                  }
+                  className="h-10 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {daysOfWeek.map((d, i) => (
+                    <option key={i} value={i}>{d}</option>
+                  ))}
+                </select>
+                <div>
+                  <Label className="text-[10px] mb-0.5 block">Start</Label>
+                  <Input
+                    type="time"
+                    value={w.start_time}
+                    onChange={(e) =>
+                      setRescheduleWindows((ws) =>
+                        ws.map((x, i) => (i === idx ? { ...x, start_time: e.target.value } : x)),
+                      )
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] mb-0.5 block">End</Label>
+                  <Input
+                    type="time"
+                    value={w.end_time}
+                    onChange={(e) =>
+                      setRescheduleWindows((ws) =>
+                        ws.map((x, i) => (i === idx ? { ...x, end_time: e.target.value } : x)),
+                      )
+                    }
+                    className="h-9"
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => setRescheduleWindows((ws) => ws.filter((_, i) => i !== idx))}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setRescheduleWindows((ws) => [...ws, { day_of_week: 0, start_time: "", end_time: "" }])
+              }
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add Window
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Sessions with attendance history are preserved; future sessions without history are replaced to match
+            the new schedule. Past sessions are never touched.
+          </p>
+
+          {rescheduleError && (
+            <div className="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-xs text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
+              <div className="flex items-center gap-2 font-medium">
+                <AlertTriangle className="h-4 w-4" /> Schedule change blocked
+              </div>
+              <p className="mt-1">{rescheduleError}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="outline" onClick={closeRescheduleDialog}>
+            Cancel
+          </Button>
+          <Button
+            disabled={
+              !rescheduleDate ||
+              rescheduleWindows.length === 0 ||
+              rescheduleWindows.some((w) => !w.start_time || !w.end_time) ||
+              rescheduleMutation.isPending
+            }
+            onClick={() =>
+              rescheduleMutation.mutate({
+                id: rescheduleTarget.id,
+                payload: { effective_date: rescheduleDate, windows: rescheduleWindows },
+              })
+            }
+          >
+            {rescheduleMutation.isPending ? "Applying…" : "Apply New Schedule"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   const checkConflictsMutation = useMutation({
     mutationFn: groupsApi.checkConflicts,
     onSuccess: (result) => {
@@ -470,25 +711,84 @@ export default function GroupsPage() {
     reset();
   };
 
-  const onSubmit = (data: GroupForm) => {
+  const onSubmit = async (data: GroupForm) => {
     const dto = {
       name: data.name,
       courseId: data.courseId,
+      branchId: data.branchId,
       teacherId: data.teacherId,
       substitute_teacher_id: data.substitute_teacher_id || undefined,
       capacity: Number(data.capacity),
-      mode: data.mode as any,
+      mode: data.mode,
       start_date: data.start_date,
       end_date: data.end_date,
-      status: data.status as any,
+      status: data.status,
+      zoom_link: data.zoom_link?.trim() || null,
     };
-    
+
     console.log("Submitting Payload:", dto);
 
     if (editingId) {
       updateMutation.mutate({ id: editingId, dto });
     } else {
-      createMutation.mutate(dto);
+      try {
+        const group = await createMutation.mutateAsync(dto);
+
+        // Create a schedule window for EVERY selected weekday using the
+        // existing /groups/{id}/schedule endpoint.  Use
+        // Promise.allSettled so that individual failures do not abort the
+        // whole operation — the group is kept and the user is informed.
+        const schedulePromises = data.schedule_weekdays.map((day) =>
+          groupsApi.addSchedule(group.id, {
+            day_of_week: day,
+            start_time: data.schedule_start_time,
+            end_time: data.schedule_end_time,
+          })
+        );
+        const scheduleResults = await Promise.allSettled(schedulePromises);
+
+        const failed = scheduleResults.filter(
+          (r): r is PromiseRejectedResult => r.status === "rejected"
+        );
+        const succeeded = scheduleResults.filter(
+          (r): r is PromiseFulfilledResult<GroupSchedule> =>
+            r.status === "fulfilled"
+        );
+
+        const succeededCount = succeeded.length;
+
+        if (failed.length > 0) {
+          // Group was created successfully; do NOT roll it back.
+          // Report which windows failed and which succeeded, and give the
+          // user a safe recovery path (re‑try via “Update Schedule” later).
+          const failedMsgs = failed.map((f) => f.reason?.message || "Unknown schedule error");
+          throw new Error(
+            `Group created successfully (${
+              succeededCount > 0 ? succeededCount + ' schedule window' : 'no schedule windows'
+            }${succeededCount !== 1 ? 's' : ''} created), ` +
+              `but schedule creation${failed.length > 1 ? 's' : ''} failed: ${failedMsgs.join(
+                '; '
+              )}. The group was not rolled back. You can add the missing schedule windows via the "Update Schedule" feature later.`
+          );
+        }
+
+        // All schedules created successfully.
+        queryClient.invalidateQueries({ queryKey: ["group", selectedGroupId] });
+        toast({
+          title: "Group created successfully",
+          description: succeededCount > 0
+            ? `${succeededCount} schedule window${succeededCount !== 1 ? 's' : ''} created.`
+            : "Group created with no schedule windows.",
+        });
+        closeForm();
+      } catch (err: any) {
+        console.error("Group creation error:", err);
+        toast({
+          variant: "destructive",
+          title: "Failed to create group",
+          description: err.message || "Unknown error",
+        });
+      }
     }
   };
 
@@ -497,6 +797,7 @@ export default function GroupsPage() {
     setShowForm(true);
     setValue("name", group.name);
     setValue("courseId", group.courseId || "");
+    setValue("branchId", group.branchId || "");
     setValue("teacherId", group.teacherId || "");
     setValue("substitute_teacher_id", group.substitute_teacher_id || "");
     setValue("capacity", group.capacity || 20);
@@ -504,6 +805,20 @@ export default function GroupsPage() {
     setValue("start_date", group.start_date ? group.start_date.slice(0, 10) : "");
     setValue("end_date", group.end_date ? group.end_date.slice(0, 10) : "");
     setValue("status", group.status || "upcoming");
+    setValue("zoom_link", group.zoom_link || "");
+    // Recurring schedule: populate from the first schedule window if present.
+    const firstSch = (group.schedule ?? [])[0];
+    if (firstSch) {
+      setValue("schedule_weekdays", [firstSch.day_of_week]);
+      setValue("schedule_start_time", String(firstSch.start_time).slice(0, 5));
+      setValue("schedule_end_time", String(firstSch.end_time).slice(0, 5));
+      setFormWeekdays([firstSch.day_of_week]);
+    } else {
+      setValue("schedule_weekdays", []);
+      setValue("schedule_start_time", "");
+      setValue("schedule_end_time", "");
+      setFormWeekdays([]);
+    }
   };
 
   const checkConflicts = () => {
@@ -529,6 +844,11 @@ export default function GroupsPage() {
       key: "course",
       header: "Course",
       render: (row: Group) => <span className="text-sm">{row.course?.name || row.courseId || "—"}</span>,
+    },
+    {
+      key: "branch",
+      header: "Branch",
+      render: (row: Group) => <span className="text-xs text-muted-foreground">{row.branch?.name || row.branchId || "—"}</span>,
     },
     {
       key: "teacher",
@@ -632,6 +952,7 @@ export default function GroupsPage() {
         {dialog}
         {teacherDialog}
         {enrollDialog}
+        {rescheduleDialog}
         <Button variant="outline" onClick={() => { setView("list"); setSelectedGroupId(null); }} className="gap-2">
           <ChevronLeft className="h-4 w-4" /> Back to Groups
         </Button>
@@ -658,14 +979,47 @@ export default function GroupsPage() {
               <Button variant="outline" onClick={() => openEnrollModal(selectedGroup)}>
                 <UserPlus className="h-4 w-4 mr-2" /> Enroll Student
               </Button>
+              <Button variant="outline" onClick={() => openRescheduleDialog(selectedGroup)}>
+                <CalendarDays className="h-4 w-4 mr-2" /> Update Schedule
+              </Button>
+              <Button
+                onClick={() => activateMutation.mutate(selectedGroup.id)}
+                disabled={activateMutation.isPending}
+                title="Validate the schedule and generate all sessions"
+              >
+                {activateMutation.isPending
+                  ? "Activating…"
+                  : selectedGroup.status === "active"
+                    ? "Re-run Activation"
+                    : "Activate & Generate Sessions"}
+              </Button>
               <Button onClick={() => startEdit(selectedGroup)}><Pencil className="h-4 w-4 mr-2" /> Edit Group</Button>
             </div>
           )}
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        {/* Activation result: structured conflicts / configuration errors */}
+        {activationProblems.length > 0 && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="text-sm font-semibold">Activation blocked — fix the following and retry:</span>
+            </div>
+            <ul className="mt-2 ml-6 space-y-1 text-sm list-disc">
+              {activationProblems.map((p, i) => (
+                <li key={i}>{p}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Nothing was changed — no sessions were generated and the group status was not modified.
+            </p>
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-4">
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Students</p><p className="text-lg font-bold">{selectedGroup.student_count ?? 0} / {selectedGroup.capacity ?? "—"}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Teacher</p><p className="text-lg font-bold">{selectedGroup.teacher ? `${selectedGroup.teacher.first_name} ${selectedGroup.teacher.last_name}` : "Unassigned"}</p></CardContent></Card>
+          <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Branch</p><p className="text-lg font-bold">{selectedGroup.branch?.name || selectedGroup.branchId || "—"}</p></CardContent></Card>
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Mode</p><p className="text-lg font-bold capitalize">{selectedGroup.mode || "in_person"}</p></CardContent></Card>
         </div>
 
@@ -790,11 +1144,21 @@ export default function GroupsPage() {
               <CardContent className="p-4 space-y-2 text-sm">
                 <div className="grid grid-cols-2 gap-2">
                   <span className="text-muted-foreground">Course:</span><span>{selectedGroup.course?.name || "—"}</span>
+                  <span className="text-muted-foreground">Branch:</span><span>{selectedGroup.branch?.name || "—"}</span>
                   <span className="text-muted-foreground">Teacher:</span><span>{selectedGroup.teacher ? `${selectedGroup.teacher.first_name} ${selectedGroup.teacher.last_name}` : "—"}</span>
                   <span className="text-muted-foreground">Substitute:</span><span>{selectedGroup.substitute_teacher ? `${selectedGroup.substitute_teacher.first_name} ${selectedGroup.substitute_teacher.last_name}` : "—"}</span>
                   <span className="text-muted-foreground">Capacity:</span><span>{selectedGroup.capacity || "—"}</span>
                   <span className="text-muted-foreground">Mode:</span><span className="capitalize">{selectedGroup.mode || "in_person"}</span>
-                  <span className="text-muted-foreground">Meeting Link:</span><span>{selectedGroup.meeting_link || "—"}</span>
+                  <span className="text-muted-foreground">Zoom Link:</span>
+                  <span className="truncate">
+                    {selectedGroup.zoom_link ? (
+                      <a href={selectedGroup.zoom_link} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                        {selectedGroup.zoom_link}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </span>
                   <span className="text-muted-foreground">Start Date:</span><span>{selectedGroup.start_date ? new Date(selectedGroup.start_date).toLocaleDateString() : "—"}</span>
                   <span className="text-muted-foreground">End Date:</span><span>{selectedGroup.end_date ? new Date(selectedGroup.end_date).toLocaleDateString() : "—"}</span>
                 </div>
@@ -811,6 +1175,7 @@ export default function GroupsPage() {
       {dialog}
       {teacherDialog}
       {enrollDialog}
+      {rescheduleDialog}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">{t("nav.groups")}</h1>
         <div className="flex gap-2">
@@ -843,6 +1208,18 @@ export default function GroupsPage() {
                     {courses?.map((c: Course) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                   {errors.courseId && <p className="text-sm text-destructive">{errors.courseId.message}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Branch *</Label>
+                  <select 
+                    {...register("branchId")} 
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Select branch</option>
+                    {branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                  {errors.branchId && <p className="text-sm text-destructive">{errors.branchId.message}</p>}
                 </div>
 
                 <div className="space-y-2">
@@ -892,6 +1269,67 @@ export default function GroupsPage() {
                   <Label>End Date *</Label>
                   <Input type="date" {...register("end_date")} />
                   {errors.end_date && <p className="text-sm text-destructive">{errors.end_date.message}</p>}
+                </div>
+
+                {/* Recurring schedule section */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="font-medium">Recurring Schedule</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Sessions are generated automatically for each selected weekday.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    {daysOfWeek.map((d, i) => (
+                      <label key={i} className="flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          value={i}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setFormWeekdays((prev) =>
+                              val
+                                ? [...prev, i]
+                                : prev.filter((x) => x !== i)
+                            );
+                          }}
+                          defaultChecked={formWeekdays.includes(i)}
+                          className="rounded border-input bg-background text-sm"
+                        />
+                        {d}
+                      </label>
+                    ))}
+                  </div>
+                  {errors.schedule_weekdays && <p className="text-sm text-destructive">{errors.schedule_weekdays.message}</p>}
+                  <div className="flex gap-3">
+                    <div className="space-y-2 flex-1">
+                      <Label>Start Time</Label>
+                      <Input
+                        type="time"
+                        {...register("schedule_start_time")}
+                      />
+                      {errors.schedule_start_time && <p className="text-sm text-destructive">{errors.schedule_start_time.message}</p>}
+                    </div>
+                    <div className="space-y-2 flex-1">
+                      <Label>End Time</Label>
+                      <Input
+                        type="time"
+                        {...register("schedule_end_time")}
+                      />
+                      {errors.schedule_end_time && <p className="text-sm text-destructive">{errors.schedule_end_time.message}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Zoom Recurring Meeting Link</Label>
+                  <Input
+                    type="url"
+                    placeholder="https://zoom.us/j/…"
+                    {...register("zoom_link")}
+                  />
+                  {errors.zoom_link && <p className="text-sm text-destructive">{errors.zoom_link.message}</p>}
+                  <p className="text-xs text-muted-foreground">
+                    Create a recurring meeting in Zoom for this group, then paste its link here once. All sessions of this group will use it automatically.
+                  </p>
                 </div>
               </div>
 

@@ -7,6 +7,8 @@ export interface WaitlistEntry {
   student?: any;
   course_id?: string;
   course?: any;
+  branch_id?: string;
+  branch?: any;
   level?: string;
   status?: string;
   priority?: number;
@@ -16,7 +18,7 @@ export interface WaitlistEntry {
 }
 
 export const waitlistsApi = {
-  findAll: async (params?: { level?: string; status?: string; course_id?: string }): Promise<WaitlistEntry[]> => {
+  findAll: async (params?: { branch_id?: string; level?: string; status?: string; course_id?: string }): Promise<WaitlistEntry[]> => {
     const { data } = await apiClient.get<WaitlistEntry[]>("/waitlists", { params });
     return Array.isArray(data) ? data : [];
   },

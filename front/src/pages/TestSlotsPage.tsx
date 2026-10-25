@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { testSlotsApi, TestSlot } from "@/api/testSlots";
+import { branchesApi } from "@/api/branches";
 import { usersApi } from "@/api/users";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, Trash2 } from "lucide-react";
 
 const schema = z.object({
+  branch_id: z.string().min(1, "Branch is required"),
   examiner_id: z.string().min(1, "Examiner is required"),
   date: z.string().min(1, "Date is required"),
   start_time: z.string().min(1, "Start time is required"),
@@ -36,6 +38,11 @@ export default function TestSlotsPage() {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["test-slots"],
     queryFn: () => testSlotsApi.findAll(),
+  });
+
+  const { data: branches } = useQuery({
+    queryKey: ["branches"],
+    queryFn: () => branchesApi.findAll(),
   });
 
   const { data: users } = useQuery({
@@ -92,6 +99,11 @@ export default function TestSlotsPage() {
 
   const columns = [
     {
+      key: "branch",
+      header: "Branch",
+      render: (r: TestSlot) => r.branch?.name ?? r.branch_id.slice(0, 8),
+    },
+    {
       key: "examiner",
       header: "Examiner",
       render: (r: TestSlot) => r.examiner ? `${r.examiner.first_name ?? ""} ${r.examiner.last_name ?? ""}`.trim() : r.examiner_id.slice(0, 8),
@@ -116,6 +128,7 @@ export default function TestSlotsPage() {
           <Button size="sm" variant="outline" onClick={() => {
             setEditingId(r.id);
             reset({
+              branch_id: r.branch_id,
               examiner_id: r.examiner_id,
               date: typeof r.date === 'string' ? r.date.split('T')[0] : '',
               start_time: r.start_time,
@@ -156,6 +169,15 @@ export default function TestSlotsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Branch *</Label>
+                <select {...register("branch_id")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">Select branch</option>
+                  {(branches ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                {errors.branch_id && <p className="text-sm text-destructive">{errors.branch_id.message}</p>}
+              </div>
+
               <div className="space-y-2">
                 <Label>Examiner *</Label>
                 <select {...register("examiner_id")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">

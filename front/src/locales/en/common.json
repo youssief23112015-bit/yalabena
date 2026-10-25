@@ -27,7 +27,7 @@
     "reports": "Reports",
     "inventory": "Inventory",
     "notifications": "Notifications",
-
+    "branches": "Branches",
     "users": "Users",
     "roles": "Roles",
     "audit": "Audit Log",
@@ -207,6 +207,7 @@
     "stockUnits": "Stock units",
     "valuation": "Inventory valuation",
     "catalog": "Item catalog",
+    "allBranches": "All branches",
     "lowStockOnly": "Low stock only",
     "searchPlaceholder": "Search by item name or SKU",
     "loadError": "Could not load inventory.",
@@ -229,6 +230,7 @@
     "reason": "Reason",
     "saved": "Inventory item saved.",
     "error": "Inventory error",
+    "chooseBranch": "Choose a branch first.",
     "invalidQuantity": "Enter a valid whole-number quantity.",
     "movementSaved": "Stock movement saved.",
     "editItem": "Edit inventory item",
@@ -236,7 +238,8 @@
     "sku": "SKU / item code",
     "unit": "Unit of measure",
     "salePrice": "Sale price",
-
+    "branch": "Branch",
+    "selectBranch": "Select branch",
     "openingStock": "Opening stock quantity",
     "description": "Description",
     "movementType": "Movement type",
@@ -265,7 +268,10 @@
       "title": "Upcoming Sessions",
       "empty": "No upcoming sessions yet.",
       "timezoneNote": "Times shown in {{tz}}",
-      "fallbackTitle": "Study session"
+      "fallbackTitle": "Study session",
+      "joinZoom": "Join Zoom",
+      "noLink": "Link available soon",
+      "withTeacher": "with {{teacher}}"
     },
     "courses": {
       "title": "Active Courses",

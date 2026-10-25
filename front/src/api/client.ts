@@ -123,9 +123,24 @@ apiClient.interceptors.response.use(
       const normalizedError = new Error(message) as Error & {
         statusCode?: number;
         errors?: Record<string, string[]>;
+        // Scheduling conflicts from the activation/reschedule endpoints:
+        // structured lines the Groups page renders verbatim.
+        conflicts?: Array<Record<string, unknown>>;
+        errorList?: string[];
       };
       normalizedError.statusCode = status;
       normalizedError.errors = payload?.errors;
+      // ConflictException/BadRequestException bodies carry `conflicts`
+      // (structured) and/or `errors` (string[]) alongside `message` —
+      // keep them so the UI can explain exactly what blocked the request.
+      const body = payload as unknown as {
+        conflicts?: Array<Record<string, unknown>>;
+        errors?: unknown;
+      } | undefined;
+      if (Array.isArray(body?.conflicts)) normalizedError.conflicts = body.conflicts;
+      if (Array.isArray(body?.errors)) {
+        normalizedError.errorList = (body.errors as unknown[]).map((e) => String(e));
+      }
       return Promise.reject(normalizedError);
     }
 

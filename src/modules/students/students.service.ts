@@ -30,14 +30,14 @@ export class StudentsService {
 
   /**
    * The student row backing a logged-in user (used by the self-service
-   * booking flow to resolve current_level). Returns null when the
+   * booking flow to resolve current_level / branch). Returns null when the
    * user does not hold a student profile.
    */
   async findByUserId(userId: string): Promise<Student | null> {
     if (!userId) return null;
     return this.repo.findOne({
       where: { user_id: userId },
-      relations: ['profile'],
+      relations: ['branch', 'profile'],
     });
   }
 
@@ -51,8 +51,8 @@ export class StudentsService {
    */
   async syncMissingStudentProfiles(): Promise<number> {
     const result = await this.repo.query(
-      `INSERT INTO students (user_id, enrollment_date, status)
-       SELECT u.id, CURRENT_DATE, 'active'
+      `INSERT INTO students (user_id, branch_id, enrollment_date, status)
+       SELECT u.id, u.branch_id, CURRENT_DATE, 'active'
        FROM users u
        INNER JOIN user_roles ur ON ur.user_id = u.id
        INNER JOIN roles r ON r.id = ur.role_id AND r.slug = 'student'
@@ -65,6 +65,7 @@ export class StudentsService {
 
   async findAll(filters: {
     search?: string;
+    branchId?: string;
     status?: string;
     groupId?: string;
   }): Promise<Student[]> {
@@ -75,6 +76,10 @@ export class StudentsService {
 
     const query = this.repo
       .createQueryBuilder('student')
+      .leftJoinAndSelect(
+        'student.branch',
+        'branch',
+      )
       .leftJoinAndSelect(
         'student.user',
         'user',
@@ -115,6 +120,15 @@ export class StudentsService {
       );
     }
 
+    if (filters.branchId) {
+      query.andWhere(
+        'branch.id = :branchId',
+        {
+          branchId: filters.branchId,
+        },
+      );
+    }
+
     if (filters.status) {
       query.andWhere(
         'student.status = :status',
@@ -147,6 +161,7 @@ export class StudentsService {
       where: { id },
       relations: [
         'user',
+        'branch',
         'profile',
         'level_history',
       ],
@@ -190,6 +205,7 @@ export class StudentsService {
       relations: [
         'groups',
         'groups.course',
+        'groups.branch',
       ],
     });
 

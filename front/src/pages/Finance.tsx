@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { financeApi, downloadBlob } from "@/api/finance";
 import { studentsApi } from "@/api/students";
+import { branchesApi } from "@/api/branches";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ export default function FinancePage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("invoices");
   const [invForm, setInvForm] = useState({
-    show: false, student_id: "",
+    show: false, student_id: "", branch_id: "",
     description: "", quantity: 1, unit_price: 0,
     discount_amount: 0, promo_code: "",
   });
@@ -34,10 +35,11 @@ export default function FinancePage() {
   const ledgerQ = useQuery({ queryKey: ["ledger"], queryFn: () => financeApi.ledger(), enabled: tab === "ledger" });
   const recvQ = useQuery({ queryKey: ["receivables"], queryFn: () => financeApi.receivables(), enabled: tab === "ledger" });
   const { data: students } = useQuery({ queryKey: ["students"], queryFn: () => studentsApi.findAll() });
+  const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: () => branchesApi.findAll() });
 
   const invM = useMutation({
     mutationFn: () => financeApi.createInvoice({
-      student_id: invForm.student_id,
+      student_id: invForm.student_id, branch_id: invForm.branch_id,
       items: [{ description: invForm.description, quantity: Number(invForm.quantity), unit_price: Number(invForm.unit_price) }],
       discount_amount: Number(invForm.discount_amount) || undefined,
       promo_code: invForm.promo_code || undefined,
@@ -118,6 +120,14 @@ export default function FinancePage() {
                   </select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Branch *</Label>
+                  <select value={invForm.branch_id} onChange={(e) => setInvForm({ ...invForm, branch_id: e.target.value })}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="">Select</option>
+                    {(branches ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
                   <Label>Item description *</Label>
                   <Input value={invForm.description} onChange={(e) => setInvForm({ ...invForm, description: e.target.value })} />
                 </div>
@@ -135,7 +145,7 @@ export default function FinancePage() {
                 </div>
                 <div className="md:col-span-3">
                   <Button
-                    disabled={invM.isPending || !invForm.student_id || !invForm.description}
+                    disabled={invM.isPending || !invForm.student_id || !invForm.branch_id || !invForm.description}
                     onClick={() => invM.mutate()}
                   >{t("common.save")}</Button>
                 </div>

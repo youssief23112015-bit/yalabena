@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthStore } from "@/store/authStore";
 import { useUserRoles, hasAnyRole } from "@/lib/rbac";
+import { branchesApi } from "@/api/branches";
 import {
   inventoryApi, downloadCsv, INVENTORY_CATEGORIES,
   type InventoryItem, type ItemIssue, type StockMove, type LowStockRow, type ItemCondition,
@@ -33,10 +35,14 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const roles = useUserRoles();
-  const canManage = hasAnyRole(roles, ["super_admin"]);
-  const canIssue = hasAnyRole(roles, ["super_admin", "sales"]);
+  const user = useAuthStore((s) => s.user) as any;
+  const canManage = hasAnyRole(roles, ["super_admin", "branch_manager"]);
+  const canIssue = hasAnyRole(roles, ["super_admin", "branch_manager", "sales"]);
+  const ownBranch: string | undefined = user?.branchId ?? user?.branch_id ?? undefined;
+  const isGlobal = hasAnyRole(roles, ["super_admin", "finance", "auditor"]);
 
   const [tab, setTab] = useState("items");
+  const [branchId, setBranchId] = useState<string>(isGlobal ? "" : ownBranch ?? "");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("active");
@@ -50,32 +56,35 @@ export default function InventoryPage() {
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [confirmDeactivate, setConfirmDeactivate] = useState<InventoryItem | null>(null);
   const q = useDebounced(search);
+  const scopedBranch = branchId || undefined;
+
+  const { data: branches = [] } = useQuery({ queryKey: ["branches"], queryFn: () => branchesApi.findAll() });
 
   const itemsQ = useQuery({
-    queryKey: ["inventory", "items", { q, category, status, lowOnly }],
-    queryFn: () => inventoryApi.items({ search: q, category, status, low_stock_only: lowOnly || undefined, limit: 200 }),
+    queryKey: ["inventory", "items", { scopedBranch, q, category, status, lowOnly }],
+    queryFn: () => inventoryApi.items({ branch_id: scopedBranch, search: q, category, status, low_stock_only: lowOnly || undefined, limit: 200 }),
     enabled: tab === "items",
   });
   const movesQ = useQuery({
-    queryKey: ["inventory", "moves", { moveType, from, to }],
-    queryFn: () => inventoryApi.moves({ type: moveType, from, to, limit: 200 }),
+    queryKey: ["inventory", "moves", { scopedBranch, moveType, from, to }],
+    queryFn: () => inventoryApi.moves({ branch_id: scopedBranch, type: moveType, from, to, limit: 200 }),
     enabled: tab === "moves",
   });
   const issuesQ = useQuery({
-    queryKey: ["inventory", "issues", { openIssuesOnly }],
-    queryFn: () => inventoryApi.issues({ open_only: openIssuesOnly || undefined, limit: 200 }),
+    queryKey: ["inventory", "issues", { scopedBranch, openIssuesOnly }],
+    queryFn: () => inventoryApi.issues({ branch_id: scopedBranch, open_only: openIssuesOnly || undefined, limit: 200 }),
     enabled: tab === "issues",
   });
-  const lowQ = useQuery({ queryKey: ["inventory", "low"], queryFn: () => inventoryApi.lowStock(), enabled: tab === "alerts" });
-  const valQ = useQuery({ queryKey: ["inventory", "valuation"], queryFn: () => inventoryApi.valuation(), enabled: tab === "valuation" });
+  const lowQ = useQuery({ queryKey: ["inventory", "low", scopedBranch], queryFn: () => inventoryApi.lowStock(scopedBranch), enabled: tab === "alerts" });
+  const valQ = useQuery({ queryKey: ["inventory", "valuation", scopedBranch], queryFn: () => inventoryApi.valuation(scopedBranch), enabled: tab === "valuation" });
   const repQ = useQuery({
-    queryKey: ["inventory", "movement-report", { from, to }],
-    queryFn: () => inventoryApi.movementReport({ from, to }),
+    queryKey: ["inventory", "movement-report", { scopedBranch, from, to }],
+    queryFn: () => inventoryApi.movementReport({ branch_id: scopedBranch, from, to }),
     enabled: tab === "valuation",
   });
   const detailsQ = useQuery({
-    queryKey: ["inventory", "item", detailsId],
-    queryFn: () => inventoryApi.item(detailsId!),
+    queryKey: ["inventory", "item", detailsId, scopedBranch],
+    queryFn: () => inventoryApi.item(detailsId!, scopedBranch),
     enabled: !!detailsId,
   });
 
@@ -95,13 +104,20 @@ export default function InventoryPage() {
     onError: (e: Error) => toast({ variant: "destructive", title: tc("common.error"), description: e.message }),
   });
 
+  const branchSelect = (
+    <select className={sel} value={branchId} onChange={(e) => setBranchId(e.target.value)} disabled={!isGlobal && !!ownBranch} aria-label={t("branch")}>
+      {isGlobal && <option value="">{t("allBranches")}</option>}
+      {branches.filter((b) => isGlobal || b.id === ownBranch).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+    </select>
+  );
+
   const itemCols: Column<InventoryItem>[] = useMemo(() => [
     { key: "name", header: t("colItem"), sortable: true, render: (r) => (
       <button className="text-left font-medium text-primary hover:underline" onClick={() => setDetailsId(r.id)}>
         {r.name}<div className="text-xs font-normal text-muted-foreground">{r.sku ?? t("noCode")}</div>
       </button>) },
     { key: "category", header: t("colCategory"), sortable: true },
-    { key: "quantity", header: t("colOnHandAll"), sortable: true, render: (r) => (
+    { key: "quantity", header: scopedBranch ? t("colOnHandBranch") : t("colOnHandAll"), sortable: true, render: (r) => (
       <span className="flex items-center gap-2">{r.quantity} {r.unit_of_measure}
         {r.is_low_stock && <Badge variant="destructive">{t("low")}</Badge>}</span>) },
     { key: "reorder_level", header: t("colReorder") },
@@ -113,14 +129,16 @@ export default function InventoryPage() {
         {canManage && r.status === "active" && <Button size="sm" variant="ghost" onClick={() => setAction({ mode: "receive", item: r })}>{t("receive")}</Button>}
         {canIssue && r.status === "active" && <Button size="sm" variant="ghost" onClick={() => setAction({ mode: "issue", item: r })}>{t("issue")}</Button>}
         {canManage && <Button size="sm" variant="ghost" onClick={() => setAction({ mode: "adjust", item: r })}>{t("adjust")}</Button>}
+        {canManage && r.status === "active" && <Button size="sm" variant="ghost" onClick={() => setAction({ mode: "transfer", item: r })}>{t("transfer")}</Button>}
         {canManage && <Button size="sm" variant="ghost" onClick={() => setFormItem(r)}>{t("edit")}</Button>}
         {canManage && r.status === "active" && <Button size="sm" variant="ghost" onClick={() => setConfirmDeactivate(r)}>{t("deactivate")}</Button>}
       </div>) },
-  ], [canManage, canIssue, t]);
+  ], [canManage, canIssue, scopedBranch, t]);
 
   const moveCols: Column<StockMove>[] = [
     { key: "created_at", header: t("colDate"), render: (r) => when(r.created_at) },
     { key: "item", header: t("colItem"), render: (r) => r.item?.name ?? r.item_id.slice(0, 8) },
+    { key: "branch", header: t("colBranch"), render: (r) => r.branch?.name ?? "—" },
     { key: "type", header: t("colType"), render: (r) => <Badge variant="secondary">{r.type}</Badge> },
     { key: "quantity", header: t("colQty"), render: (r) => (r.quantity > 0 && r.type === "adjustment" ? `+${r.quantity}` : r.quantity) },
     { key: "reason", header: t("colReason") },
@@ -144,6 +162,7 @@ export default function InventoryPage() {
 
   const lowCols: Column<LowStockRow>[] = [
     { key: "name", header: t("colItem"), render: (r) => <>{r.name}<div className="text-xs text-muted-foreground">{r.sku ?? ""}</div></> },
+    { key: "branch_name", header: t("colBranch") },
     { key: "quantity", header: t("colOnHand") },
     { key: "reorder_level", header: t("colReorderLevel") },
     { key: "shortage", header: t("colShortage"), render: (r) => <Badge variant="destructive">{r.shortage}</Badge> },
@@ -159,6 +178,7 @@ export default function InventoryPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {branchSelect}
           {canManage && <Button onClick={() => setFormItem(null)}><Plus className="me-1 h-4 w-4" />{t("newItem")}</Button>}
         </div>
       </div>
@@ -200,7 +220,7 @@ export default function InventoryPage() {
           <div className="flex flex-wrap items-center gap-2">
             <select className={sel} value={moveType} onChange={(e) => setMoveType(e.target.value)} aria-label={t("type")}>
               <option value="">{t("allTypes")}</option>
-              {["in", "out", "adjustment", "return"].map((x) => <option key={x} value={x}>{x}</option>)}
+              {["in", "out", "adjustment", "return", "transfer_in", "transfer_out"].map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
             <label className="text-sm">{t("from")} <input type="date" className={sel} value={from} onChange={(e) => setFrom(e.target.value)} /></label>
             <label className="text-sm">{t("to")} <input type="date" className={sel} value={to} onChange={(e) => setTo(e.target.value)} /></label>
@@ -218,28 +238,30 @@ export default function InventoryPage() {
         <TabsContent value="alerts" className="space-y-3">
           <DataTable columns={lowCols} data={lowQ.data ?? []} isLoading={lowQ.isLoading} isError={lowQ.isError}
             errorMessage={err(lowQ.error)} onRetry={() => lowQ.refetch()} emptyMessage={t("emptyAlerts")}
-            keyExtractor={(r) => r.item_id} />
+            keyExtractor={(r) => `${r.item_id}-${r.branch_id}`} />
         </TabsContent>
 
         <TabsContent value="valuation" className="space-y-6">
           <section className="space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">{t("valuationTitle")}</h2>
-              <Button variant="outline" size="sm" disabled={!valQ.data?.items.length} onClick={() => downloadCsv("inventory-valuation.csv", [
-                ["Item", "SKU", "Quantity", "Unit cost", "Total"],
-                ...(valQ.data?.items ?? []).map((i) => [i.item_name, i.sku, i.quantity, i.unit_cost, i.total_cost]),
+              <Button variant="outline" size="sm" disabled={!valQ.data?.branches.length} onClick={() => downloadCsv("inventory-valuation.csv", [
+                ["Branch", "Item", "SKU", "Quantity", "Unit cost", "Total"],
+                ...(valQ.data?.branches ?? []).flatMap((b) => b.items.map((i) => [b.branch_name, i.item_name, i.sku, i.quantity, i.unit_cost, i.total_cost])),
               ])}><Download className="me-1 h-4 w-4" />{t("csv")}</Button>
             </div>
             {valQ.isLoading && <p className="text-sm">{t("loading")}</p>}
             {valQ.isError && <p className="text-sm text-destructive">{err(valQ.error)} <Button size="sm" variant="outline" onClick={() => valQ.refetch()}>{t("retry")}</Button></p>}
-            {valQ.data && (valQ.data.items.length === 0 ? <p className="text-sm text-muted-foreground">{t("noStock")}</p> : (
+            {valQ.data && (valQ.data.branches.length === 0 ? <p className="text-sm text-muted-foreground">{t("noStock")}</p> : (
               <div className="space-y-3">
-                <div className="rounded-lg border p-4">
-                  <div className="flex justify-between font-medium"><span>{t("valuationTitle")}</span><span>{valQ.data.total_quantity} {t("units")} · {money(valQ.data.grand_total_cost)}</span></div>
-                  <div className="mt-2 overflow-x-auto"><table className="w-full text-sm"><tbody>
-                    {valQ.data.items.map((i) => <tr key={i.item_id} className="border-t"><td className="py-1">{i.item_name}</td><td>{i.quantity} × {money(i.unit_cost)}</td><td className="text-right">{money(i.total_cost)}</td></tr>)}
-                  </tbody></table></div>
-                </div>
+                {valQ.data.branches.map((b) => (
+                  <div key={b.branch_id} className="rounded-lg border p-4">
+                    <div className="flex justify-between font-medium"><span>{b.branch_name}</span><span>{b.total_quantity} {t("units")} · {money(b.total_cost)}</span></div>
+                    <div className="mt-2 overflow-x-auto"><table className="w-full text-sm"><tbody>
+                      {b.items.map((i) => <tr key={i.item_id} className="border-t"><td className="py-1">{i.item_name}</td><td>{i.quantity} × {money(i.unit_cost)}</td><td className="text-right">{money(i.total_cost)}</td></tr>)}
+                    </tbody></table></div>
+                  </div>
+                ))}
                 <p className="text-end font-semibold">{t("grandTotal")}: {money(valQ.data.grand_total_cost)}</p>
               </div>
             ))}
@@ -269,8 +291,8 @@ export default function InventoryPage() {
         </TabsContent>
       </Tabs>
 
-      <ItemFormDialog open={formItem !== undefined} item={formItem ?? null} onClose={() => setFormItem(undefined)} />
-      <StockActionDialog mode={action?.mode ?? null} item={action?.item ?? null} onClose={() => setAction(null)} />
+      <ItemFormDialog open={formItem !== undefined} item={formItem ?? null} branches={branches} defaultBranchId={scopedBranch ?? ownBranch} onClose={() => setFormItem(undefined)} />
+      <StockActionDialog mode={action?.mode ?? null} item={action?.item ?? null} branches={branches} defaultBranchId={scopedBranch ?? ownBranch} onClose={() => setAction(null)} />
 
       {confirmDeactivate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
@@ -310,8 +332,8 @@ export default function InventoryPage() {
                 <div>
                   <h3 className="mb-1 font-semibold">{t("stockByBranch")}</h3>
                   {detailsQ.data.stock.length === 0 ? <p className="text-muted-foreground">{t("noStockRecords")}</p> : (
-                    <ul className="divide-y rounded border">{detailsQ.data.stock.map((s, idx) => (
-                      <li key={idx} className="flex justify-between p-2"><span>{t("colOnHand")}</span><span>{s.quantity}</span></li>))}</ul>)}
+                    <ul className="divide-y rounded border">{detailsQ.data.stock.map((s) => (
+                      <li key={s.branch_id} className="flex justify-between p-2"><span>{s.branch_name ?? s.branch_id.slice(0, 8)}</span><span>{s.quantity}</span></li>))}</ul>)}
                 </div>
                 <div>
                   <h3 className="mb-1 font-semibold">{t("recentMoves")}</h3>

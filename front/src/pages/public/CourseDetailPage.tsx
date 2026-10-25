@@ -160,6 +160,26 @@ export default function CourseDetailPage() {
               </Card>
             )}
 
+            {course.branch_pricing && course.branch_pricing.length > 0 && (
+              <Card className="mt-6">
+                <CardContent className="p-6">
+                  <h2 className="mb-3 text-lg font-semibold">
+                    {t("public.courseDetail.branchPricing", "Branch Pricing")}
+                  </h2>
+                  <ul className="space-y-2 text-sm">
+                    {course.branch_pricing.map((bp) => (
+                      <li key={bp.id} className="flex items-center justify-between border-b pb-2">
+                        <span>{bp.branch?.name ?? bp.branch_id}</span>
+                        <span className="font-semibold text-primary">
+                          {bp.price} {t("public.courses.egp", "EGP")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="mt-10 flex flex-wrap gap-4">
               {!isAuthenticated || !isStudent ? (
                 // Guests & staff keep the online registration flow
@@ -211,7 +231,7 @@ export default function CourseDetailPage() {
               )}
               <Button asChild variant="outline" size="lg">
                 <Link
-                  to={`/placement-booking?courseId=${course.id}`}
+                  to={`/placement-booking?courseId=${course.id}&branchId=${(course as any).branch_id ?? ""}`}
                 >
                   {t("public.hero.ctaPlacement", "Book a Placement Test")}
                 </Link>

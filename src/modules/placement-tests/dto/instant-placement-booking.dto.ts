@@ -25,14 +25,8 @@ export class InstantPlacementBookingDto {
   @MaxLength(255)
   email?: string;
 
-  /**
-   * Course-context target level (e.g. the CEFR level of the catalog course
-   * the visitor clicked "Book a Placement Test" on) — persisted onto the
-   * Lead's level_interest by the shared upsert.
-   */
-  @ApiPropertyOptional({ example: 'B1', description: 'Target CEFR level' })
+  @ApiPropertyOptional({ format: 'uuid', description: 'Preferred branch' })
   @IsOptional()
-  @IsString()
-  @MaxLength(10)
-  level_interest?: string;
+  @IsUUID()
+  branch_id?: string;
 }

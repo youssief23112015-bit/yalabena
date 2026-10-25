@@ -9,8 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/store/authStore";
 import { kbApi, type KbArticle, type KbVisibility } from "@/api/kb";
 
-const canManageRoles = ["super_admin", "hr", "teacher"];
-const canManageCategoryRoles = ["super_admin", "hr"];
+const canManageRoles = ["super_admin", "hr", "branch_manager", "teacher"];
+const canManageCategoryRoles = ["super_admin", "hr", "branch_manager"];
 const visibilityOptions: KbVisibility[] = ["staff", "manager", "admin", "teacher", "public"];
 
 export default function KnowledgeBasePage() {

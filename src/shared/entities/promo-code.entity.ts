@@ -31,6 +31,9 @@ export class PromoCode {
   @Column({ type: 'jsonb', nullable: true })
   applicable_courses: any;
 
+  @Column({ type: 'jsonb', nullable: true })
+  applicable_branches: any;
+
   @Column({ type: 'varchar', length: 20, default: 'active' })
   status: string;
 

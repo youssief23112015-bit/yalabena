@@ -25,12 +25,6 @@ export class CreateSessionDto {
   })
   mode?: GroupMode;
 
-  // 4. السماح بـ meeting_link وتحويله إلى zoom_join_url
-  @IsOptional()
-  @IsString()
-  @Transform(({ value, obj }) => value ?? obj.meeting_link)
-  zoom_join_url?: string;
-
   // 5. السماح بـ classroomId وتحويله إلى classroom_id
   @IsOptional()
   @IsUUID()
@@ -84,7 +78,6 @@ export class CreateSessionDto {
   @IsOptional() groupId?: string;
   @IsOptional() title?: string;
   @IsOptional() session_type?: string;
-  @IsOptional() meeting_link?: string;
   @IsOptional() classroomId?: string;
   @IsOptional() status?: string;
 }

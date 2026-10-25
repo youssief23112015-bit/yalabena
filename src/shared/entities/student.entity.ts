@@ -12,6 +12,7 @@ import {
   JoinTable 
 } from 'typeorm';
 import { User } from './user.entity';
+import { Branch } from './branch.entity';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 import { StudentProfile } from './student-profile.entity';
 import { StudentLevelHistory } from './student-level-history.entity';
@@ -45,6 +46,13 @@ export class Student {
 
   @Column({ type: 'date', nullable: true })
   enrollment_date: Date;
+
+  @Column({ type: 'uuid', nullable: true })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   @Column({ type: 'uuid', nullable: true })
   placement_test_id: string;

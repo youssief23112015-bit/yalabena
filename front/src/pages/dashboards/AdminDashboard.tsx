@@ -1,3 +1,4 @@
+import React from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,9 +37,6 @@ const normalizeArray = <T,>(res: any): T[] => {
 /**
  * Full administrative dashboard (Leads, students, courses, groups,
  * sessions, conversion / fill-rate KPIs, attendance summary).
- *
- * Rendered for: super_admin, sales, finance, academic
- * (plus auditor / moderator / unknown roles) — see pages/Dashboard.tsx.
  */
 export default function AdminDashboard() {
   const { t } = useTranslation("common");
@@ -143,6 +141,7 @@ export default function AdminDashboard() {
     { title: t("inventory.valuation") || "Conversion Rate", value: `${conversionRate}%`, icon: Percent, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", sub: `${enrolledLeads} ${t("common.of")} ${totalLeads}` },
     { title: "Group Fill Rate", value: `${fillRate}%`, icon: TrendingUp, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10", sub: `${totalEnrolled} ${t("common.of")} ${totalCapacity}` },
   ];
+
   return (
     <div className="space-y-6">
       <div>
@@ -153,8 +152,8 @@ export default function AdminDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i} className="shadow-sm border-border/60">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <Skeleton className="h-4 w-24" />

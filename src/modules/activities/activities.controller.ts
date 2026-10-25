@@ -12,7 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiParam, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../common/utils/auth-user';
+import { AuthUser } from '../../common/utils/branch-scope';
 import { ActivitiesService } from './activities.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { UpdateActivityDto } from './dto/update-activity.dto';
@@ -31,7 +31,7 @@ export class ActivitiesController {
   // ─── STATIC ROUTES FIRST (before :id) ───
 
   @Post('registrations/:registrationId/pay')
-  @Roles('super_admin', 'finance', 'sales')
+  @Roles('super_admin', 'branch_manager', 'finance', 'sales')
   @ApiOperation({ summary: 'Collect the optional fee for an activity registration' })
   @ApiParam({ name: 'registrationId', format: 'uuid' })
   payRegistration(
@@ -43,7 +43,7 @@ export class ActivitiesController {
   }
 
   @Delete('registrations/:registrationId')
-  @Roles('super_admin', 'sales', 'academic', 'student')
+  @Roles('super_admin', 'branch_manager', 'sales', 'academic', 'student')
   @ApiOperation({ summary: 'Cancel an activity registration (frees the seat)' })
   @ApiParam({ name: 'registrationId', format: 'uuid' })
   cancelRegistration(
@@ -54,7 +54,7 @@ export class ActivitiesController {
   }
 
   @Delete('photos/:photoId')
-  @Roles('super_admin', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'teacher')
   @ApiOperation({ summary: 'Remove a photo from an activity gallery' })
   @ApiParam({ name: 'photoId', format: 'uuid' })
   removePhoto(
@@ -67,20 +67,22 @@ export class ActivitiesController {
   // ─── ACTIVITIES CRUD ───
 
   @Post()
-  @Roles('super_admin', 'academic')
+  @Roles('super_admin', 'branch_manager', 'academic')
   @ApiOperation({ summary: 'Schedule a new extracurricular activity (SRS 4.11)' })
   @ApiBody({ type: CreateActivityDto })
   @ApiResponse({ status: 201, description: 'Activity created successfully.' })
+  @ApiResponse({ status: 403, description: 'Cross-branch creation denied.' })
   create(@Body() dto: CreateActivityDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user);
   }
 
   @Get()
-  @Roles('super_admin', 'academic', 'teacher', 'student')
-  @ApiOperation({ summary: 'List activities with type/level/status/search filters' })
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+  @ApiOperation({ summary: 'List activities with type/level/branch/status/search filters' })
   @ApiQuery({ name: 'type', required: false, description: 'movie_night | conversation_club | trip | contest | workshop | other' })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'level', required: false, description: 'e.g. B1 — includes open-to-all activities' })
+  @ApiQuery({ name: 'branch_id', required: false, description: 'UUID branch filter' })
   @ApiQuery({ name: 'search', required: false })
   @ApiResponse({ status: 200, description: 'Returns activities list with registered_count.' })
   findAll(@Query() query: ActivityQueryDto, @CurrentUser() user: AuthUser) {
@@ -88,7 +90,7 @@ export class ActivitiesController {
   }
 
   @Get(':id')
-  @Roles('super_admin', 'academic', 'teacher', 'student')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
   @ApiOperation({ summary: 'Get activity details (registrations + photo gallery)' })
   @ApiParam({ name: 'id', description: 'Activity UUID' })
   @ApiResponse({ status: 200, description: 'Returns activity details.' })
@@ -98,7 +100,7 @@ export class ActivitiesController {
   }
 
   @Put(':id')
-  @Roles('super_admin', 'academic')
+  @Roles('super_admin', 'branch_manager', 'academic')
   @ApiOperation({ summary: 'Update an activity (schedule, capacity, fee, targeting)' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiBody({ type: UpdateActivityDto })
@@ -111,7 +113,7 @@ export class ActivitiesController {
   }
 
   @Delete(':id')
-  @Roles('super_admin')
+  @Roles('super_admin', 'branch_manager')
   @ApiOperation({ summary: 'Delete an activity (cascades registrations/photos)' })
   @ApiParam({ name: 'id', format: 'uuid' })
   remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
@@ -121,7 +123,7 @@ export class ActivitiesController {
   // ─── REGISTRATION ───
 
   @Post(':id/registrations')
-  @Roles('super_admin', 'academic', 'teacher', 'sales', 'student')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'sales', 'student')
   @ApiOperation({ summary: 'Register a student for an activity (level/group targeting enforced)' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiBody({ type: RegisterActivityDto })
@@ -138,7 +140,7 @@ export class ActivitiesController {
   // ─── ATTENDANCE ───
 
   @Get(':id/attendance')
-  @Roles('super_admin', 'academic', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
   @ApiOperation({ summary: 'Get attendance tracking dashboard data for an activity' })
   @ApiParam({ name: 'id', format: 'uuid' })
   getAttendance(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
@@ -146,7 +148,7 @@ export class ActivitiesController {
   }
 
   @Post(':id/attendance')
-  @Roles('super_admin', 'academic', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
   @ApiOperation({ summary: 'Mark attendance (single or bulk): registered | attended | no_show' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiBody({ type: MarkAttendanceDto })
@@ -161,7 +163,7 @@ export class ActivitiesController {
   // ─── PHOTO GALLERY ───
 
   @Post(':id/photos')
-  @Roles('super_admin', 'academic', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
   @ApiOperation({ summary: 'Add a photo to an activity gallery (upload via /files/upload?kind=activity first)' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiBody({ type: AddPhotoDto })

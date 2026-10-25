@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Course } from './course.entity';
 import { User } from './user.entity';
+import { Branch } from './branch.entity';
 import { GroupMode } from '../../common/enums/group-mode.enum';
 import { GroupStatus } from '../../common/enums/group-status.enum';
 import { GroupSchedule } from './group-schedule.entity';
@@ -36,6 +37,13 @@ export class Group {
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'substitute_teacher_id' })
   substitute_teacher: User;
+
+  @Column({ type: 'uuid' })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   @Column({ type: 'int' })
   capacity: number;

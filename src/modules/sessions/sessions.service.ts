@@ -1,15 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Session } from '../../shared/entities/session.entity';
 import { Group } from '../../shared/entities/group.entity';
 import { Student } from '../../shared/entities/student.entity';
 import { Attendance } from '../../shared/entities/attendance.entity';
 import { AttendanceStatus } from '../../common/enums/attendance-status.enum';
-import { GroupMode } from '../../common/enums/group-mode.enum';
-import { ZoomService } from '../integrations/zoom.service';
-import { OnMeetService } from '../integrations/onmeet.service';
+import { acquireSchedulingLocks } from '../../common/utils/scheduling-locks.util';
 
 export interface SessionConflict {
   type: 'group' | 'teacher' | 'classroom';
@@ -23,12 +21,11 @@ export class SessionsService {
     private readonly repo: Repository<Session>,
     @InjectRepository(Group)
     private readonly groupRepo: Repository<Group>,
-    private readonly zoom: ZoomService,
-    private readonly onmeet: OnMeetService,
     private readonly config: ConfigService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  /** Attendance repo without a constructor injection (spec fixes the arity at 5). */
+  /** Attendance repo without a constructor injection. */
   private get attendances(): Repository<Attendance> {
     return this.repo.manager.getRepository(Attendance);
   }
@@ -44,23 +41,16 @@ export class SessionsService {
     return dateTimeStr.includes('T') ? dateTimeStr.split('T')[0] : dateTimeStr;
   }
 
-  /** Minutes between two HH:mm:ss strings (for meeting duration). */
-  private durationMinutes(start?: string, end?: string): number {
-    if (!start || !end) return 60;
-    const toMin = (t: string) => {
-      const [h, m] = t.split(':').map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-    const diff = toMin(end) - toMin(start);
-    return diff > 0 ? diff : 60;
-  }
-
   // ─── Conflict detection (SRS 4.5.2) ──────────────────────────
 
   /**
    * Scheduling conflicts for a candidate session: overlapping sessions in
    * the same group, for the same teacher, or in the same classroom.
    * Returns [] when the window is incomplete — nothing to compare against.
+   * `exclude_session_id` skips one session (used when validating an update
+   * to that session so it never conflicts with itself).
+   * `em` (optional) runs the queries on an open transaction's manager so a
+   * locked create/update validates against the same snapshot it writes to.
    */
   async detectConflicts(data: {
     group_id?: string;
@@ -68,25 +58,31 @@ export class SessionsService {
     date?: string;
     start_time?: string;
     end_time?: string;
-  }): Promise<SessionConflict[]> {
-    const { group_id, classroom_id, date, start_time, end_time } = data;
+    exclude_session_id?: string;
+  }, em?: EntityManager): Promise<SessionConflict[]> {
+    const { group_id, classroom_id, date, start_time, end_time, exclude_session_id } = data;
     if (!date || !start_time || !end_time) return [];
 
     const conflicts: SessionConflict[] = [];
+    const sessionRepo = em ? em.getRepository(Session) : this.repo;
+    const groupRepo = em ? em.getRepository(Group) : this.groupRepo;
 
-    const overlapQb = (qb: any, column: string, value: string) =>
-      qb
+    const overlapQb = (qb: any, column: string, value: string) => {
+      const q = qb
         .select('s.id', 'id')
         .where(`${column} = :value`, { value })
         .andWhere('s.date = :date', { date })
         .andWhere('s.start_time < :end', { end: end_time })
         .andWhere('s.end_time > :start', { start: start_time })
         .andWhere('s.cancelled_at IS NULL');
+      if (exclude_session_id) q.andWhere('s.id != :excl', { excl: exclude_session_id });
+      return q;
+    };
 
     // 1) Same group overlapping
     if (group_id) {
       const rows = await overlapQb(
-        this.repo.createQueryBuilder('s'),
+        sessionRepo.createQueryBuilder('s'),
         's.group_id',
         group_id,
       ).getRawMany();
@@ -97,9 +93,9 @@ export class SessionsService {
 
     // 2) Same teacher overlapping (teacher comes from the group)
     if (group_id) {
-      const group = await this.groupRepo.findOne({ where: { id: group_id } });
+      const group = await groupRepo.findOne({ where: { id: group_id } });
       if (group?.teacher_id) {
-        const rows = await this.repo
+        const qb = sessionRepo
           .createQueryBuilder('s')
           .select('s.id', 'id')
           .innerJoin('s.group', 'g')
@@ -107,8 +103,9 @@ export class SessionsService {
           .andWhere('s.date = :date', { date })
           .andWhere('s.start_time < :end', { end: end_time })
           .andWhere('s.end_time > :start', { start: start_time })
-          .andWhere('s.cancelled_at IS NULL')
-          .getRawMany();
+          .andWhere('s.cancelled_at IS NULL');
+        if (exclude_session_id) qb.andWhere('s.id != :excl', { excl: exclude_session_id });
+        const rows = await qb.getRawMany();
         for (const row of rows) {
           conflicts.push({ type: 'teacher', session_id: row.id });
         }
@@ -118,7 +115,7 @@ export class SessionsService {
     // 3) Same classroom overlapping
     if (classroom_id) {
       const rows = await overlapQb(
-        this.repo.createQueryBuilder('s'),
+        sessionRepo.createQueryBuilder('s'),
         's.classroom_id',
         classroom_id,
       ).getRawMany();
@@ -146,70 +143,61 @@ export class SessionsService {
       end_time: this.extractTime(rawEndTime),
     };
 
-    // Conflict detection (SRS 4.5.2) — skipped with force=true.
-    if (!data.force) {
-      const conflicts = await this.detectConflicts({
-        group_id: payload.group_id,
-        classroom_id: payload.classroom_id,
-        date: payload.date,
-        start_time: payload.start_time,
-        end_time: payload.end_time,
-      });
-      if (conflicts.length > 0) {
-        throw new ConflictException({
-          message: 'Scheduling conflict detected',
-          conflicts,
-        });
-      }
-    }
-
     // Default the mode from the group when the caller omits it.
     const group = payload.group_id
       ? await this.groupRepo.findOne({ where: { id: payload.group_id } })
       : null;
     if (!payload.mode && group?.mode) payload.mode = group.mode;
 
-    // Auto-create a meeting for online/hybrid sessions (SRS 5.1/5.2).
-    // Never blocks creation when no provider is configured or all fail.
-    if (
-      (payload.mode === GroupMode.ONLINE || payload.mode === GroupMode.HYBRID) &&
-      !payload.zoom_join_url &&
-      !payload.onmeet_meeting_id
-    ) {
-      await this.attachMeeting(payload, group);
-    }
-
-    const session = this.repo.create(payload as Partial<Session>);
-    return this.repo.save(session);
-  }
-
-  /** Try Zoom, fall back to OnMeet, swallow provider errors (never block). */
-  private async attachMeeting(payload: any, group: Group | null) {
-    const input = {
-      topic: payload.topic || payload.title || group?.name || 'SpeakUp Session',
-      startTime: `${payload.date}T${payload.start_time}`,
-      duration: this.durationMinutes(payload.start_time, payload.end_time),
+    const insertSession = async (em?: EntityManager): Promise<Session> => {
+      // Copy the group's fixed Zoom link into the session so all sessions
+      // of an online/hybrid group share the same meeting link. The link is
+      // entered once on the Group and never created per-session via API.
+      if (group && group.zoom_link) {
+        payload.zoom_join_url = group.zoom_link;
+        payload.zoom_meeting_id = group.zoom_meeting_id ?? null;
+      }
+      const target = em ? em.getRepository(Session) : this.repo;
+      const session = target.create(payload as Partial<Session>);
+      return target.save(session);
     };
 
-    if (this.zoom.isConfigured()) {
-      try {
-        const meeting = await this.zoom.createMeeting(input);
-        payload.zoom_meeting_id = meeting.meeting_id;
-        payload.zoom_join_url = meeting.join_url;
-        return;
-      } catch {
-        /* fall through to OnMeet */
-      }
+    // Conflict detection (SRS 4.5.2) — skipped with force=true (legacy
+    // admin override path, unchanged: no checks, no locks, no transaction).
+    if (data.force) {
+      return insertSession();
     }
-    if (this.onmeet.isConfigured()) {
-      try {
-        const meeting = await this.onmeet.createMeeting(input);
-        payload.onmeet_meeting_id = meeting.meeting_id;
-        payload.onmeet_join_url = meeting.join_url;
-      } catch {
-        /* provider down — session still gets created without a link */
+
+    // Serialize against concurrent activations/edits of the same
+    // teacher/room/group: row-lock the group, take the teacher/room
+    // advisory locks, then run the conflict check and the INSERT in ONE
+    // transaction — a racing writer can never slip between check and write.
+    return this.dataSource.transaction(async (em) => {
+      if (payload.group_id) {
+        await em.query(`SELECT id FROM groups WHERE id = $1 FOR UPDATE`, [payload.group_id]);
       }
-    }
+      await acquireSchedulingLocks(em, [
+        group?.teacher_id ? { kind: 'teacher', id: group.teacher_id } : null,
+        payload.classroom_id ? { kind: 'room', id: payload.classroom_id } : null,
+      ]);
+      const conflicts = await this.detectConflicts(
+        {
+          group_id: payload.group_id,
+          classroom_id: payload.classroom_id,
+          date: payload.date,
+          start_time: payload.start_time,
+          end_time: payload.end_time,
+        },
+        em,
+      );
+      if (conflicts.length > 0) {
+        throw new ConflictException({
+          message: 'Scheduling conflict detected',
+          conflicts,
+        });
+      }
+      return insertSession(em);
+    });
   }
 
   async findAll(
@@ -217,7 +205,8 @@ export class SessionsService {
     user?: { id?: string; userId?: string; roles?: string[] },
   ): Promise<Session[]> {
     const query = this.repo.createQueryBuilder('session')
-      .leftJoinAndSelect('session.group', 'group');
+      .leftJoinAndSelect('session.group', 'group')
+      .leftJoinAndSelect('group.teacher', 'teacher');
 
     if (groupId) {
       query.andWhere('group.id = :groupId', { groupId });
@@ -228,7 +217,7 @@ export class SessionsService {
     // @Roles on the controller already guarantees which of these can arrive.
     const roles = (user?.roles ?? []).map((role) => String(role).toLowerCase());
     const isStaff = roles.some((role) =>
-      ['super_admin', 'academic', 'teacher'].includes(role),
+      ['super_admin', 'academic', 'branch_manager', 'teacher'].includes(role),
     );
     if (user && !isStaff) {
       const studentRepo = this.repo.manager.getRepository(Student);
@@ -262,7 +251,17 @@ export class SessionsService {
       query.andWhere('group.id IN (:...groupIds)', { groupIds });
     }
 
-    return query.getMany();
+    const sessions = await query.getMany();
+    // Resolve the fixed per-group meeting URL at read time: sessions created
+    // before activation logic (or with a cleared link) fall back to the
+    // group's Zoom link, then the group's OnMeet link. Never the other way
+    // around — a per-session link always wins.
+    return sessions.map((s) => {
+      if (!s.zoom_join_url && s.group) {
+        s.zoom_join_url = s.group.zoom_link ?? s.group.onmeet_link ?? null;
+      }
+      return s;
+    });
   }
 
   async findOne(id: string): Promise<Session> {
@@ -292,6 +291,55 @@ export class SessionsService {
       ...(rawStartTime ? { start_time: this.extractTime(rawStartTime) } : {}),
       ...(rawEndTime ? { end_time: this.extractTime(rawEndTime) } : {}),
     };
+
+    // Editing ONE session: when its schedule window changes, re-validate
+    // teacher/room/group conflicts — excluding the session itself. force=true
+    // keeps the legacy override behavior of create().
+    const currentdate = session.date instanceof Date
+      ? session.date.toISOString().slice(0, 10)
+      : String(session.date ?? '').slice(0, 10);
+    const scheduleChanged =
+      (payload.date !== undefined && String(payload.date).slice(0, 10) !== currentdate) ||
+      (payload.start_time !== undefined && payload.start_time !== session.start_time) ||
+      (payload.end_time !== undefined && payload.end_time !== session.end_time) ||
+      (payload.classroom_id !== undefined && payload.classroom_id !== session.classroom_id);
+    if (scheduleChanged && !data.force) {
+      const merged = {
+        group_id: payload.group_id ?? session.group_id,
+        classroom_id: payload.classroom_id ?? session.classroom_id,
+        date: payload.date ?? currentdate,
+        start_time: payload.start_time ?? session.start_time,
+        end_time: payload.end_time ?? session.end_time,
+      };
+      // Serialize against concurrent activations/edits: row-lock the
+      // involved groups (old and new), take the teacher/room advisory
+      // locks, then run the conflict check and the write in ONE
+      // transaction — otherwise this edit can race a group activation and
+      // double-book the teacher/room anyway.
+      return this.dataSource.transaction(async (em) => {
+        const groupIds = [...new Set([session.group_id, merged.group_id].filter(Boolean))].sort();
+        if (groupIds.length > 0) {
+          await em.query(`SELECT id FROM groups WHERE id = ANY($1::uuid[]) ORDER BY id FOR UPDATE`, [groupIds]);
+        }
+        const groups = groupIds.length
+          ? await em.getRepository(Group).find({ where: { id: In(groupIds) } })
+          : [];
+        await acquireSchedulingLocks(em, [
+          ...groups.map((g) => ({ kind: 'teacher' as const, id: g.teacher_id })),
+          { kind: 'room', id: session.classroom_id ?? '' },
+          { kind: 'room', id: merged.classroom_id ?? '' },
+        ]);
+        const conflicts = await this.detectConflicts({ ...merged, exclude_session_id: id }, em);
+        if (conflicts.length > 0) {
+          throw new ConflictException({
+            message: 'Scheduling conflict detected',
+            conflicts,
+          });
+        }
+        Object.assign(session, payload);
+        return em.getRepository(Session).save(session);
+      });
+    }
 
     Object.assign(session, payload);
     return this.repo.save(session);

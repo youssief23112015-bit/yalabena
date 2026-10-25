@@ -1,0 +1,15 @@
+﻿front/src/api/groups.ts
+src/common/utils/recurring-schedule.util.ts
+src/database/migrations/1795000000000-SessionOccurrenceUniqueIndex.ts
+src/modules/sessions/dto/cancel-session.dto.ts
+src/modules/sessions/dto/create-session.dto.ts
+src/modules/sessions/dto/generate-sessions.dto.ts
+src/modules/sessions/dto/reschedule-session.dto.ts
+src/modules/sessions/scheduling.service.spec.ts
+src/modules/sessions/scheduling.service.ts
+src/modules/sessions/sessions.controller.ts
+src/modules/sessions/sessions.module.ts
+src/modules/sessions/sessions.service.spec.ts
+src/modules/sessions/sessions.service.ts
+src/modules/sessions/sessions.service.ts.before-attendance-query-fix
+src/modules/sessions/sessions.service.ts.before-attendance-query-fix-2

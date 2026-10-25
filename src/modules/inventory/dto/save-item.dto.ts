@@ -5,7 +5,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { InventoryCategory } from '../../../common/enums/inventory-category.enum';
 
-/** Create an item in the master catalog. Stock lives in stock_levels. */
+/** Create an item in the master catalog. Stock lives per branch in stock_levels. */
 export class SaveItemDto {
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(200)
   name: string;
@@ -31,6 +31,10 @@ export class SaveItemDto {
 
   @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() @Min(0)
   reorder_level?: number;
+
+  @ApiPropertyOptional({ description: 'Branch that receives initial_quantity (required when initial_quantity > 0)' })
+  @IsOptional() @IsUUID()
+  branch_id?: string;
 
   @ApiPropertyOptional({ description: 'Opening stock, recorded as an IN move' })
   @IsOptional() @Type(() => Number) @IsInt() @Min(0)

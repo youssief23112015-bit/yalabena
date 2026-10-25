@@ -1,5 +1,5 @@
 import {
-  Injectable, NotFoundException, BadRequestException, ConflictException,
+  Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
@@ -12,16 +12,21 @@ import { InventoryStatus } from '../../common/enums/inventory-status.enum';
 import { ItemCondition } from '../../common/enums/item-condition.enum';
 import { SaveItemDto } from './dto/save-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
-import { AdjustStockDto, ReceiveStockDto } from './dto/adjust-stock.dto';
+import { AdjustStockDto, ReceiveStockDto, TransferStockDto } from './dto/adjust-stock.dto';
 import { IssueItemDto } from './dto/issue-item.dto';
 
 /** The authenticated user as produced by JwtStrategy.validate(). */
 export interface InventoryActor {
   id: string;
   roles?: string[];
+  branchId?: string | null;
 }
 
+/** Roles that may see / act on every branch (HQ-level, SRS 4.15). */
+const GLOBAL_ROLES = ['super_admin', 'finance', 'auditor'];
+
 export interface ListItemsQuery {
+  branch_id?: string;
   search?: string;
   category?: string;
   status?: string;
@@ -43,6 +48,30 @@ export class InventoryItemsService {
     @InjectRepository(StockMove) private readonly moveRepo: Repository<StockMove>,
     @InjectRepository(StudentItemIssue) private readonly issueRepo: Repository<StudentItemIssue>,
   ) {}
+
+  // ==================== BRANCH SCOPING ====================
+
+  private isGlobal(actor?: InventoryActor): boolean {
+    if (!actor) return true; // internal call (no HTTP user)
+    return (actor.roles ?? []).some((r) => GLOBAL_ROLES.includes(r));
+  }
+
+  /** Throws if the actor may not act on `branchId`. */
+  private assertBranchAccess(actor: InventoryActor | undefined, branchId: string) {
+    if (this.isGlobal(actor)) return;
+    if (actor?.branchId && actor.branchId !== branchId) {
+      throw new ForbiddenException('You can only manage inventory of your own branch');
+    }
+  }
+
+  /** Branch-scoped users are always limited to their own branch for reads. */
+  private resolveReadBranch(actor: InventoryActor | undefined, requested?: string): string | undefined {
+    if (this.isGlobal(actor) || !actor?.branchId) return requested;
+    if (requested && requested !== actor.branchId) {
+      throw new ForbiddenException('You can only view inventory of your own branch');
+    }
+    return actor.branchId;
+  }
 
   // ==================== ITEMS ====================
 
@@ -68,6 +97,10 @@ export class InventoryItemsService {
 
   async create(dto: SaveItemDto, actor?: InventoryActor) {
     const qty = dto.initial_quantity ?? 0;
+    if (qty > 0 && !dto.branch_id) {
+      throw new BadRequestException('branch_id is required when initial_quantity is greater than 0');
+    }
+    if (qty > 0) this.assertBranchAccess(actor, dto.branch_id as string);
 
     const sku = this.normalizeSku(dto.sku);
     await this.assertSkuFree(sku);
@@ -91,6 +124,7 @@ export class InventoryItemsService {
         if (qty > 0) {
           await this.applyMove(manager, {
             itemId: item.id,
+            branchId: dto.branch_id as string,
             type: StockMoveType.IN,
             quantity: qty,
             unitCost: dto.unit_cost ?? null,
@@ -103,19 +137,26 @@ export class InventoryItemsService {
       })
       .catch((e) => this.rethrowUnique(e, sku));
 
-    return this.findOne(itemId, actor);
+    return this.findOne(itemId, undefined, actor);
   }
 
   /**
-   * Paginated catalog with live quantities (single global stock pool).
+   * Paginated catalog with live quantities.
+   * quantity = stock in `branch_id` when filtered, otherwise summed over branches.
    */
-  async findAll(query: ListItemsQuery = {}, _actor?: InventoryActor) {
+  async findAll(query: ListItemsQuery = {}, actor?: InventoryActor) {
+    const branchId = this.resolveReadBranch(actor, query.branch_id);
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(200, Math.max(1, Number(query.limit) || 25));
 
     const qb = this.itemRepo
       .createQueryBuilder('item')
-      .leftJoin(StockLevel, 'sl', 'sl.item_id = item.id')
+      .leftJoin(
+        StockLevel,
+        'sl',
+        branchId ? 'sl.item_id = item.id AND sl.branch_id = :branchId' : 'sl.item_id = item.id',
+        { branchId },
+      )
       .select('item.id', 'id')
       .addSelect('COALESCE(SUM(sl.quantity), 0)', 'quantity')
       .groupBy('item.id');
@@ -162,17 +203,19 @@ export class InventoryItemsService {
       });
     }
 
-    return { data, total, page, limit };
+    return { data, total, page, limit, branch_id: branchId ?? null };
   }
 
-  async findOne(id: string, _actor?: InventoryActor) {
+  async findOne(id: string, branchId?: string, actor?: InventoryActor) {
     const item = await this.itemRepo.findOne({ where: { id } });
     if (!item) throw new NotFoundException(`Inventory item with ID ${id} not found`);
 
-    const stock = await this.stockRepo.find({ where: { item_id: id } });
+    const scoped = this.resolveReadBranch(actor, branchId);
+    const where: any = scoped ? { item_id: id, branch_id: scoped } : { item_id: id };
+    const stock = await this.stockRepo.find({ where, relations: ['branch'] });
     const moves = await this.moveRepo.find({
-      where: { item_id: id },
-      relations: ['creator'],
+      where,
+      relations: ['creator', 'branch'],
       order: { created_at: 'DESC' },
       take: 50,
     });
@@ -184,6 +227,8 @@ export class InventoryItemsService {
       sale_price: Number(item.sale_price),
       total_quantity,
       stock: stock.map((s) => ({
+        branch_id: s.branch_id,
+        branch_name: s.branch?.name ?? null,
         quantity: s.quantity,
         last_counted_at: s.last_counted_at,
       })),
@@ -254,28 +299,29 @@ export class InventoryItemsService {
 
   // ==================== STOCK MOVEMENTS ====================
 
-  private async ensureAndLockStock(manager: EntityManager, itemId: string) {
+  private async ensureAndLockStock(manager: EntityManager, itemId: string, branchId: string) {
     await manager.query(
-      'INSERT INTO stock_levels (item_id, quantity) VALUES ($1, 0) ON CONFLICT (item_id) DO NOTHING',
-      [itemId],
+      'INSERT INTO stock_levels (item_id, branch_id, quantity) VALUES ($1, $2, 0) ON CONFLICT (item_id, branch_id) DO NOTHING',
+      [itemId, branchId],
     );
     const stock = await manager.findOne(StockLevel, {
-      where: { item_id: itemId },
+      where: { item_id: itemId, branch_id: branchId },
       lock: { mode: 'pessimistic_write' },
     });
-    if (!stock) throw new NotFoundException('Stock record could not be created');
+    if (!stock) throw new NotFoundException('Stock record could not be created (check the branch id)');
     return stock;
   }
 
   /**
    * Single place that changes a stock balance. MUST run inside a transaction.
    * The stock row is locked FOR UPDATE, so concurrent moves on the same
-   * item are serialised and the balance can never go negative.
+   * item+branch are serialised and the balance can never go negative.
    */
   private async applyMove(
     manager: EntityManager,
     p: {
       itemId: string;
+      branchId: string;
       type: StockMoveType;
       quantity: number; // positive for every type except ADJUSTMENT (signed)
       unitCost?: number | null;
@@ -292,9 +338,9 @@ export class InventoryItemsService {
       throw new BadRequestException('Quantity must be positive');
     }
 
-    const stock = await this.ensureAndLockStock(manager, p.itemId);
+    const stock = await this.ensureAndLockStock(manager, p.itemId, p.branchId);
 
-    const increases = [StockMoveType.IN, StockMoveType.RETURN].includes(p.type);
+    const increases = [StockMoveType.IN, StockMoveType.RETURN, StockMoveType.TRANSFER_IN].includes(p.type);
     const delta = p.type === StockMoveType.ADJUSTMENT ? p.quantity : increases ? p.quantity : -p.quantity;
     const before = stock.quantity;
     const after = before + delta;
@@ -316,6 +362,7 @@ export class InventoryItemsService {
       StockMove,
       manager.create(StockMove, {
         item_id: p.itemId,
+        branch_id: p.branchId,
         type: p.type,
         quantity: p.quantity,
         unit_cost: p.unitCost ?? null,
@@ -340,10 +387,12 @@ export class InventoryItemsService {
 
   /** Goods receiving. Optionally refreshes the item's unit cost. */
   async receiveStock(itemId: string, dto: ReceiveStockDto, actor?: InventoryActor) {
+    this.assertBranchAccess(actor, dto.branch_id);
     await this.dataSource.transaction(async (manager) => {
       await this.requireItem(manager, itemId);
       await this.applyMove(manager, {
         itemId,
+        branchId: dto.branch_id,
         type: StockMoveType.IN,
         quantity: dto.quantity,
         unitCost: dto.unit_cost ?? null,
@@ -356,16 +405,18 @@ export class InventoryItemsService {
         await manager.update(InventoryItem, { id: itemId }, { unit_cost: dto.unit_cost });
       }
     });
-    return this.findOne(itemId, actor);
+    return this.findOne(itemId, dto.branch_id, actor);
   }
 
   /** Manual correction with mandatory reason. quantity is signed. */
   async adjustStock(itemId: string, dto: AdjustStockDto, actor?: InventoryActor) {
+    this.assertBranchAccess(actor, dto.branch_id);
     if (!dto.reason?.trim()) throw new BadRequestException('A reason is required for stock adjustments');
     await this.dataSource.transaction(async (manager) => {
       await this.requireItem(manager, itemId, true);
       await this.applyMove(manager, {
         itemId,
+        branchId: dto.branch_id,
         type: StockMoveType.ADJUSTMENT,
         quantity: dto.quantity,
         reason: dto.reason.trim(),
@@ -373,27 +424,55 @@ export class InventoryItemsService {
         userId: actor?.id,
       });
     });
-    return this.findOne(itemId, actor);
+    return this.findOne(itemId, dto.branch_id, actor);
+  }
+
+  /** Branch-to-branch transfer: both legs commit together or not at all. */
+  async transferStock(itemId: string, dto: TransferStockDto, actor?: InventoryActor) {
+    if (dto.from_branch_id === dto.to_branch_id) {
+      throw new BadRequestException('Source and destination branches must be different');
+    }
+    this.assertBranchAccess(actor, dto.from_branch_id);
+    const reason = dto.reason?.trim() || 'branch transfer';
+    await this.dataSource.transaction(async (manager) => {
+      await this.requireItem(manager, itemId);
+      // Lock rows in a fixed order (by branch id) so two opposite transfers cannot deadlock.
+      for (const b of [dto.from_branch_id, dto.to_branch_id].sort()) {
+        await this.ensureAndLockStock(manager, itemId, b);
+      }
+      await this.applyMove(manager, {
+        itemId, branchId: dto.from_branch_id, type: StockMoveType.TRANSFER_OUT,
+        quantity: dto.quantity, reason, referenceType: 'manual', userId: actor?.id,
+      });
+      await this.applyMove(manager, {
+        itemId, branchId: dto.to_branch_id, type: StockMoveType.TRANSFER_IN,
+        quantity: dto.quantity, reason, referenceType: 'manual', userId: actor?.id,
+      });
+    });
+    return this.findOne(itemId, undefined, actor);
   }
 
   async listMoves(
     filters: {
-      item_id?: string; type?: string; from?: string; to?: string; page?: number; limit?: number;
+      item_id?: string; branch_id?: string; type?: string; from?: string; to?: string; page?: number; limit?: number;
     },
-    _actor?: InventoryActor,
+    actor?: InventoryActor,
   ) {
+    const branchId = this.resolveReadBranch(actor, filters.branch_id);
     const page = Math.max(1, Number(filters.page) || 1);
     const limit = Math.min(200, Math.max(1, Number(filters.limit) || 50));
 
     const qb = this.moveRepo
       .createQueryBuilder('move')
       .leftJoinAndSelect('move.item', 'item')
+      .leftJoinAndSelect('move.branch', 'branch')
       .leftJoinAndSelect('move.creator', 'creator')
       .orderBy('move.created_at', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 
     if (filters.item_id) qb.andWhere('move.item_id = :i', { i: filters.item_id });
+    if (branchId) qb.andWhere('move.branch_id = :b', { b: branchId });
     if (filters.type) qb.andWhere('move.type = :t', { t: filters.type });
     if (filters.from) qb.andWhere('move.created_at >= :from', { from: filters.from });
     if (filters.to) qb.andWhere("move.created_at < (CAST(:to AS date) + INTERVAL '1 day')", { to: filters.to });
@@ -405,6 +484,7 @@ export class InventoryItemsService {
   // ==================== ISSUE TO STUDENTS ====================
 
   async issueToStudent(dto: IssueItemDto, actor?: InventoryActor) {
+    this.assertBranchAccess(actor, dto.branch_id);
     const quantity = dto.quantity ?? 1;
     if (!Number.isInteger(quantity) || quantity < 1) throw new BadRequestException('Quantity must be at least 1');
 
@@ -418,6 +498,7 @@ export class InventoryItemsService {
         manager.create(StudentItemIssue, {
           student_id: dto.student_id,
           item_id: item.id,
+          branch_id: dto.branch_id,
           quantity,
           cost: dto.cost ?? Number(item.sale_price ?? 0),
           created_by: actor?.id ?? null,
@@ -425,6 +506,7 @@ export class InventoryItemsService {
       );
       await this.applyMove(manager, {
         itemId: item.id,
+        branchId: dto.branch_id,
         type: StockMoveType.OUT,
         quantity,
         unitCost: Number(item.unit_cost ?? 0),
@@ -440,9 +522,10 @@ export class InventoryItemsService {
   }
 
   async listIssues(
-    filters: { student_id?: string; open_only?: boolean; page?: number; limit?: number },
-    _actor?: InventoryActor,
+    filters: { student_id?: string; branch_id?: string; open_only?: boolean; page?: number; limit?: number },
+    actor?: InventoryActor,
   ) {
+    const branchId = this.resolveReadBranch(actor, filters.branch_id);
     const page = Math.max(1, Number(filters.page) || 1);
     const limit = Math.min(200, Math.max(1, Number(filters.limit) || 50));
 
@@ -456,6 +539,7 @@ export class InventoryItemsService {
       .take(limit);
 
     if (filters.student_id) qb.andWhere('issue.student_id = :s', { s: filters.student_id });
+    if (branchId) qb.andWhere('issue.branch_id = :b', { b: branchId });
     if (filters.open_only) qb.andWhere('issue.returned_at IS NULL');
 
     const [rows, total] = await qb.getManyAndCount();
@@ -488,6 +572,7 @@ export class InventoryItemsService {
         lock: { mode: 'pessimistic_write' },
       });
       if (!issue) throw new NotFoundException(`Issue record with ID ${issueId} not found`);
+      this.assertBranchAccess(actor, issue.branch_id);
       if (issue.returned_at) throw new BadRequestException('This item has already been returned.');
 
       issue.returned_at = new Date();
@@ -497,6 +582,7 @@ export class InventoryItemsService {
       if (cond === ItemCondition.GOOD) {
         await this.applyMove(manager, {
           itemId: issue.item_id,
+          branchId: issue.branch_id,
           type: StockMoveType.RETURN,
           quantity: issue.quantity,
           reason: `returned by student ${issue.student_id}`,
@@ -512,17 +598,22 @@ export class InventoryItemsService {
 
   // ==================== REPORTS ====================
 
-  /** Active items at or below reorder level (SRS 4.12 low-stock alerts). */
-  async lowStockAlerts() {
+  /** Active items at or below reorder level, per branch (SRS 4.12 low-stock alerts). */
+  async lowStockAlerts(branchIdIn?: string, actor?: InventoryActor) {
+    const branchId = this.resolveReadBranch(actor, branchIdIn);
     const rows = await this.dataSource.query(
       `SELECT i.id AS item_id, i.name, i.sku, i.reorder_level,
+              b.id AS branch_id, b.name AS branch_name,
               COALESCE(sl.quantity, 0)::int AS quantity
          FROM inventory_items i
-         LEFT JOIN stock_levels sl ON sl.item_id = i.id
+         CROSS JOIN branches b
+         LEFT JOIN stock_levels sl ON sl.item_id = i.id AND sl.branch_id = b.id
         WHERE i.status = 'active'
+          AND ($1::uuid IS NULL OR b.id = $1::uuid)
           AND COALESCE(sl.quantity, 0) <= i.reorder_level
-          AND sl.id IS NOT NULL
+          AND ($1::uuid IS NOT NULL OR sl.id IS NOT NULL)
         ORDER BY (COALESCE(sl.quantity, 0) - i.reorder_level) ASC, i.name ASC`,
+      [branchId ?? null],
     );
     return rows.map((r: any) => ({
       ...r,
@@ -532,39 +623,51 @@ export class InventoryItemsService {
     }));
   }
 
-  /** Stock value at unit cost with per-item lines (SRS 4.12 valuation). */
-  async valuationReport() {
+  /** Stock value at unit cost, per branch with per-item lines (SRS 4.12 valuation). */
+  async valuationReport(branchIdIn?: string, actor?: InventoryActor) {
+    const branchId = this.resolveReadBranch(actor, branchIdIn);
     const lines = await this.dataSource.query(
-      `SELECT i.id AS item_id, i.name AS item_name, i.sku,
+      `SELECT b.id AS branch_id, b.name AS branch_name,
+              i.id AS item_id, i.name AS item_name, i.sku,
               sl.quantity::int AS quantity, i.unit_cost::float8 AS unit_cost,
               (sl.quantity * i.unit_cost)::float8 AS total_cost
          FROM stock_levels sl
          JOIN inventory_items i ON i.id = sl.item_id
-        WHERE sl.quantity > 0
-        ORDER BY i.name`,
+         JOIN branches b ON b.id = sl.branch_id
+        WHERE sl.quantity > 0 AND ($1::uuid IS NULL OR sl.branch_id = $1::uuid)
+        ORDER BY b.name, i.name`,
+      [branchId ?? null],
     );
-    const total_quantity = lines.reduce((s: number, l: any) => s + Number(l.quantity), 0);
-    const total_cost = lines.reduce((s: number, l: any) => s + Number(l.total_cost), 0);
-    return {
-      total_quantity,
-      grand_total_cost: Math.round(total_cost * 100) / 100,
-      items: lines.map((l: any) => ({ ...l, total_cost: Math.round(Number(l.total_cost) * 100) / 100 })),
-    };
+    const byBranch = new Map<string, any>();
+    for (const l of lines) {
+      const b = byBranch.get(l.branch_id) ?? {
+        branch_id: l.branch_id, branch_name: l.branch_name, total_quantity: 0, total_cost: 0, items: [],
+      };
+      b.total_quantity += Number(l.quantity);
+      b.total_cost += Number(l.total_cost);
+      b.items.push(l);
+      byBranch.set(l.branch_id, b);
+    }
+    const branches = [...byBranch.values()].map((b) => ({ ...b, total_cost: Math.round(b.total_cost * 100) / 100 }));
+    const grand_total_cost = Math.round(branches.reduce((s, b) => s + b.total_cost, 0) * 100) / 100;
+    return { branches, grand_total_cost };
   }
 
   /** Movement summary per item and type over a date range. */
-  async movementReport(filters: { from?: string; to?: string }) {
+  async movementReport(filters: { branch_id?: string; from?: string; to?: string }, actor?: InventoryActor) {
+    const branchId = this.resolveReadBranch(actor, filters.branch_id);
     return this.dataSource.query(
       `SELECT i.id AS item_id, i.name AS item_name, i.sku, m.type,
               COUNT(*)::int AS moves,
               SUM(m.quantity)::int AS total_quantity
          FROM stock_moves m
          JOIN inventory_items i ON i.id = m.item_id
-        WHERE ($1::date IS NULL OR m.created_at >= $1::date)
-          AND ($2::date IS NULL OR m.created_at < ($2::date + INTERVAL '1 day'))
+        WHERE ($1::uuid IS NULL OR m.branch_id = $1::uuid)
+          AND ($2::date IS NULL OR m.created_at >= $2::date)
+          AND ($3::date IS NULL OR m.created_at < ($3::date + INTERVAL '1 day'))
         GROUP BY i.id, i.name, i.sku, m.type
         ORDER BY i.name, m.type`,
-      [filters.from ?? null, filters.to ?? null],
+      [branchId ?? null, filters.from ?? null, filters.to ?? null],
     );
   }
 }

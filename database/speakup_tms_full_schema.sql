@@ -3155,7 +3155,7 @@ INSERT INTO settings (key, value, "group", description) VALUES
 ('max_chat_file_mb', '5', 'chat', 'Maximum chat file attachment size'),
 ('enable_email_notifications', 'true', 'notifications', 'Master switch for email notifications'),
 ('easykash_sandbox_mode', 'true', 'integrations', 'EasyKash sandbox mode for testing'),
-('zoom_auto_create', 'true', 'integrations', 'Auto-create Zoom meetings for online sessions'),
+('zoom_auto_create', 'false', 'integrations', 'Zoom auto-create disabled — links entered manually per group'),
 ('onmeet_auto_create', 'true', 'integrations', 'Auto-create OnMeet meetings for online sessions')
 ON CONFLICT (key) DO NOTHING;
 

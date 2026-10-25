@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { InventoryItem } from './inventory-item.entity';
+import { Branch } from './branch.entity';
 import { User } from './user.entity';
 import { StockMoveType } from '../../common/enums/stock-move-type.enum';
 
@@ -14,6 +15,13 @@ export class StockMove {
   @ManyToOne(() => InventoryItem, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'item_id' })
   item: InventoryItem;
+
+  @Column({ type: 'uuid' })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   @Column({ type: 'enum', enum: StockMoveType, enumName: 'stock_move_type' })
   type: StockMoveType;

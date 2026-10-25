@@ -25,25 +25,27 @@ export class ReportsService {
     @InjectRepository(Enrollment) private enrollmentRepo: Repository<Enrollment>,
   ) {}
 
-  async salesFunnel(from: Date, to: Date) {
+  async salesFunnel(branchId: string | null, from: Date, to: Date) {
     const qb = this.leadRepo.createQueryBuilder('l')
       .select('l.status', 'status')
       .addSelect('COUNT(*)', 'count')
       .where('l.created_at BETWEEN :from AND :to', { from, to });
+    if (branchId) qb.andWhere('l.branch_id = :bid', { bid: branchId });
     return qb.groupBy('l.status').getRawMany();
   }
 
-  async leadSourceRoi(from: Date, to: Date) {
+  async leadSourceRoi(branchId: string | null, from: Date, to: Date) {
     const qb = this.leadRepo.createQueryBuilder('l')
       .select('l.source', 'source')
       .addSelect('COUNT(*)', 'total_leads')
       .addSelect('SUM(CASE WHEN l.status = :enrolled THEN 1 ELSE 0 END)', 'conversions')
       .setParameter('enrolled', 'enrolled')
       .where('l.created_at BETWEEN :from AND :to', { from, to });
+    if (branchId) qb.andWhere('l.branch_id = :bid', { bid: branchId });
     return qb.groupBy('l.source').getRawMany();
   }
 
-  async groupFillRate() {
+  async groupFillRate(branchId: string | null) {
     const qb = this.groupRepo.createQueryBuilder('g')
       .select('g.id', 'group_id')
       .addSelect('g.name', 'group_name')
@@ -51,10 +53,11 @@ export class ReportsService {
       .addSelect('COUNT(gs.id)', 'enrolled')
       .leftJoin('g.group_students', 'gs', 'gs.status = :active', { active: 'active' })
       .groupBy('g.id');
+    if (branchId) qb.andWhere('g.branch_id = :bid', { bid: branchId });
     return qb.getRawMany();
   }
 
-  async teacherUtilization(month: string) {
+  async teacherUtilization(branchId: string | null, month: string) {
     const qb = this.sessionRepo.createQueryBuilder('s')
       .select('u.id', 'teacher_id')
       .addSelect("u.first_name || ' ' || u.last_name", 'teacher_name')
@@ -63,6 +66,7 @@ export class ReportsService {
       .innerJoin('s.group', 'g')
       .innerJoin('g.teacher', 'u')
       .where("TO_CHAR(s.date, 'YYYY-MM') = :month", { month });
+    if (branchId) qb.andWhere('g.branch_id = :bid', { bid: branchId });
     return qb.groupBy('u.id').addGroupBy('u.first_name').addGroupBy('u.last_name').getRawMany();
   }
 
@@ -79,16 +83,19 @@ export class ReportsService {
     return { enrollments, attendance };
   }
 
-  async revenueByPeriod(from: Date, to: Date) {
+  async revenueByPeriod(branchId: string | null, from: Date, to: Date) {
     const qb = this.paymentRepo.createQueryBuilder('p')
       .select("TO_CHAR(p.paid_at, 'YYYY-MM')", 'period')
       .addSelect('SUM(p.amount)', 'total')
       .where('p.status = :status', { status: 'completed' })
       .andWhere('p.paid_at BETWEEN :from AND :to', { from, to });
+    if (branchId) {
+      qb.innerJoin('p.invoice', 'i').andWhere('i.branch_id = :bid', { bid: branchId });
+    }
     return qb.groupBy("TO_CHAR(p.paid_at, 'YYYY-MM')").orderBy('period', 'DESC').getRawMany();
   }
 
-  async outstandingPayments() {
+  async outstandingPayments(branchId: string | null) {
     const qb = this.invoiceRepo.createQueryBuilder('i')
       .select('i.id', 'invoice_id')
       .addSelect('i.invoice_number', 'invoice_number')
@@ -98,6 +105,7 @@ export class ReportsService {
       .innerJoin('i.student', 's')
       .innerJoin('s.user', 'u')
       .where('i.status IN (:...statuses)', { statuses: ['unpaid', 'partial', 'overdue'] });
+    if (branchId) qb.andWhere('i.branch_id = :bid', { bid: branchId });
     return qb.orderBy('i.due_date', 'ASC').getRawMany();
   }
 

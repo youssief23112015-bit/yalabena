@@ -15,7 +15,7 @@ export async function seedSettings(dataSource: DataSource) {
     { key: 'max_chat_file_mb', value: '5', group: 'chat', description: 'Maximum chat file attachment size' },
     { key: 'enable_email_notifications', value: 'true', group: 'notifications', description: 'Master switch for email notifications' },
     { key: 'easykash_sandbox_mode', value: 'true', group: 'integrations', description: 'EasyKash sandbox mode for testing' },
-    { key: 'zoom_auto_create', value: 'true', group: 'integrations', description: 'Auto-create Zoom meetings for online sessions' },
+    { key: 'zoom_auto_create', value: 'false', group: 'integrations', description: 'Zoom auto-create disabled — links entered manually per group' },
     { key: 'onmeet_auto_create', value: 'true', group: 'integrations', description: 'Auto-create OnMeet meetings for online sessions' },
   ];
 

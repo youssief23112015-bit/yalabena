@@ -164,12 +164,10 @@ export class ChatService {
       if (gs.student?.user_id && !seats.has(gs.student.user_id)) seats.set(gs.student.user_id, 'member');
     }
 
-    // enrollments.status is a PG enum whose labels are LOWERCASE only —
-    // binding 'ACTIVE' (or In(['active','ACTIVE'])) makes PostgreSQL raise
-    // `invalid input value for enum enrollment_status: "ACTIVE"` when it
-    // coerces the parameter. Query with the typed enum ('active') only.
+    // enrollments.service writes 'ACTIVE' while EnrollmentStatus.ACTIVE is
+    // 'active' — match both so eligibility never silently fails.
     const enrollments = await this.enrollmentRepo.find({
-      where: { group_id: groupId, status: EnrollmentStatus.ACTIVE },
+      where: { group_id: groupId, status: In(['active', 'ACTIVE'] as any) },
       relations: ['student'],
     });
     for (const e of enrollments) {
@@ -755,9 +753,9 @@ export class ChatService {
     });
     if (groupStudent?.student?.user_id === userId) return true;
 
-    // Enrolled via enrollments (enum labels are lowercase — see syncGroupChatRoom)
+    // Enrolled via enrollments (active — both casings, see syncGroupChatRoom)
     const enrollment = await this.enrollmentRepo.findOne({
-      where: { group_id: group.id, status: EnrollmentStatus.ACTIVE, student: { user_id: userId } },
+      where: { group_id: group.id, status: In(['active', 'ACTIVE'] as any), student: { user_id: userId } },
       relations: ['student'],
     });
     return enrollment?.student?.user_id === userId;
@@ -809,7 +807,7 @@ export class ChatService {
     for (const gs of groupStudents) if (gs.group_id) ids.add(gs.group_id);
 
     const enrollments = await this.enrollmentRepo.find({
-      where: { status: EnrollmentStatus.ACTIVE, student: { user_id: userId } },
+      where: { status: In(['active'] as any), student: { user_id: userId } },
       relations: ['student'],
     });
     for (const e of enrollments) if (e.group_id) ids.add(e.group_id);

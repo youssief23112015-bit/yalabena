@@ -25,6 +25,8 @@ describe('AuthService', () => {
   let roleRepo: any;
   let studentRepo: any;
   let jwtService: any;
+  let emailService: any;
+  let config: any;
 
   const baseUser = {
     id: 'u-1',
@@ -33,6 +35,7 @@ describe('AuthService', () => {
     password_hash: 'stored-hash',
     first_name: 'Ahmed',
     last_name: 'Ali',
+    branch_id: 'b-1',
     language: 'ar',
   };
 
@@ -52,6 +55,8 @@ describe('AuthService', () => {
       save: jest.fn(async (x: any) => x),
     };
     jwtService = { sign: jest.fn(() => 'signed-token'), verify: jest.fn() };
+    emailService = { send: jest.fn(async () => undefined) };
+    config = { get: jest.fn((key: string) => (key === 'APP_URL' ? 'http://localhost' : undefined)) };
 
     // register() runs user + role + students insert inside a transaction.
     const em = {
@@ -64,7 +69,7 @@ describe('AuthService', () => {
     };
     userRepo.manager = { transaction: jest.fn(async (cb: any) => cb(em)) };
 
-    service = new AuthService(jwtService, userRepo, userRoleRepo, roleRepo);
+    service = new AuthService(jwtService, userRepo, userRoleRepo, roleRepo, emailService, config);
   });
 
   describe('register', () => {

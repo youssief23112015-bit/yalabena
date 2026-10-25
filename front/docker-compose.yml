@@ -6,11 +6,14 @@ services:
     container_name: speakup-frontend
     ports:
       - "80:80"
-    depends_on:
-      - app
+    # Join the network created by the root docker-compose.yml (project directory
+    # name = yalabena-main) so nginx can resolve the speakup-api alias used in
+    # proxy_pass. `app` cannot be referenced here: this file is a standalone
+    # compose project and does not define an `app` service.
     networks:
-      - speakup-network
+      - app-network
 
 networks:
-  speakup-network:
+  app-network:
     external: true
+    name: yalabena-main_default

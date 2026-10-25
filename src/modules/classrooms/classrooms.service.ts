@@ -15,13 +15,21 @@ export class ClassroomsService {
     return this.repo.save(classroom);
   }
 
-  async findAll(): Promise<Classroom[]> {
-    return this.repo.find();
+  async findAll(branchId?: string): Promise<Classroom[]> {
+    const query = this.repo.createQueryBuilder('classroom')
+      .leftJoinAndSelect('classroom.branch', 'branch');
+
+    if (branchId) {
+      query.andWhere('branch.id = :branchId', { branchId });
+    }
+
+    return query.getMany();
   }
 
   async findOne(id: string): Promise<Classroom> {
     const classroom = await this.repo.findOne({
       where: { id },
+      relations: ['branch'],
     });
 
     if (!classroom) {

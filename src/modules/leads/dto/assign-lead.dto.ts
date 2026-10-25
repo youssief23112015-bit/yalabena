@@ -5,4 +5,8 @@ export class AssignLeadDto {
   @IsOptional()
   @IsUUID()
   assigned_to?: string;
+
+  @IsOptional()
+  @IsUUID()
+  branch_id?: string;
 }

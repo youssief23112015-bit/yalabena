@@ -1,8 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { InventoryItem } from './inventory-item.entity';
+import { Branch } from './branch.entity';
 
 @Entity('stock_levels')
-@Unique(['item_id'])
+@Unique(['item_id', 'branch_id'])
 export class StockLevel {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -13,6 +14,13 @@ export class StockLevel {
   @ManyToOne(() => InventoryItem, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'item_id' })
   item: InventoryItem;
+
+  @Column({ type: 'uuid' })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   @Column({ type: 'int', default: 0 })
   quantity: number;

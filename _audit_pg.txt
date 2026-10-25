@@ -1,0 +1,9 @@
+﻿PSQL NOT FOUND
+28.5.1
+
+Status   Name               DisplayName                           
+------   ----               -----------                           
+Running  postgresql-x64-18  postgresql-x64-18 - PostgreSQL Serv...
+
+
+DONE

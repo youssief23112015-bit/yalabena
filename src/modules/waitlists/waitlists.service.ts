@@ -21,14 +21,16 @@ export class WaitlistsService {
     return this.repo.save(entry);
   }
 
-  async findAll(filters: { level?: string; status?: string; courseId?: string }): Promise<Waitlist[]> {
+  async findAll(filters: { branchId?: string; level?: string; status?: string; courseId?: string }): Promise<Waitlist[]> {
     const query = this.repo.createQueryBuilder('waitlist')
       .leftJoinAndSelect('waitlist.student', 'student')
       .leftJoinAndSelect('student.user', 'user')
+      .leftJoinAndSelect('waitlist.branch', 'branch')
       .leftJoinAndSelect('waitlist.course', 'course')
       .orderBy('waitlist.priority', 'DESC')
       .addOrderBy('waitlist.created_at', 'ASC');
 
+    if (filters.branchId) query.andWhere('waitlist.branch_id = :branchId', { branchId: filters.branchId });
     if (filters.level) query.andWhere('waitlist.level = :level', { level: filters.level });
     if (filters.status) query.andWhere('waitlist.status = :status', { status: filters.status });
     if (filters.courseId) query.andWhere('waitlist.course_id = :courseId', { courseId: filters.courseId });
@@ -39,7 +41,7 @@ export class WaitlistsService {
   async findOne(id: string): Promise<Waitlist> {
     const entry = await this.repo.findOne({
       where: { id },
-      relations: ['student', 'student.user', 'course'],
+      relations: ['student', 'student.user', 'branch', 'course'],
     });
     if (!entry) {
       throw new NotFoundException(`Waitlist entry with ID ${id} not found`);
@@ -102,9 +104,11 @@ export class WaitlistsService {
   async thresholdReport(threshold = 8) {
     const rows = await this.repo.createQueryBuilder('waitlist')
       .select('waitlist.level', 'level')
+      .addSelect('waitlist.branch_id', 'branch_id')
       .addSelect('COUNT(waitlist.id)', 'waiting')
       .where("waitlist.status = 'waiting'")
       .groupBy('waitlist.level')
+      .addGroupBy('waitlist.branch_id')
       .having('COUNT(waitlist.id) >= :threshold', { threshold })
       .getRawMany();
     return { threshold, ready_to_open: rows.map((r) => ({ ...r, waiting: Number(r.waiting) })) };

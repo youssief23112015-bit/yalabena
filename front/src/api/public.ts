@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { Course } from "@/types";
+import type { Course, Branch } from "@/types";
 
 /* ── Public website API (no auth required) ─────────────────────────── */
 
@@ -10,6 +10,7 @@ export interface PublicLeadInput {
   email?: string;
   level_interest?: string;
   notes?: string;
+  branch_id?: string;
 }
 
 export interface PublicPlacementBookingInput {
@@ -23,6 +24,8 @@ export interface PublicPlacementBookingInput {
 
 export interface PublicTestSlot {
   id: string;
+  branch_id: string;
+  branch?: Branch;
   start_time: string;
   end_time: string;
   mode: string;
@@ -37,6 +40,7 @@ export interface PublicRegistrationInput {
   phone: string;
   email?: string;
   course_id: string;
+  branch_id: string;
   level_interest?: string;
 }
 
@@ -79,6 +83,13 @@ export async function fetchPublicCourse(id: string): Promise<Course> {
   return data;
 }
 
+/* ── Branches ────────────────────────────────────────────────────────── */
+
+export async function fetchPublicBranches(): Promise<Branch[]> {
+  const { data } = await apiClient.get<Branch[]>("/branches");
+  return Array.isArray(data) ? data : [];
+}
+
 /* ── Lead capture ────────────────────────────────────────────────────── */
 
 export async function capturePublicLead(input: PublicLeadInput): Promise<{ id: string }> {
@@ -88,8 +99,10 @@ export async function capturePublicLead(input: PublicLeadInput): Promise<{ id: s
 
 /* ── Placement test booking ──────────────────────────────────────────── */
 
-export async function fetchPublicTestSlots(): Promise<PublicTestSlot[]> {
-  const { data } = await apiClient.get<PublicTestSlot[]>("/public/placement-slots");
+export async function fetchPublicTestSlots(branchId?: string): Promise<PublicTestSlot[]> {
+  const { data } = await apiClient.get<PublicTestSlot[]>("/public/placement-slots", {
+    params: branchId ? { branch_id: branchId } : {},
+  });
   return Array.isArray(data) ? data : [];
 }
 
@@ -112,6 +125,7 @@ export interface InstantBookingInput {
   name: string;
   phone: string;
   email?: string;
+  branch_id?: string;
   /** Course-context target level (e.g. the level of the catalog course). */
   level_interest?: string;
 }

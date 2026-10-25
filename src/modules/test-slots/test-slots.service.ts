@@ -14,7 +14,7 @@ export class TestSlotsService {
 
   async findAll(): Promise<TestSlot[]> {
     return this.testSlotRepository.find({
-      relations: ['examiner'],
+      relations: ['branch', 'examiner'],
       order: { date: 'ASC', start_time: 'ASC' },
     });
   }
@@ -22,7 +22,7 @@ export class TestSlotsService {
   async findOne(id: string): Promise<TestSlot> {
     const slot = await this.testSlotRepository.findOne({
       where: { id },
-      relations: ['examiner'],
+      relations: ['branch', 'examiner'],
     });
     if (!slot) {
       throw new NotFoundException(`Test slot with ID ${id} not found`);

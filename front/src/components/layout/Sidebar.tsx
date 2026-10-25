@@ -9,6 +9,7 @@ import {
   BookOpen,
   CalendarDays,
   Clock,
+  Building2,
   UserCog,
   ShieldCheck,
   ClipboardCheck,
@@ -47,29 +48,30 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { to: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard, roles: [] },
-  { to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "sales"] },
-  { to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "sales", "finance", "academic", "teacher"] },
-  { to: "/courses", label: "nav.courses", icon: BookOpen, roles: ["super_admin", "academic", "teacher"] },
-  { to: "/groups", label: "nav.groups", icon: CalendarDays, roles: ["super_admin", "academic", "teacher"] },
-  { to: "/sessions", label: "nav.sessions", icon: Clock, roles: ["super_admin", "academic", "teacher"] },
-  { to: "/attendance", label: "nav.attendance", icon: ClipboardCheck, roles: ["super_admin", "academic", "teacher"] },
-  { to: "/placement-tests", label: "nav.placementTests", icon: BookMarked, roles: ["super_admin", "sales", "academic"] },
-  { to: "/test-slots", label: "nav.testSlots", icon: Calendar, roles: ["super_admin", "academic"] },
-  { to: "/waitlists", label: "nav.waitlists", icon: Hourglass, roles: ["super_admin", "sales", "academic"] },
-  { to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "sales", "finance", "academic"] },
-  { to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance"] },
-  { to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "academic", "finance", "teacher"] },
+  { to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "branch_manager", "sales"] },
+  { to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "branch_manager", "sales", "finance", "academic", "teacher"] },
+  { to: "/courses", label: "nav.courses", icon: BookOpen, roles: ["super_admin", "branch_manager", "academic", "teacher"] },
+  { to: "/groups", label: "nav.groups", icon: CalendarDays, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+  { to: "/sessions", label: "nav.sessions", icon: Clock, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+  { to: "/attendance", label: "nav.attendance", icon: ClipboardCheck, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+  { to: "/placement-tests", label: "nav.placementTests", icon: BookMarked, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+  { to: "/test-slots", label: "nav.testSlots", icon: Calendar, roles: ["super_admin", "branch_manager", "academic"] },
+  { to: "/waitlists", label: "nav.waitlists", icon: Hourglass, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+  { to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "branch_manager", "sales", "finance", "academic"] },
+  { to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance", "branch_manager"] },
+  { to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "branch_manager", "academic", "finance", "teacher"] },
   { to: "/my-certificates", label: "nav.myCertificates", icon: Award, roles: ["student"] },
   { to: "/lms", label: "nav.lms", icon: BookMarked, roles: ["super_admin", "academic", "teacher", "student"] },
   { to: "/instructor/question-bank", label: "nav.questionBank", icon: HelpCircle, roles: ["academic", "teacher"] },
-  { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "teacher", "finance"] },
-  { to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "academic", "teacher", "sales"] },
-  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "teacher", "sales", "finance"] },
-  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "academic", "teacher", "student", "moderator"] },
-  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "sales", "academic", "finance", "hr", "teacher"] },
-  { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "sales", "finance", "auditor"] },
+  { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "branch_manager", "teacher", "finance"] },
+  { to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "branch_manager", "academic", "teacher", "sales"] },
+  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance"] },
+  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "branch_manager", "academic", "teacher", "student", "moderator"] },
+  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
+  { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance", "auditor"] },
   { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] },
-  { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "hr"] },
+  { to: "/branches", label: "nav.branches", icon: Building2, roles: ["super_admin", "branch_manager"] },
+  { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
   { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
   { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] },
   { to: "/security", label: "nav.security", icon: ShieldHalf, roles: ["super_admin"] },
@@ -92,7 +94,7 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
    */
   const resolveTarget = (to: string): string => {
     if (to !== "/hr") return to;
-    if (roles.some((r) => ["super_admin", "hr"].includes(r))) return "/hr";
+    if (roles.some((r) => ["super_admin", "hr", "branch_manager"].includes(r))) return "/hr";
     if (roles.includes("teacher")) return "/hr/my";
     if (roles.includes("finance")) return "/hr/payroll";
     return "/hr";

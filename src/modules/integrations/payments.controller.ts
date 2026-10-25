@@ -12,7 +12,11 @@ import { Repository } from 'typeorm';
 import { Invoice } from '../../shared/entities/invoice.entity';
 import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser, isSuperAdmin } from '../../common/utils/auth-user';
+import {
+  AuthUser,
+  isSuperAdmin,
+  userBranchId,
+} from '../../common/utils/branch-scope';
 import { EasyKashService } from './easykash.service';
 import { EasyKashCheckoutDto } from './dto/easykash-checkout.dto';
 
@@ -48,13 +52,19 @@ export class PaymentsController {
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
 
-    // Ownership validation before touching the gateway.
+    // Ownership / branch validation before touching the gateway.
     const callerId = user.userId ?? user.id;
     const isStudentRole = (user.roles ?? []).includes('student');
     if (isStudentRole && !isSuperAdmin(user)) {
       // Students may only check out their OWN invoices.
       if (invoice.student?.user_id !== callerId) {
         throw new ForbiddenException('You can only pay your own invoices');
+      }
+    } else if (!isSuperAdmin(user)) {
+      // Staff are locked to their own branch.
+      const branch = userBranchId(user);
+      if (!branch || branch !== invoice.branch_id) {
+        throw new ForbiddenException('Invoice is outside your branch');
       }
     }
 

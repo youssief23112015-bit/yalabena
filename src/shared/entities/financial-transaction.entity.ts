@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Branch } from './branch.entity';
 import { Invoice } from './invoice.entity';
 import { Payment } from './payment.entity';
 import { Refund } from './refund.entity';
@@ -10,6 +11,13 @@ import { TransactionDirection } from '../../common/enums/transaction-direction.e
 export class FinancialTransaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   @Column({ type: 'uuid', nullable: true })
   invoice_id: string;

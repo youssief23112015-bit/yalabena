@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { User } from './user.entity';
+import { Branch } from './branch.entity';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
 import { LeadSource } from '../../common/enums/lead-source.enum';
 import { LeadActivity } from './lead-activity.entity';
@@ -52,6 +53,13 @@ export class Lead {
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'assigned_to' })
   assigned_agent: User;
+
+  @Column({ type: 'uuid', nullable: true })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   @Column({ type: 'uuid', nullable: true })
   converted_to_student_id: string;

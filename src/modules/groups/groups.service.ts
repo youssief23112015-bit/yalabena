@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Group } from '../../shared/entities/group.entity';
 import { GroupSchedule } from '../../shared/entities/group-schedule.entity';
+import { Session } from '../../shared/entities/session.entity';
 import { User } from '../../shared/entities/user.entity';
 import { Student } from '../../shared/entities/student.entity';
 import { GroupMode } from '../../common/enums/group-mode.enum';
@@ -18,7 +19,7 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { AssignTeacherDto } from './dto/assign-teacher.dto';
 import { AddStudentDto } from './dto/add-student.dto';
-import { AuthUser } from '../../common/utils/auth-user';
+import { AuthUser, assertBranchAccess } from '../../common/utils/branch-scope';
 import { EnrollmentsService } from '../enrollments/enrollments.service';
 import { ChatService } from '../chat/chat.service';
 
@@ -64,6 +65,8 @@ export class GroupsService {
     private readonly repo: Repository<Group>,
     @InjectRepository(GroupSchedule)
     private readonly scheduleRepo: Repository<GroupSchedule>,
+    @InjectRepository(Session)
+    private readonly sessionRepo: Repository<Session>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     @InjectRepository(Student)
@@ -90,6 +93,7 @@ export class GroupsService {
     const entityData: Partial<Group> = {
       name: dto.name,
       course_id: dto.courseId,
+      branch_id: dto.branchId,
       teacher_id: dto.teacherId,
       substitute_teacher_id: dto.substitute_teacher_id || null,
       capacity: dto.capacity,
@@ -97,6 +101,10 @@ export class GroupsService {
       start_date: new Date(dto.start_date),
       end_date: new Date(dto.end_date),
       status: dto.status ? (dto.status as GroupStatus) : GroupStatus.UPCOMING,
+      zoom_link: dto.zoom_link || null,
+      onmeet_link: dto.onmeet_link || null,
+      zoom_meeting_id: dto.zoom_meeting_id || null,
+      onmeet_meeting_id: dto.onmeet_meeting_id || null,
     };
 
     const group = this.repo.create(entityData);
@@ -105,11 +113,16 @@ export class GroupsService {
     return saved;
   }
 
-  async findAll(filters: { courseId?: string }): Promise<Group[]> {
+  async findAll(filters: { branchId?: string; courseId?: string }): Promise<Group[]> {
     const query = this.repo.createQueryBuilder('group')
       .leftJoinAndSelect('group.course', 'course')
+      .leftJoinAndSelect('group.branch', 'branch')
       .leftJoinAndSelect('group.teacher', 'teacher')
       .leftJoinAndSelect('group.substitute_teacher', 'substituteTeacher');
+
+    if (filters.branchId) {
+      query.andWhere('branch.id = :branchId', { branchId: filters.branchId });
+    }
 
     if (filters.courseId) {
       query.andWhere('course.id = :courseId', { courseId: filters.courseId });
@@ -126,7 +139,7 @@ export class GroupsService {
   async findOne(id: string): Promise<Group & { students: Student[]; schedule: GroupSchedule[]; student_count: number }> {
     const group = await this.repo.findOne({
       where: { id },
-      relations: ['course', 'teacher', 'substitute_teacher', 'schedules'],
+      relations: ['course', 'branch', 'teacher', 'substitute_teacher', 'schedules'],
     });
 
     if (!group) {
@@ -189,8 +202,14 @@ export class GroupsService {
   async update(id: string, dto: UpdateGroupDto): Promise<Group> {
     const group = await this.findOne(id);
 
+    // Snapshot the fixed meeting URL BEFORE the patch so we can keep the
+    // group's generated sessions consistent with it (see below).
+    const previousZoomLink = group.zoom_link ?? null;
+    const previousZoomMeetingId = group.zoom_meeting_id ?? null;
+
     if (dto.name !== undefined) group.name = dto.name;
     if (dto.courseId !== undefined) group.course_id = dto.courseId;
+    if (dto.branchId !== undefined) group.branch_id = dto.branchId;
     if (dto.teacherId !== undefined) group.teacher_id = dto.teacherId;
     if (dto.substitute_teacher_id !== undefined) group.substitute_teacher_id = dto.substitute_teacher_id || null;
     if (dto.capacity !== undefined) group.capacity = dto.capacity;
@@ -198,8 +217,106 @@ export class GroupsService {
     if (dto.start_date !== undefined) group.start_date = new Date(dto.start_date);
     if (dto.end_date !== undefined) group.end_date = new Date(dto.end_date);
     if (dto.status !== undefined) group.status = dto.status as GroupStatus;
+    // Fixed per-group meeting URLs (shared by every session of the group).
+    if (dto.zoom_link !== undefined) group.zoom_link = dto.zoom_link || null;
+    if (dto.onmeet_link !== undefined) group.onmeet_link = dto.onmeet_link || null;
+    if (dto.zoom_meeting_id !== undefined) group.zoom_meeting_id = dto.zoom_meeting_id || null;
+    if (dto.onmeet_meeting_id !== undefined) group.onmeet_meeting_id = dto.onmeet_meeting_id || null;
+
+    // ── Q5: PUT /groups/:id conflict re-validation ────────────────────
+    // When the teacher or the date range changes, ensure existing sessions
+    // do not conflict with other live groups and that the range still covers
+    // any already-generated sessions.
+    const teacherChanged = dto.teacherId !== undefined && dto.teacherId !== group.teacher_id;
+    const datesChanged = (dto.start_date !== undefined || dto.end_date !== undefined);
+    if (teacherChanged || datesChanged) {
+      const newTeacherId = teacherChanged ? dto.teacherId! : group.teacher_id;
+      const newStart = dto.start_date !== undefined ? new Date(dto.start_date) : group.start_date;
+      const newEnd = dto.end_date !== undefined ? new Date(dto.end_date) : group.end_date;
+
+      // Existing sessions of THIS group must fall within the new date range.
+      const outOfRange = await this.sessionRepo
+        .createQueryBuilder('s')
+        .where('s.group_id = :gid', { gid: group.id })
+        .andWhere('s.cancelled_at IS NULL')
+        .andWhere('(s.date < :start OR s.date > :end)', {
+          start: newStart.toISOString().slice(0, 10),
+          end: newEnd.toISOString().slice(0, 10),
+        })
+        .getCount();
+      if (outOfRange > 0) {
+        throw new ConflictException(
+          `Changing the group dates would leave ${outOfRange} existing session(s) outside the new start/end range.`,
+        );
+      }
+
+      // Teacher overlap: the new teacher must not already teach another live
+      // group at the same time as this group's existing sessions.
+      if (teacherChanged) {
+        const overlapping = await this.sessionRepo
+          .createQueryBuilder('s')
+          .leftJoinAndSelect('s.group', 'g')
+          .where('s.cancelled_at IS NULL')
+          .andWhere('g.teacher_id = :tid', { tid: newTeacherId })
+          .andWhere('g.id != :gid', { gid: group.id })
+          .andWhere('g.status IN (:...statuses)', {
+            statuses: [GroupStatus.UPCOMING, GroupStatus.ACTIVE],
+          })
+          .getMany();
+        const groupSessions = await this.sessionRepo.find({
+          where: { group_id: group.id, cancelled_at: null },
+        });
+        const conflicts: string[] = [];
+        for (const gs of groupSessions) {
+          for (const os of overlapping) {
+            if (String(gs.date) !== String(os.date)) continue;
+            const gsStart = toMinutes(gs.start_time);
+            const gsEnd = toMinutes(gs.end_time);
+            const osStart = toMinutes(os.start_time);
+            const osEnd = toMinutes(os.end_time);
+            if (gsStart < osEnd && osStart < gsEnd) {
+              conflicts.push(
+                `Teacher already teaches "${os.group?.name ?? 'another group'}" on ${gs.date} from ${gs.start_time} to ${gs.end_time}`,
+              );
+              break;
+            }
+          }
+        }
+        if (conflicts.length > 0) {
+          throw new ConflictException({
+            message: 'Teacher change conflicts with existing sessions.',
+            conflicts,
+          });
+        }
+      }
+    }
 
     const saved = await this.repo.save(group);
+
+    // The group's meeting URL is FIXED per group (requirement: every
+    // generated Session resolves to the Group's link). When it changes,
+    // keep already-generated FUTURE sessions consistent: only rows still
+    // carrying the OLD group link (auto-generated copies) are updated —
+    // per-session custom links, past sessions and cancelled sessions are
+    // never touched. Sessions with no link keep the read-time fallback,
+    // which already resolves to the CURRENT group link.
+    if (
+      dto.zoom_link !== undefined &&
+      ((previousZoomLink ?? null) !== (saved.zoom_link ?? null) ||
+        (dto.zoom_meeting_id !== undefined && (previousZoomMeetingId ?? null) !== (saved.zoom_meeting_id ?? null)))
+    ) {
+      await this.repo.query(
+        `UPDATE sessions
+            SET zoom_join_url = $2,
+                zoom_meeting_id = $3
+          WHERE group_id = $1
+            AND cancelled_at IS NULL
+            AND date >= CURRENT_DATE
+            AND (zoom_join_url = $4 OR ($4::varchar IS NULL AND zoom_join_url IS NULL))`,
+        [saved.id, saved.zoom_link ?? null, saved.zoom_meeting_id ?? null, previousZoomLink],
+      );
+    }
+
     await this.syncChatRoomSafely(saved.id); // picks up teacher/substitute changes
     return saved;
   }
@@ -329,10 +446,16 @@ export class GroupsService {
     date: string;
     teacherId?: string;
     classroomId?: string;
+    branchId?: string;
   }): Promise<Group[]> {
     const query = this.repo.createQueryBuilder('group')
       .leftJoinAndSelect('group.course', 'course')
+      .leftJoinAndSelect('group.branch', 'branch')
       .leftJoinAndSelect('group.teacher', 'teacher');
+
+    if (filters.branchId) {
+      query.andWhere('group.branch_id = :branchId', { branchId: filters.branchId });
+    }
 
     if (filters.teacherId) {
       query.andWhere('group.teacher_id = :teacherId', { teacherId: filters.teacherId });
@@ -346,8 +469,9 @@ export class GroupsService {
    * instructor at any time; schedule/room conflicts are detected first and
    * rejected with 409 (details in the message) unless `force` is set.
    */
-  async assignTeacher(groupId: string, dto: AssignTeacherDto, _user: AuthUser) {
+  async assignTeacher(groupId: string, dto: AssignTeacherDto, user: AuthUser) {
     const group = await this.findOne(groupId);
+    assertBranchAccess(user, group.branch_id);
 
     const teacher = await this.userRepo.findOne({ where: { id: dto.teacher_id } });
     if (!teacher) throw new NotFoundException('Teacher not found');
@@ -414,6 +538,7 @@ export class GroupsService {
    */
   async addStudent(groupId: string, dto: AddStudentDto, user: AuthUser) {
     const group = await this.findOne(groupId);
+    assertBranchAccess(user, group.branch_id);
 
     if (dto.course_id && dto.course_id !== group.course_id) {
       throw new BadRequestException('Selected course does not match this group');

@@ -18,11 +18,12 @@ export class PromoCodeService {
 
   /**
    * Validate a promo code: existence, active status, expiry, usage limit
-   * and course scoping. Throws 404/400 on any failure.
+   * and branch/course scoping. Throws 404/400 on any failure.
    */
   async validatePromoCode(
     code: string,
     courseId?: string,
+    branchId?: string,
   ): Promise<PromoCode> {
     const promo = await this.promoRepo.findOne({
       where: { code, status: 'active' } as any,
@@ -40,6 +41,13 @@ export class PromoCodeService {
       !promo.applicable_courses.includes(courseId)
     ) {
       throw new BadRequestException('Promo code not applicable to this course');
+    }
+    if (
+      branchId &&
+      promo.applicable_branches &&
+      !promo.applicable_branches.includes(branchId)
+    ) {
+      throw new BadRequestException('Promo code not applicable to this branch');
     }
     return promo;
   }

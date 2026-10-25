@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { activitiesApi, type ActivityFilters } from "@/api/activities";
+import { branchesApi } from "@/api/branches";
 import { groupsApi } from "@/api/groups";
 import { studentsApi } from "@/api/students";
 import { filesApi } from "@/api/files";
@@ -94,6 +95,7 @@ const activitySchema = z.object({
   start_time: z.string().optional(),
   end_time: z.string().optional(),
   location: z.string().optional(),
+  branch_id: z.string().min(1, "Branch is required"),
   capacity: z.coerce.number().min(1, "Capacity must be at least 1"),
   fee: z.coerce.number().min(0, "Fee cannot be negative"),
   status: z.string().optional(),
@@ -112,6 +114,7 @@ const emptyForm: ActivityForm = {
   start_time: "",
   end_time: "",
   location: "",
+  branch_id: "",
   capacity: 20,
   fee: 0,
   status: "upcoming",
@@ -128,10 +131,11 @@ export default function ActivitiesPage() {
   const user = useAuthStore((s) => s.user);
   const roles = user?.roles ?? (user?.role ? [user.role] : []);
   const isSuper = roles.includes("super_admin");
-  const canManage = isSuper || roles.some((r) => ["academic"].includes(r));
+  const canManage = isSuper || roles.some((r) => ["branch_manager", "academic"].includes(r));
   const canRegister = canManage || roles.some((r) => ["teacher", "sales"].includes(r));
   const canAttend = canManage || roles.includes("teacher");
   const isStudent = roles.includes("student") && !canRegister;
+  const canPickBranch = isSuper || roles.includes("branch_manager");
 
   const [view, setView] = useState<"list" | "detail">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -140,9 +144,10 @@ export default function ActivitiesPage() {
   const [filters, setFilters] = useState<{
     type: string;
     level: string;
+    branch_id: string;
     status: string;
     search: string;
-  }>({ type: "", level: "", status: "", search: "" });
+  }>({ type: "", level: "", branch_id: "", status: "", search: "" });
   const [regStudentId, setRegStudentId] = useState("");
   const [regMarkPaid, setRegMarkPaid] = useState(false);
   const [uploadCaption, setUploadCaption] = useState("");
@@ -161,6 +166,7 @@ export default function ActivitiesPage() {
         type: (filters.type || undefined) as ActivityFilters["type"],
         status: (filters.status || undefined) as ActivityFilters["status"],
         level: filters.level || undefined,
+        branch_id: filters.branch_id || undefined,
         search: filters.search || undefined,
       }),
   });
@@ -175,6 +181,12 @@ export default function ActivitiesPage() {
     queryKey: ["activity-attendance", selectedId],
     queryFn: () => activitiesApi.getAttendance(selectedId!),
     enabled: view === "detail" && !!selectedId,
+  });
+
+  const { data: branches } = useQuery({
+    queryKey: ["branches"],
+    queryFn: branchesApi.findAll,
+    enabled: canPickBranch,
   });
 
   const { data: groups } = useQuery({
@@ -320,6 +332,7 @@ export default function ActivitiesPage() {
         start_time: row.start_time ? String(row.start_time).slice(0, 5) : "",
         end_time: row.end_time ? String(row.end_time).slice(0, 5) : "",
         location: row.location ?? "",
+        branch_id: row.branch_id,
         capacity: row.capacity,
         fee: Number(row.fee ?? 0),
         status: row.status,
@@ -329,7 +342,10 @@ export default function ActivitiesPage() {
       });
     } else {
       setEditingId(null);
-      reset({ ...emptyForm });
+      reset({
+        ...emptyForm,
+        branch_id: canPickBranch ? user?.branch_id ?? "" : "",
+      });
     }
     setShowForm(true);
   };
@@ -410,6 +426,13 @@ export default function ActivitiesPage() {
           {String(row.date).slice(0, 10)}
           {row.start_time ? ` · ${String(row.start_time).slice(0, 5)}` : ""}
         </span>
+      ),
+    },
+    {
+      key: "branch",
+      header: "Branch",
+      render: (row) => (
+        <span className="text-sm">{row.branch?.name ?? row.branch_id.slice(0, 8)}</span>
       ),
     },
     {
@@ -514,6 +537,24 @@ export default function ActivitiesPage() {
           ))}
         </select>
       </div>
+      {canPickBranch && (
+        <div className="space-y-1">
+          <Label className="text-xs">Branch</Label>
+          <select
+            className={filterSelect}
+            value={filters.branch_id}
+            onChange={(e) => setFilters({ ...filters, branch_id: e.target.value })}
+          >
+            
+            <option value="">All branches</option>
+            {(branches ?? []).map((b: any) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="space-y-1">
         <Label className="text-xs">Status</Label>
         <select
@@ -605,6 +646,24 @@ export default function ActivitiesPage() {
             </div>
 
 
+            <div className="space-y-2">
+              <Label>Branch *</Label>
+              {canPickBranch ? (
+                <select {...register("branch_id")} className={filterSelect + " w-full"}>
+                  <option value="">Select branch</option>
+                  {(branches ?? []).map((b: any) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input {...register("branch_id")} readOnly placeholder="Your branch" />
+              )}
+              {errors.branch_id && (
+                <p className="text-sm text-destructive">{errors.branch_id.message}</p>
+              )}
+            </div>
             <div className="space-y-2">
               <Label>Capacity *</Label>
               <Input type="number" min={1} {...register("capacity", { valueAsNumber: true })} />
@@ -934,7 +993,7 @@ export default function ActivitiesPage() {
                         dto: {
                           records: attendance.records
                             .filter((r) => r.status !== "cancelled")
-                            .map((r) => ({ student_id: r.student_id, status: "attended" as any })),
+                            .map((r) => ({ student_id: r.student_id, status: "attended" })),
                         },
                       })
                     }
@@ -965,7 +1024,7 @@ export default function ActivitiesPage() {
                               activityId: activity.id,
                               dto: {
                                 records: [
-                                  { student_id: rec.student_id, status: "attended" as any },
+                                  { student_id: rec.student_id, status: "attended" },
                                 ],
                               },
                             })
@@ -982,7 +1041,7 @@ export default function ActivitiesPage() {
                               activityId: activity.id,
                               dto: {
                                 records: [
-                                  { student_id: rec.student_id, status: "no_show" as any },
+                                  { student_id: rec.student_id, status: "no_show" },
                                 ],
                               },
                             })
@@ -999,7 +1058,7 @@ export default function ActivitiesPage() {
                               activityId: activity.id,
                               dto: {
                                 records: [
-                                  { student_id: rec.student_id, status: "registered" as any },
+                                  { student_id: rec.student_id, status: "registered" },
                                 ],
                               },
                             })

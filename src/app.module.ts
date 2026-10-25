@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { DatabaseModule } from './database/database.module';
+import { EmailModule } from './modules/email/email.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { RolesModule } from './modules/roles/roles.module';
+// تم حذف BranchesModule تماماً لأن النظام أونلاين بالكامل (Branchless)
 import { LeadsModule } from './modules/leads/leads.module';
 import { StudentsModule } from './modules/students/students.module';
 import { CoursesModule } from './modules/courses/courses.module';
@@ -12,7 +14,7 @@ import { ClassroomsModule } from './modules/classrooms/classrooms.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { PlacementTestsModule } from './modules/placement-tests/placement-tests.module';
-import { TestSlotsModule } from './modules/test-slots/test-slots.module'; // <-- الموديول الجديد
+import { TestSlotsModule } from './modules/test-slots/test-slots.module';
 import { WaitlistsModule } from './modules/waitlists/waitlists.module';
 import { AttendancesModule } from './modules/attendance/attendance.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -39,9 +41,11 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     DatabaseModule,
+    EmailModule, // تسجيله لتفعيل الخدمة في كل الموديولات
     AuthModule,
     UsersModule,
     RolesModule,
+    // BranchesModule محذوف نهائياً
     LeadsModule,
     StudentsModule,
     CoursesModule,
@@ -50,7 +54,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     SessionsModule,
     AttendancesModule,
     PlacementTestsModule,
-    TestSlotsModule, // <-- إضافته هنا في الـ imports
+    TestSlotsModule,
     WaitlistsModule,
     InventoryModule,
     PublicModule,
@@ -66,8 +70,6 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     ReportsModule,
     DashboardModule,
     ChatModule,
-    // Global audit trail (SRS 7.2) — registers AuditController (/api/v1/audit-logs)
-    // and the global AuditInterceptor via APP_INTERCEPTOR.
     AuditModule,
   ],
   providers: [

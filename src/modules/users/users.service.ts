@@ -11,7 +11,7 @@ import { UserStatus } from '../../common/enums/user-status.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 
 export interface FindAllUsersFilter {
-  [key: string]: never;
+  branchId?: string;
 }
 
 /** Profile fields a client may edit through PUT /users/:id. */
@@ -20,6 +20,7 @@ export interface UpdateUserProfile {
   last_name?: string;
   email?: string;
   phone?: string;
+  branch_id?: string;
   status?: string;
   role_id?: string;
 }
@@ -42,6 +43,7 @@ export class UsersService {
   private async ensureStudentProfile(
     em: EntityManager,
     userId: string,
+    branchId?: string | null,
   ): Promise<void> {
     const repo = em.getRepository(Student);
     const existing = await repo.findOne({ where: { user_id: userId } });
@@ -61,6 +63,7 @@ export class UsersService {
       await repo.save(
         repo.create({
           user_id: userId,
+          branch_id: branchId || null,
           enrollment_date: new Date(),
         } as Partial<Student>),
       );
@@ -115,6 +118,7 @@ export class UsersService {
           first_name: dto.first_name,
           last_name: dto.last_name,
           phone: dto.phone,
+          branch_id: dto.branch_id,
           status: dto.status || UserStatus.ACTIVE,
           language: 'ar',
         }),
@@ -128,7 +132,7 @@ export class UsersService {
         });
 
         if (role.slug === 'student') {
-          await this.ensureStudentProfile(em, created.id);
+          await this.ensureStudentProfile(em, created.id, dto.branch_id);
         }
       }
 
@@ -137,16 +141,21 @@ export class UsersService {
 
     return this.userRepo.findOne({
       where: { id: savedUser.id },
+      relations: ['branch'],
     });
   }
 
-  async findAll(): Promise<User[]> {
-    return this.userRepo.find();
+  async findAll(filter: FindAllUsersFilter = {}): Promise<User[]> {
+    return this.userRepo.find({
+      where: filter.branchId ? { branch_id: filter.branchId } : {},
+      relations: ['branch'],
+    });
   }
 
   async findOne(id: string): Promise<User> {
     const user = await this.userRepo.findOne({
       where: { id },
+      relations: ['branch'],
     });
 
     if (!user) {
@@ -178,7 +187,7 @@ export class UsersService {
       });
 
       if (role.slug === 'student') {
-        await this.ensureStudentProfile(em, id);
+        await this.ensureStudentProfile(em, id, user.branch_id);
       } else {
         await this.deactivateStudentProfile(em, id);
       }
@@ -210,6 +219,7 @@ export class UsersService {
     if (dto.last_name !== undefined) patch.last_name = dto.last_name;
     if (dto.email !== undefined) patch.email = dto.email;
     if (dto.phone !== undefined) patch.phone = dto.phone;
+    if (dto.branch_id !== undefined) patch.branch_id = dto.branch_id || (null as unknown as string);
     if (dto.status !== undefined) patch.status = dto.status as UserStatus;
 
     if (Object.keys(patch).length > 0) {

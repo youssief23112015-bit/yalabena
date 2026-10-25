@@ -3,6 +3,7 @@ import type { Student, Attendance, Group, Certificate, Payment, LevelHistory } f
 
 export interface StudentFilters {
   search?: string;
+  branchId?: string;
   status?: string;
   level?: string;
   groupId?: string;
@@ -19,6 +20,7 @@ export interface UpdateStudentDto {
   emergency_contact_phone?: string;
   national_id?: string;
   date_of_birth?: string;
+  branch_id?: string;
   status?: string;
   current_level?: string;
 }

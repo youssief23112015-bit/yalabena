@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { activitiesApi, type CreateActivityDto } from "@/api/activities";
+import { branchesApi } from "@/api/branches";
 import type { ActivityEventType, ActivityStatusValue } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,11 @@ const EVENT_TYPES: { value: ActivityEventType; label: string }[] = [
 
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
 
+interface Branch {
+  id: string;
+  name: string;
+}
+
 export default function ActivityFormPage() {
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
@@ -36,6 +42,7 @@ export default function ActivityFormPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [form, setForm] = useState<CreateActivityDto>({
     title: "",
     description: "",
@@ -44,6 +51,7 @@ export default function ActivityFormPage() {
     start_time: "",
     end_time: "",
     location: "",
+    branch_id: "",
     capacity: 30,
     fee: 0,
     target_levels: [],
@@ -55,6 +63,12 @@ export default function ActivityFormPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const branchesRes = (await branchesApi.findAll?.()) as any;
+        const branchList = Array.isArray(branchesRes) 
+          ? branchesRes 
+          : branchesRes?.data ?? [];
+        setBranches(branchList);
+
         if (id) {
           const activity = await activitiesApi.findOne(id);
           setForm({
@@ -65,6 +79,7 @@ export default function ActivityFormPage() {
             start_time: activity.start_time ?? "",
             end_time: activity.end_time ?? "",
             location: activity.location ?? "",
+            branch_id: activity.branch_id,
             capacity: activity.capacity,
             fee: Number(activity.fee),
             target_levels: activity.target_levels ?? [],
@@ -157,6 +172,26 @@ export default function ActivityFormPage() {
                 required
                 maxLength={200}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="branch">Branch *</Label>
+              <Select
+                value={form.branch_id}
+                onValueChange={(v) => update("branch_id", v)}
+                required
+              >
+                <SelectTrigger id="branch">
+                  <SelectValue placeholder="Select a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

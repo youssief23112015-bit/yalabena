@@ -27,16 +27,18 @@ describe('ActivitiesService', () => {
   let groupStudentRepo: any;
   let finance: any;
 
-  const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'] };
+  const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'], branchId: null };
   const manager = {
     id: 'user-2',
     userId: 'user-2',
-    roles: ['academic'],
+    roles: ['branch_manager'],
+    branchId: 'branch-1',
   };
 
   const baseActivity = {
     id: 'act-1',
     title: 'Movie Night',
+    branch_id: 'branch-1',
     capacity: 2,
     fee: 100,
     status: ActivityStatus.UPCOMING,
@@ -52,6 +54,7 @@ describe('ActivitiesService', () => {
     user_id: 'user-9',
     student_number: 'SU-0001',
     current_level: 'B1',
+    branch_id: 'branch-1',
     status: 'active',
   };
 
@@ -93,8 +96,14 @@ describe('ActivitiesService', () => {
   });
 
   describe('create', () => {
+    it('locks a non-admin to their own branch', async () => {
+      const dto: any = { title: 'X', branch_id: 'branch-9', type: ActivityEventType.TRIP, date: '2026-10-01', capacity: 10 };
+      await expect(service.create(dto, manager)).rejects.toThrow(ForbiddenException);
+      expect(activityRepo.create).not.toHaveBeenCalled();
+    });
+
     it('creates with created_by and returns the loaded activity', async () => {
-      const dto: any = { title: 'Trip', type: ActivityEventType.TRIP, date: '2026-10-01', capacity: 10 };
+      const dto: any = { title: 'Trip', branch_id: 'branch-1', type: ActivityEventType.TRIP, date: '2026-10-01', capacity: 10 };
       activityRepo.findOne.mockResolvedValue({ ...baseActivity, title: 'Trip' });
       const result = await service.create(dto, manager);
       expect(activityRepo.create).toHaveBeenCalledWith(expect.objectContaining({ created_by: 'user-2' }));
@@ -181,7 +190,7 @@ describe('ActivitiesService', () => {
       regRepo.count.mockResolvedValue(0);
       await service.register('act-1', { mark_paid: true }, admin);
       expect(finance.recordActivityFee).toHaveBeenCalledWith(
-        expect.objectContaining({ amount: 100 }),
+        expect.objectContaining({ branch_id: 'branch-1', amount: 100 }),
       );
     });
 
@@ -196,7 +205,7 @@ describe('ActivitiesService', () => {
 
     it('blocks a student from registering somebody else', async () => {
       loadActivity({ is_open_to_all: true, capacity: 5 });
-      const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'] };
+      const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'], branchId: 'branch-1' };
       studentRepo.findOne.mockResolvedValueOnce({ ...student, id: 'own' });
       await expect(
         service.register('act-1', { student_id: 'someone-else' }, studentUser),

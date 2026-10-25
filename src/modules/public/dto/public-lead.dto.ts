@@ -34,4 +34,8 @@ export class PublicLeadDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsUUID()
+  branch_id?: string;
 }

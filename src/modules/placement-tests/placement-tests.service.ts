@@ -13,7 +13,7 @@ import { User } from '../../shared/entities/user.entity';
 import { TestSlot } from '../../shared/entities/test-slot.entity';
 import { LeadSource } from '../../common/enums/lead-source.enum';
 import { LeadStatus } from '../../common/enums/lead-status.enum';
-import { AuthUser } from '../../common/utils/auth-user';
+import { AuthUser } from '../../common/utils/branch-scope';
 import { levelFromScorePercentage, isCefrLevel } from '../../common/utils/level.util';
 import {
   applyPlacementResultToLead,
@@ -70,13 +70,16 @@ export class PlacementTestsService {
       data.scheduled_at = data.scheduled_date;
     }
 
-    // 2. جلب بيانات الـ Slot لاستكمال النواقص (examiner_id, scheduled_at)
+    // 2. جلب بيانات الـ Slot لاستكمال النواقص (examiner_id, branch_id, scheduled_at)
     if (data.slot_id) {
       try {
         const slot = await this.testSlotsService.findOne(data.slot_id);
         if (slot) {
           if (!data.examiner_id && slot.examiner_id) {
             data.examiner_id = slot.examiner_id;
+          }
+          if (!data.branch_id && slot.branch_id) {
+            data.branch_id = slot.branch_id;
           }
           if (!data.scheduled_at && slot.date) {
             data.scheduled_at = slot.date;
@@ -272,6 +275,7 @@ export class PlacementTestsService {
         last_name: contact.last_name ?? '',
         phone: contact.phone,
         email: contact.email,
+        branch_id: student.branch_id,
         level_interest: student.current_level,
         source: LeadSource.WEBSITE,
       });
@@ -305,7 +309,7 @@ export class PlacementTestsService {
     if (!student) return [];
     return this.repo.find({
       where: { student_id: student.id },
-      relations: ['slot', 'slot.examiner', 'examiner'],
+      relations: ['slot', 'slot.branch', 'slot.examiner', 'examiner'],
       order: { scheduled_at: 'DESC' },
     });
   }
@@ -333,7 +337,7 @@ export class PlacementTestsService {
       last_name: lastName,
       phone: dto.phone,
       email: dto.email,
-      level_interest: dto.level_interest,
+      branch_id: dto.branch_id,
       source: LeadSource.WEBSITE,
     });
 
@@ -431,7 +435,7 @@ export class PlacementTestsService {
     if (!user) return;
     const roles = (user.roles ?? []).map((r) => String(r).toLowerCase());
     const isStaff = roles.some((r) =>
-      ['super_admin', 'admin', 'academic', 'teacher'].includes(r),
+      ['super_admin', 'admin', 'academic', 'teacher', 'branch_manager'].includes(r),
     );
     if (isStaff) return;
 
@@ -489,6 +493,7 @@ export class PlacementTestsService {
             last_name: u.last_name ?? '',
             phone: u.phone,
             email: u.email,
+            branch_id: student?.branch_id,
             level_interest: patch.level ?? student?.current_level,
             source: LeadSource.WEBSITE,
           });

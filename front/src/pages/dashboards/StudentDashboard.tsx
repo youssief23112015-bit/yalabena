@@ -33,6 +33,7 @@ import {
   Hourglass,
   Layers,
   RefreshCw,
+  Video,
   XCircle,
 } from "lucide-react";
 
@@ -298,10 +299,16 @@ export default function StudentDashboard() {
                 <div className="space-y-3">
                   {upcoming.map((s) => {
                     const when = sessionWhen(s, locale, timeZone);
+                    const teacherName = s.group?.teacher
+                      ? `${s.group.teacher.first_name ?? ""} ${s.group.teacher.last_name ?? ""}`.trim()
+                      : "";
+                    // The fixed meeting URL of the session's group — backend
+                    // resolves it onto the session; the group link is the fallback.
+                    const joinUrl = s.zoom_join_url || s.group?.zoom_link || null;
                     return (
                       <div
                         key={s.id || sessionSortMs(s)}
-                        className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0"
+                        className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium">
@@ -310,11 +317,29 @@ export default function StudentDashboard() {
                           <p className="truncate text-xs text-muted-foreground">
                             {s.group?.name && sessionTitle(s) ? `${s.group.name} · ` : ""}
                             {when ? `${when.date} · ${when.time}` : "—"}
+                            {teacherName ? ` · ${t("studentDashboard.upcoming.withTeacher", { teacher: teacherName })}` : ""}
                           </p>
                         </div>
-                        <Badge variant="info" className="shrink-0">
-                          {t("studentDashboard.stats.scheduled")}
-                        </Badge>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <Badge variant="info" className="shrink-0">
+                            {t("studentDashboard.stats.scheduled")}
+                          </Badge>
+                          {joinUrl ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1"
+                              onClick={() => window.open(joinUrl, "_blank", "noopener,noreferrer")}
+                            >
+                              <Video className="h-3.5 w-3.5" />
+                              {t("studentDashboard.upcoming.joinZoom")}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {t("studentDashboard.upcoming.noLink")}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -361,7 +386,7 @@ export default function StudentDashboard() {
                         return (
                           <option key={s.id} value={s.id} disabled={seats <= 0}>
                             {s.date ?? ""} {String(s.start_time ?? "").slice(0, 5)}
-                            "" ({seats}{" "}
+                            {s.branch ? ` — ${s.branch.name}` : ""} ({seats}{" "}
                             {t("studentDashboard.placement.seats", "seats")})
                           </option>
                         );
@@ -404,7 +429,8 @@ export default function StudentDashboard() {
                               : t("studentDashboard.placement.unknownTime", "Scheduled test")}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {pt.slot?.mode ??
+                            {pt.slot?.branch?.name ??
+                              pt.slot?.mode ??
                               t("studentDashboard.placement.awaitingNotes", "Awaiting evaluation results")}
                           </p>
                         </div>

@@ -14,7 +14,7 @@ import {
   BroadcastTargetType,
   SendBroadcastDto,
 } from './dto/broadcast-notification.dto';
-import type { AuthUser } from '../../common/utils/auth-user';
+import type { AuthUser } from '../../common/utils/branch-scope';
 import { NotificationsGateway } from './notifications.gateway';
 
 export interface NotificationQuery {
@@ -30,6 +30,7 @@ const BROADCAST_CHUNK_SIZE = 500;
 const ADMIN_TARGETING_ROLES = [
   'super_admin',
   'admin',
+  'branch_manager',
   'hr',
   'academic',
 ];

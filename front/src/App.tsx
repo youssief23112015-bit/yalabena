@@ -19,6 +19,7 @@ import StudentsPage from '@/pages/Students';
 import CoursesPage from '@/pages/Courses';
 import GroupsPage from '@/pages/Groups';
 import SessionsPage from '@/pages/Sessions';
+import BranchesPage from '@/pages/Branches';
 import UsersPage from '@/pages/Users';
 import RolesPage from '@/pages/Roles';
 import AttendancePage from '@/pages/Attendance';
@@ -179,7 +180,7 @@ function App() {
             <Route
               path="/leads"
               element={roleGate(
-                ['super_admin', 'sales'],
+                ['super_admin', 'branch_manager', 'sales'],
                 <LeadsPage />,
               )}
             />
@@ -187,7 +188,7 @@ function App() {
             <Route
               path="/chat"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher', 'student', 'moderator'],
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'student', 'moderator'],
                 <ChatPage />,
               )}
             />
@@ -197,6 +198,7 @@ function App() {
               element={roleGate(
                 [
                   'super_admin',
+                  'branch_manager',
                   'sales',
                   'finance',
                   'academic',
@@ -209,7 +211,7 @@ function App() {
             <Route
               path="/courses"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher'],
+                ['super_admin', 'branch_manager', 'academic', 'teacher'],
                 <CoursesPage />,
               )}
             />
@@ -220,6 +222,7 @@ function App() {
                 [
                   'super_admin',
                   'academic',
+                  'branch_manager',
                   'teacher',
                 ],
                 <GroupsPage />,
@@ -232,6 +235,7 @@ function App() {
                 [
                   'super_admin',
                   'academic',
+                  'branch_manager',
                   'teacher',
                 ],
                 <SessionsPage />,
@@ -242,35 +246,35 @@ function App() {
             <Route
               path="/activities"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher', 'sales'],
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
                 <ActivitiesListPage />,
               )}
             />
             <Route
               path="/activities/new"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher', 'sales'],
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
                 <ActivityFormPage />,
               )}
             />
             <Route
               path="/activities/:id/edit"
               element={roleGate(
-                ['super_admin', 'academic'],
+                ['super_admin', 'branch_manager', 'academic'],
                 <ActivityFormPage />,
               )}
             />
             <Route
               path="/activities/:id/attendance"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher'],
+                ['super_admin', 'branch_manager', 'academic', 'teacher'],
                 <ActivityAttendancePage />,
               )}
             />
             <Route
               path="/activities/:id"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher', 'sales'],
+                ['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
                 <ActivityDetailsPage />,
               )}
             />
@@ -278,7 +282,7 @@ function App() {
             <Route
               path="/attendance"
               element={roleGate(
-                ['super_admin', 'academic', 'teacher'],
+                ['super_admin', 'academic', 'branch_manager', 'teacher'],
                 <AttendancePage />,
               )}
             />
@@ -286,7 +290,7 @@ function App() {
             <Route
               path="/placement-tests"
               element={roleGate(
-                ['super_admin', 'sales', 'academic'],
+                ['super_admin', 'branch_manager', 'sales', 'academic'],
                 <PlacementTestsPage />,
               )}
             />
@@ -294,7 +298,7 @@ function App() {
             <Route
               path="/test-slots"
               element={roleGate(
-                ['super_admin', 'academic'],
+                ['super_admin', 'branch_manager', 'academic'],
                 <TestSlotsPage />,
               )}
             />
@@ -302,39 +306,39 @@ function App() {
             <Route
               path="/waitlists"
               element={roleGate(
-                ['super_admin', 'sales', 'academic'],
+                ['super_admin', 'branch_manager', 'sales', 'academic'],
                 <WaitlistsPage />,
               )}
             />
 
             <Route
               path="/hr"
-              element={roleGate(['super_admin', 'hr', 'teacher', 'finance'], <HrLayout />)}
+              element={roleGate(['super_admin', 'hr', 'branch_manager', 'teacher', 'finance'], <HrLayout />)}
             >
-              <Route index element={roleGate(['super_admin', 'hr'], <EmployeesPage />)} />
-              <Route path="employees/:id" element={roleGate(['super_admin', 'hr'], <EmployeeDetailsPage />)} />
-              <Route path="leaves" element={roleGate(['super_admin', 'hr'], <LeavesPage />)} />
+              <Route index element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeesPage />)} />
+              <Route path="employees/:id" element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeeDetailsPage />)} />
+              <Route path="leaves" element={roleGate(['super_admin', 'hr', 'branch_manager'], <LeavesPage />)} />
               <Route path="my" element={roleGate(['super_admin', 'hr', 'teacher'], <MyHrPage />)} />
               <Route path="payroll" element={roleGate(['super_admin', 'hr', 'finance'], <PayrollPage />)} />
             </Route>
 
             <Route
               path="/inventory"
-              element={roleGate(['super_admin', 'sales', 'finance', 'auditor'], <InventoryPage />)}
+              element={roleGate(['super_admin', 'branch_manager', 'sales', 'finance', 'auditor'], <InventoryPage />)}
             />
             <Route path="/notifications" element={<NotificationsPage />} />
 
             <Route
               path="/knowledge-base"
               element={roleGate(
-                ['super_admin', 'hr', 'teacher', 'sales', 'finance'],
+                ['super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance'],
                 <KnowledgeBasePage />,
               )}
             />
             <Route
               path="/reports"
               element={roleGate(
-                ['super_admin', 'sales', 'academic', 'finance', 'hr', 'teacher'],
+                ['super_admin', 'branch_manager', 'sales', 'academic', 'finance', 'hr', 'teacher'],
                 <ReportsPage />,
               )}
             />
@@ -342,7 +346,7 @@ function App() {
             <Route
               path="/enrollments"
               element={roleGate(
-                ['super_admin', 'sales', 'finance', 'academic'],
+                ['super_admin', 'branch_manager', 'sales', 'finance', 'academic'],
                 <EnrollmentsPage />,
               )}
             />
@@ -350,7 +354,7 @@ function App() {
             <Route
               path="/finance"
               element={roleGate(
-                ['super_admin', 'finance'],
+                ['super_admin', 'finance', 'branch_manager'],
                 <FinancePage />,
               )}
             />
@@ -358,15 +362,23 @@ function App() {
             <Route
               path="/certificates"
               element={roleGate(
-                ['super_admin', 'academic', 'finance', 'teacher'],
+                ['super_admin', 'branch_manager', 'academic', 'finance', 'teacher'],
                 <CertificatesPage />,
+              )}
+            />
+
+            <Route
+              path="/branches"
+              element={roleGate(
+                ['super_admin', 'branch_manager'],
+                <BranchesPage />,
               )}
             />
 
             <Route
               path="/users"
               element={roleGate(
-                ['super_admin', 'hr'],
+                ['super_admin', 'branch_manager', 'hr'],
                 <UsersPage />,
               )}
             />

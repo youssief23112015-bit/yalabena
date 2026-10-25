@@ -7,7 +7,7 @@ import { Group } from '../../shared/entities/group.entity';
 import { Course } from '../../shared/entities/course.entity';
 import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
 import { GroupStatus } from '../../common/enums/group-status.enum';
-import { AuthUser } from '../../common/utils/auth-user';
+import { AuthUser, effectiveBranchFilter } from '../../common/utils/branch-scope';
 import {
   describeLevelIneligibility,
   isLevelEligible,
@@ -124,6 +124,7 @@ export class EnrollmentsService {
     }
 
     const fee = dto.total_fee ?? Number(group.course?.default_price ?? 0);
+    const branchId = student.branch_id ?? group.branch_id;
 
     const enrollment = await this.enrollments.save(
       this.enrollments.create({
@@ -141,6 +142,7 @@ export class EnrollmentsService {
       enrollment_id: enrollment.id,
       student_id: student.id,
       course_id: group.course_id,
+      branch_id: branchId,
       amount: fee,
       description: `Enrollment â€” ${group.course?.name ?? 'Course'} (${group.name})`,
       promo_code: dto.promo_code,
@@ -161,7 +163,7 @@ export class EnrollmentsService {
   /**
    * Student self-service booking ("Book this Course", Business Rule 2).
    * The enrollment is created with PENDING status and forwarded to the
-   * Admin dashboard for review — no invoice is generated
+   * Admin / Branch Manager dashboard for review — no invoice is generated
    * until the request is approved. Level eligibility is enforced first
    * (Business Rule 1) and violations surface as 400 Bad Request.
    */
@@ -214,7 +216,7 @@ export class EnrollmentsService {
   /**
    * Picks the group a student books into. When the DTO pins a group it must
    * belong to the requested course; otherwise the first group of the course
-   * with free capacity is selected.
+   * with free capacity is selected, preferring the student's own branch.
    */
   private async resolveBookingGroup(
     student: Student,
@@ -239,7 +241,15 @@ export class EnrollmentsService {
       order: { start_date: 'ASC' },
     });
 
-    for (const group of candidates) {
+    const inStudentBranch = student.branch_id
+      ? candidates.filter((g) => g.branch_id === student.branch_id)
+      : [];
+    const ordered = [
+      ...inStudentBranch,
+      ...candidates.filter((g) => !inStudentBranch.includes(g)),
+    ];
+
+    for (const group of ordered) {
       const activeCount = await this.enrollments.count({
         where: { group_id: group.id, status: EnrollmentStatus.ACTIVE },
       });
@@ -267,7 +277,7 @@ export class EnrollmentsService {
   }
 
   /**
-   * Admin approval (Business Rule 2). A PENDING request is
+   * Admin / Branch Manager approval (Business Rule 2). A PENDING request is
    * finalized to ACTIVE: capacity is re-checked, the invoice/payment
    * workflow is triggered (idempotently), and the student joins the group
    * chat room. The course then appears in the LMS dashboard immediately
@@ -306,6 +316,7 @@ export class EnrollmentsService {
         enrollment_id: saved.id,
         student_id: saved.student_id,
         course_id: e.group?.course_id,
+        branch_id: e.student?.branch_id ?? e.group?.branch_id,
         amount: fee,
         description: `Enrollment — ${e.group?.course?.name ?? 'Course'} (${e.group?.name ?? 'Group'})`,
         created_by: user?.id ?? user?.userId,
@@ -344,7 +355,7 @@ export class EnrollmentsService {
     if (!student) return [];
     return this.enrollments.find({
       where: { student_id: student.id },
-      relations: ['group', 'group.course'],
+      relations: ['group', 'group.course', 'group.branch'],
       order: { created_at: 'DESC' },
     });
   }
@@ -373,14 +384,10 @@ export class EnrollmentsService {
     });
   }
 
-  async findAll(_user: AuthUser, query: { student_id?: string; group_id?: string; status?: string }) {
+  async findAll(user: AuthUser, query: { student_id?: string; group_id?: string; status?: string; branch_id?: string }) {
     const qb = this.enrollments
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.student', 'st')
-      // The admin table renders the student's NAME (st.user) and the booked
-      // course (g.course) — without these joins the UI can only show raw
-      // 8-char UUIDs.
-      .leftJoinAndSelect('st.user', 'su')
       .leftJoinAndSelect('e.group', 'g')
       .leftJoinAndSelect('g.course', 'c')
       .orderBy('e.created_at', 'DESC');
@@ -388,24 +395,28 @@ export class EnrollmentsService {
     if (query.student_id) qb.andWhere('e.student_id = :sid', { sid: query.student_id });
     if (query.group_id) qb.andWhere('e.group_id = :gid', { gid: query.group_id });
     // The enrollment_status PG enum holds LOWERCASE values — normalise the
-    // filter so `?status=PENDING` (or lowercase `?status=pending`) from the
-    // UI matches rows.
+    // filter so `?status=PENDING` from the UI matches rows.
     if (query.status) qb.andWhere('e.status = :st', { st: String(query.status).toLowerCase() });
+    const branchFilter = effectiveBranchFilter(user, query.branch_id);
+    if (branchFilter) qb.andWhere('st.branch_id = :b', { b: branchFilter });
 
     return qb.take(200).getMany();
   }
 
-  async findOne(id: string, _user: AuthUser) {
+  async findOne(id: string, user: AuthUser) {
     const e = await this.enrollments.findOne({
       where: { id },
-      relations: [
-        'student',
-        'student.user',
-        'group',
-        'group.course',
-      ],
+      relations: ['student', 'student.user', 'group', 'group.course'],
     });
     if (!e) throw new NotFoundException('Enrollment not found');
+    const branchFilter = effectiveBranchFilter(user);
+    // Students may always view their OWN enrollments (self-service booking
+    // flow) even when branch data is missing; staff stay branch-scoped.
+    const requesterId = user?.id ?? user?.userId;
+    const isOwnEnrollment = Boolean(requesterId) && e.student?.user_id === requesterId;
+    if (!isOwnEnrollment && branchFilter && e.student?.branch_id !== branchFilter) {
+      throw new NotFoundException('Enrollment not found');
+    }
     return e;
   }
 
@@ -422,9 +433,7 @@ export class EnrollmentsService {
     return saved;
   }
   async drop(id: string, reason: string | undefined, user: AuthUser) {
-    // updateStatus() normalises to lowercase, but pass the enum value
-    // directly so no uppercase literal ever reaches the PG enum cast.
-    return this.updateStatus(id, { status: EnrollmentStatus.DROPPED, reason }, user);
+    return this.updateStatus(id, { status: 'DROPPED', reason }, user);
   }
 }
 

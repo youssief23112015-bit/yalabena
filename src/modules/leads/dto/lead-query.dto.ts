@@ -31,6 +31,10 @@ export class LeadQueryDto {
 
   @IsOptional()
   @IsUUID()
+  branch_id?: string;
+
+  @IsOptional()
+  @IsUUID()
   assigned_to?: string;
 
   @IsOptional()

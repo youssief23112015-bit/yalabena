@@ -7,23 +7,26 @@ import {
   inventoryApi, INVENTORY_CATEGORIES,
   type InventoryCategory, type InventoryItem, type InventoryStatus,
 } from "@/api/inventory";
+import type { Branch } from "@/types";
 
 const field = "mt-1 w-full rounded-md border bg-background p-2";
 
 interface Props {
   open: boolean;
   item: InventoryItem | null; // null => create
+  branches: Branch[];
+  defaultBranchId?: string;
   onClose: () => void;
 }
 
-export function ItemFormDialog({ open, item, onClose }: Props) {
+export function ItemFormDialog({ open, item, branches, defaultBranchId, onClose }: Props) {
   const { t } = useTranslation("inventory");
   const qc = useQueryClient();
   const { toast } = useToast();
   const [f, setF] = useState({
     name: "", sku: "", description: "", category: "book" as InventoryCategory,
     unit_cost: "0", sale_price: "0", unit_of_measure: "piece", reorder_level: "10",
-    initial_quantity: "0", status: "active" as InventoryStatus,
+    branch_id: "", initial_quantity: "0", status: "active" as InventoryStatus,
   });
   const [error, setError] = useState("");
 
@@ -35,9 +38,9 @@ export function ItemFormDialog({ open, item, onClose }: Props) {
       category: item?.category ?? "book",
       unit_cost: String(item?.unit_cost ?? 0), sale_price: String(item?.sale_price ?? 0),
       unit_of_measure: item?.unit_of_measure ?? "piece", reorder_level: String(item?.reorder_level ?? 10),
-      initial_quantity: "0", status: item?.status ?? "active",
+      branch_id: defaultBranchId ?? "", initial_quantity: "0", status: item?.status ?? "active",
     });
-  }, [open, item]);
+  }, [open, item, defaultBranchId]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -48,6 +51,7 @@ export function ItemFormDialog({ open, item, onClose }: Props) {
       if (!Number.isInteger(reorder_level) || reorder_level < 0) throw new Error(t("errReorder"));
       if (!item) {
         if (!Number.isInteger(qty) || qty < 0) throw new Error(t("errOpeningQty"));
+        if (qty > 0 && !f.branch_id) throw new Error(t("errOpeningBranch"));
       }
       const base = {
         name: f.name.trim(), sku: f.sku.trim() || undefined, description: f.description.trim() || undefined,
@@ -55,7 +59,7 @@ export function ItemFormDialog({ open, item, onClose }: Props) {
       };
       return item
         ? inventoryApi.updateItem(item.id, { ...base, status: f.status })
-        : inventoryApi.createItem({ ...base, initial_quantity: qty || undefined });
+        : inventoryApi.createItem({ ...base, branch_id: f.branch_id || undefined, initial_quantity: qty || undefined });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory"] });
@@ -95,7 +99,15 @@ export function ItemFormDialog({ open, item, onClose }: Props) {
               </select>
             </label>
           ) : (
-            <label className="text-sm">{t("fOpeningQty")}<input type="number" min="0" step="1" className={field} value={f.initial_quantity} onChange={set("initial_quantity")} /></label>
+            <>
+              <label className="text-sm">{t("fOpeningBranch")}
+                <select className={field} value={f.branch_id} onChange={set("branch_id")}>
+                  <option value="">—</option>
+                  {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </label>
+              <label className="text-sm">{t("fOpeningQty")}<input type="number" min="0" step="1" className={field} value={f.initial_quantity} onChange={set("initial_quantity")} /></label>
+            </>
           )}
         </div>
         {item && <p className="mt-3 text-xs text-muted-foreground">{t("qtyNotEditable")}</p>}

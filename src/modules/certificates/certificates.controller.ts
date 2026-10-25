@@ -6,7 +6,7 @@ import { CreateTemplateDto } from './dto/create-template.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { AuthUser } from '../../common/utils/auth-user';
+import { AuthUser } from '../../common/utils/branch-scope';
 
 @Controller('certificates')
 export class CertificatesController {
@@ -14,53 +14,54 @@ export class CertificatesController {
 
   // ---- Templates ----
   @Post('templates')
-  @Roles('super_admin', 'academic')
+  @Roles('super_admin', 'branch_manager', 'academic')
   createTemplate(@Body() dto: CreateTemplateDto, @CurrentUser() user: AuthUser) {
     return this.service.createTemplate(dto, user);
   }
 
   @Get('templates')
-  @Roles('super_admin', 'academic', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
   listTemplates(@Query('course_id') course_id?: string) {
     return this.service.listTemplates(course_id);
   }
 
   @Post('templates/:id')
-  @Roles('super_admin', 'academic')
+  @Roles('super_admin', 'branch_manager', 'academic')
   updateTemplate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: Partial<CreateTemplateDto>) {
     return this.service.updateTemplate(id, dto);
   }
 
   // ---- Issue / revoke ----
   @Post()
-  @Roles('super_admin', 'academic') // admin-level only => "manual issue with approval"
+  @Roles('super_admin', 'branch_manager', 'academic') // admin-level only => "manual issue with approval"
   issue(@Body() dto: CreateCertificateDto, @CurrentUser() user: AuthUser) {
     return this.service.issue(dto, user, false);
   }
 
   @Post('auto-issue/:groupId')
-  @Roles('super_admin', 'academic')
+  @Roles('super_admin', 'branch_manager', 'academic')
   autoIssue(@Param('groupId', ParseUUIDPipe) groupId: string, @CurrentUser() user: AuthUser) {
     return this.service.autoIssueForGroup(groupId, user);
   }
 
   @Post(':id/revoke')
-  @Roles('super_admin')
+  @Roles('super_admin', 'branch_manager')
   revoke(@Param('id', ParseUUIDPipe) id: string, @Body('reason') reason: string, @CurrentUser() user: AuthUser) {
     return this.service.revoke(id, reason, user);
   }
 
   // ---- Read ----
   @Get()
-  @Roles('super_admin', 'academic', 'finance', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher')
   list(
     @CurrentUser() user: AuthUser,
     @Query('student_id') student_id?: string,
     @Query('course_id') course_id?: string,
     @Query('group_id') group_id?: string,
     @Query('status') status?: string,
+    @Query('branch_id') branch_id?: string,
   ) {
-    return this.service.list(user, { student_id, course_id, group_id, status });
+    return this.service.list(user, { student_id, course_id, group_id, status, branch_id });
   }
 
   /**
@@ -74,13 +75,13 @@ export class CertificatesController {
   }
 
   @Get(':id')
-  @Roles('super_admin', 'academic', 'finance', 'teacher', 'student')
+  @Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher', 'student')
   getOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser) {
     return this.service.getOne(id, user);
   }
 
   @Get(':id/pdf')
-  @Roles('super_admin', 'academic', 'teacher', 'student')
+  @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
   async pdf(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthUser, @Res() res: Response) {
     // CertificatesService.getOne enforces ownership for self-service students.
     const buf = await this.service.generatePdf(id, user);

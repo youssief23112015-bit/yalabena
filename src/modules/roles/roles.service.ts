@@ -62,6 +62,7 @@ export class RolesService {
         email: true,
         first_name: true,
         last_name: true,
+        branch_id: true,
         language: true,
         avatar_url: true,
         phone: true,

@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Branch } from './branch.entity';
 import { UserStatus } from '../../common/enums/user-status.enum';
 import { UserRole } from './user-role.entity'; // 👈 استيراد كيان user-role
 
@@ -27,6 +28,13 @@ export class User {
 
   @Column({ type: 'varchar', length: 5, default: 'ar' })
   language: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  branch_id: string;
+
+  @ManyToOne(() => Branch, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'branch_id' })
+  branch: Branch;
 
   // 👈 إضافة تعريف علاقة userRoles هنا
   @OneToMany(() => UserRole, (userRole) => userRole.user)

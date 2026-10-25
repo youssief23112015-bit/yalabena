@@ -10,7 +10,7 @@ export class RolesController {
   constructor(private readonly service: RolesService) {}
 
   @Get()
-  @Roles('super_admin')
+  @Roles('super_admin', 'branch_manager')
   @ApiOperation({ summary: 'Get all RBAC roles' })
   @ApiResponse({ status: 200, description: 'Return all roles with their permissions.' })
   async findAll() {
@@ -18,21 +18,21 @@ export class RolesController {
   }
 
   @Get('permissions')
-  @Roles('super_admin')
+  @Roles('super_admin', 'branch_manager')
   @ApiOperation({ summary: 'Get all permissions' })
   async findPermissions() {
     return this.service.findPermissions();
   }
 
   @Get(':id/users')
-  @Roles('super_admin')
+  @Roles('super_admin', 'branch_manager')
   @ApiOperation({ summary: 'Get users assigned to a role' })
   async findRoleUsers(@Param('id') id: string) {
     return this.service.findRoleUsers(id);
   }
 
   @Get(':id')
-  @Roles('super_admin')
+  @Roles('super_admin', 'branch_manager')
   @ApiOperation({ summary: 'Get role by id with permissions' })
   async findOne(@Param('id') id: string) {
     return this.service.findOne(id);

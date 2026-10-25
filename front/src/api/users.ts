@@ -7,6 +7,7 @@ export interface CreateUserDto {
   first_name: string;
   last_name: string;
   phone?: string;
+  branch_id?: string;
   role_id?: string;
   status?: string;
 }
@@ -16,12 +17,13 @@ export interface UpdateUserDto {
   last_name?: string;
   email?: string;
   phone?: string;
+  branch_id?: string;
   role_id?: string;
   status?: string;
 }
 
 export const usersApi = {
-  findAll: async (params?: { roleId?: string; status?: string; search?: string }): Promise<User[]> => {
+  findAll: async (params?: { branchId?: string; roleId?: string; status?: string; search?: string }): Promise<User[]> => {
     const { data } = await apiClient.get<User[]>("/users", { params });
     return data;
   },

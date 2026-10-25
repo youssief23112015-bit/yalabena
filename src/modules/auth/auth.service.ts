@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, ConflictException, InternalServerErr
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { authenticator } from 'otplib';
 import * as QRCode from 'qrcode';
@@ -15,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TwoFactorLoginDto } from './dto/two-factor.dto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -23,6 +25,8 @@ export class AuthService {
     @InjectRepository(User) private userRepo: Repository<User>,
     @InjectRepository(UserRole) private userRoleRepo: Repository<UserRole>,
     @InjectRepository(Role) private roleRepo: Repository<Role>,
+    private emailService: EmailService,
+    private config: ConfigService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -55,6 +59,7 @@ export class AuthService {
           password_hash: hash,
           first_name: dto.first_name,
           last_name: dto.last_name,
+          branch_id: dto.branch_id,
           language: dto.language || 'ar',
           status: UserStatus.ACTIVE,
         }),
@@ -75,6 +80,7 @@ export class AuthService {
       await em.getRepository(Student).save(
         em.getRepository(Student).create({
           user_id: created.id,
+          branch_id: dto.branch_id,
           enrollment_date: new Date(),
         } as Partial<Student>),
       );
@@ -160,8 +166,13 @@ export class AuthService {
     });
     await this.userRepo.manager.save(resetToken);
 
-    // TODO: Send reset email via email service with the token link
-    // await this.emailService.sendResetPassword(email, token);
+    // Send reset email via email service with the token link
+    const resetLink = `${this.config.get<string>('APP_URL')}/auth/reset?token=${token}`;
+    await this.emailService.send({
+      to: email,
+      subject: 'Password Reset Link',
+      html: `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`,
+    });
 
     return { message: 'Reset link sent to your email' };
   }
@@ -263,6 +274,7 @@ export class AuthService {
         email: user.email,
         first_name: user.first_name,
         last_name: user.last_name,
+        branch_id: user.branch_id,
         language: user.language,
         role: roles[0],
         roles,

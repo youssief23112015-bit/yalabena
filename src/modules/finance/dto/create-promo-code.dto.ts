@@ -8,4 +8,5 @@ export class CreatePromoCodeDto {
   @IsDateString() expiry_date: string;
   @IsOptional() @IsNumber() @Min(1) usage_limit?: number;
   @IsOptional() @IsArray() applicable_courses?: string[];
+  @IsOptional() @IsArray() applicable_branches?: string[];
 }

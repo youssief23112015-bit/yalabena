@@ -142,6 +142,7 @@ export class PublicService {
         email: dto.email,
         level_interest: dto.level_interest,
         notes: dto.notes,
+        branch_id: dto.branch_id,
         source: LeadSource.WEBSITE,
         status: LeadStatus.NEW,
       }),
@@ -174,13 +175,15 @@ export class PublicService {
    * Open future slots with remaining capacity. Examiner details are stripped
    * — this is an anonymous endpoint (spec: listPlacementSlots).
    */
-  async listPlacementSlots() {
+  async listPlacementSlots(branchId?: string) {
     const qb = this.slotRepo
       .createQueryBuilder('slot')
+      .innerJoin('slot.branch', 'branch')
       .where('slot.status = :status', { status: SlotStatus.OPEN })
       .andWhere('slot.date >= :today', { today: new Date().toISOString().slice(0, 10) })
       .orderBy('slot.date', 'ASC')
       .addOrderBy('slot.start_time', 'ASC');
+    if (branchId) qb.andWhere('slot.branch_id = :branchId', { branchId });
     const rows = await qb.getMany();
     return rows.map(({ examiner_id: _examiner, ...rest }) => ({
       ...rest,
@@ -221,6 +224,7 @@ export class PublicService {
         last_name: dto.last_name,
         phone: dto.phone,
         email: dto.email,
+        branch_id: slot.branch_id,
         level_interest: dto.level_interest,
         source: LeadSource.WEBSITE,
       });
@@ -288,6 +292,7 @@ export class PublicService {
           phone: dto.phone,
           email: dto.email,
           level_interest: dto.level_interest,
+          branch_id: dto.branch_id,
           source: LeadSource.WEBSITE,
           status: LeadStatus.NEW,
         }),
@@ -316,6 +321,7 @@ export class PublicService {
             password_hash: hash,
             first_name: dto.first_name,
             last_name: dto.last_name,
+            branch_id: dto.branch_id,
             language: 'ar',
             status: UserStatus.ACTIVE,
           }),
@@ -337,6 +343,7 @@ export class PublicService {
             user_id: user.id,
             student_number: `STU-${Date.now().toString(36).toUpperCase()}`,
             current_level: dto.level_interest,
+            branch_id: dto.branch_id,
             status: StudentStatus.ACTIVE,
             enrollment_date: new Date(),
           }),

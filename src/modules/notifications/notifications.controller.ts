@@ -4,7 +4,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
-import { AuthUser } from '../../common/utils/auth-user';
+import { AuthUser } from '../../common/utils/branch-scope';
 import { NotificationService } from './notifications.service';
 import { SendBroadcastDto } from './dto/broadcast-notification.dto';
 
@@ -58,7 +58,7 @@ export class NotificationController {
   // Teachers are admitted here but the service restricts them to target_type
   // "group" on their own groups (403 otherwise) — Business Rule 2.
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('super_admin', 'admin', 'hr', 'academic', 'teacher')
+  @Roles('super_admin', 'branch_manager', 'admin', 'hr', 'academic', 'teacher')
   @ApiOperation({
     summary:
       'Send a targeted notification (all / students / teachers / specific_user / group). ' +

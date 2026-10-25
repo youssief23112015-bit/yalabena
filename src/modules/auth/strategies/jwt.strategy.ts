@@ -31,9 +31,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    // 1. جلب بيانات المستخدم (بدون userRoles لمنع الخطأ)
+    // 1. جلب بيانات المستخدم مع الفرع فقط (بدون userRoles لمنع الخطأ)
     const user = await this.userRepo.findOne({
       where: { id: payload.sub },
+      relations: ['branch'],
     });
 
     if (!user) {
@@ -69,6 +70,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: user.email,
       roles,
       permissions,
+      branchId: user.branch_id ?? null,
       status: user.status,
     };
   }

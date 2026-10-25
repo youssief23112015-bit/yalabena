@@ -22,8 +22,8 @@ describe('CertificatesService', () => {
   let entries: any;
   let settings: any;
 
-  const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'] };
-  const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'] };
+  const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'], branchId: 'branch-1' };
+  const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'], branchId: null };
 
   const ownCertificate = {
     id: 'cert-1',
@@ -31,7 +31,7 @@ describe('CertificatesService', () => {
     code: 'SU-ABCDEF1234',
     issue_date: '2026-05-01',
     status: 'active',
-    student: { id: 'stu-1', user_id: 'user-9', user: { id: 'user-9' } },
+    student: { id: 'stu-1', user_id: 'user-9', branch_id: 'branch-1', user: { id: 'user-9' } },
     course: { id: 'course-1', name: 'General English', level: 'B1' },
     group: { id: 'group-1' },
   };
@@ -87,7 +87,7 @@ describe('CertificatesService', () => {
   });
 
   describe('getOne (student self-service ownership)', () => {
-    it('lets a student read their own certificate', async () => {
+    it('lets a student read their own certificate even when branch scoping would fail', async () => {
       certs.findOne.mockResolvedValue(ownCertificate);
       const result = await service.getOne('cert-1', studentUser);
       expect(result).toEqual(ownCertificate);
@@ -96,24 +96,24 @@ describe('CertificatesService', () => {
     it('hides certificates that belong to another student (NotFound, not Forbidden)', async () => {
       certs.findOne.mockResolvedValue({
         ...ownCertificate,
-        student: { id: 'stu-2', user_id: 'user-99' },
+        student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-1' },
       });
       await expect(service.getOne('cert-1', studentUser)).rejects.toThrow(NotFoundException);
     });
 
-    it('lets staff read any certificate (no branch scoping in a 100% online academy)', async () => {
+    it('still enforces branch scoping for staff without the certificate owner check', async () => {
       certs.findOne.mockResolvedValue({
         ...ownCertificate,
-        student: { id: 'stu-2', user_id: 'user-99' },
+        student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-9' },
       });
-      const academic = { id: 'user-2', userId: 'user-2', roles: ['academic'] };
-      await expect(service.getOne('cert-1', academic)).resolves.toEqual(expect.objectContaining({ id: 'cert-1' }));
+      const manager = { id: 'user-2', userId: 'user-2', roles: ['branch_manager'], branchId: 'branch-1' };
+      await expect(service.getOne('cert-1', manager)).rejects.toThrow(NotFoundException);
     });
 
     it('lets a super admin read any certificate', async () => {
       certs.findOne.mockResolvedValue({
         ...ownCertificate,
-        student: { id: 'stu-2', user_id: 'user-99' },
+        student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-9' },
       });
       await expect(service.getOne('cert-1', admin)).resolves.toEqual(expect.objectContaining({ id: 'cert-1' }));
     });

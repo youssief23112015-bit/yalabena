@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { coursesApi } from "@/api/courses";
+import { branchesApi } from "@/api/branches";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +17,9 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import type { Course } from "@/types";
+import type { Course, Branch } from "@/types";
 import {
-  Plus, X, Pencil, Trash2, Eye, ChevronLeft, BookOpen,
+  Plus, X, Pencil, Trash2, Eye, ChevronLeft, BookOpen, DollarSign,
   Minus
 } from "lucide-react";
 
@@ -51,6 +52,7 @@ export default function CoursesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [prereqSearch, setPrereqSearch] = useState("");
+  const [branchPriceInput, setBranchPriceInput] = useState<{ branchId: string; price: string }>({ branchId: "", price: "" });
 
   const {
     data: courses,
@@ -63,6 +65,11 @@ export default function CoursesPage() {
     queryFn: coursesApi.findAll,
   });
 
+  const { data: branches } = useQuery({
+    queryKey: ["branches"],
+    queryFn: branchesApi.findAll,
+  });
+
   const { data: selectedCourse } = useQuery({
     queryKey: ["course", selectedCourseId],
     queryFn: () => coursesApi.findOne(selectedCourseId!),
@@ -72,6 +79,12 @@ export default function CoursesPage() {
   const { data: courseMaterials } = useQuery({
     queryKey: ["course-materials", selectedCourseId],
     queryFn: () => coursesApi.getMaterials(selectedCourseId!),
+    enabled: !!selectedCourseId && view === "detail",
+  });
+
+  const { data: branchPricing } = useQuery({
+    queryKey: ["course-branch-pricing", selectedCourseId],
+    queryFn: () => coursesApi.getBranchPricing(selectedCourseId!),
     enabled: !!selectedCourseId && view === "detail",
   });
 
@@ -128,6 +141,18 @@ export default function CoursesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["course", selectedCourseId] });
       toast({ title: "Prerequisite removed" });
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    },
+  });
+
+  const setBranchPriceMutation = useMutation({
+    mutationFn: ({ id, branchId, price }: { id: string; branchId: string; price: number }) => coursesApi.setBranchPricing(id, branchId, price),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["course-branch-pricing", selectedCourseId] });
+      toast({ title: "Branch pricing updated" });
+      setBranchPriceInput({ branchId: "", price: "" });
     },
     onError: (err: any) => {
       toast({ variant: "destructive", title: "Error", description: err.message });
@@ -272,6 +297,7 @@ export default function CoursesPage() {
             <TabsTrigger value="syllabus">Syllabus</TabsTrigger>
             <TabsTrigger value="prerequisites">Prerequisites ({selectedCourse.prerequisites?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="materials">Materials ({courseMaterials?.length ?? 0})</TabsTrigger>
+            <TabsTrigger value="pricing">Branch Pricing</TabsTrigger>
           </TabsList>
 
           <TabsContent value="syllabus" className="space-y-4">
@@ -352,6 +378,75 @@ export default function CoursesPage() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">No materials linked to this course.</div>
             )}
+          </TabsContent>
+
+          <TabsContent value="pricing" className="space-y-4">
+            {/* Set Branch Price */}
+            <Card>
+              <CardHeader><CardTitle className="text-base">Set Branch-Specific Price</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <Label className="text-xs mb-1 block">Branch</Label>
+                    <select
+                      value={branchPriceInput.branchId}
+                      onChange={(e) => setBranchPriceInput((p) => ({ ...p, branchId: e.target.value }))}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">Select branch</option>
+                      {branches?.map((b: Branch) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-40">
+                    <Label className="text-xs mb-1 block">Price (EGP)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={branchPriceInput.price}
+                      onChange={(e) => setBranchPriceInput((p) => ({ ...p, price: e.target.value }))}
+                    />
+                  </div>
+                  <Button
+                    onClick={() => {
+                      if (branchPriceInput.branchId && branchPriceInput.price) {
+                        setBranchPriceMutation.mutate({
+                          id: selectedCourse.id,
+                          branchId: branchPriceInput.branchId,
+                          price: parseFloat(branchPriceInput.price),
+                        });
+                      }
+                    }}
+                    disabled={!branchPriceInput.branchId || !branchPriceInput.price || setBranchPriceMutation.isPending}
+                  >
+                    Set Price
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Current Branch Pricing */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Current Branch Pricing</h3>
+              {branchPricing && branchPricing.length > 0 ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {branchPricing.map((bp: any) => (
+                    <Card key={bp.id}>
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{bp.branch?.name || "Unknown Branch"}</span>
+                        </div>
+                        <span className="font-bold">{bp.price} {bp.currency || "EGP"}</span>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No branch-specific pricing set. Using default price.</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>

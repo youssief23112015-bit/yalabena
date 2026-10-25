@@ -24,6 +24,11 @@ export class RegisterDto {
   @IsString()
   last_name: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  branch_id?: string;
+
   // ✅ تم حذف role_slug تماماً لمنع هجمات Privilege Escalation
   // الدور سيتم تعيينه إجبارياً كـ "student" من داخل الـ AuthService
 

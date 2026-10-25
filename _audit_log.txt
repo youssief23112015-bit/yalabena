@@ -1,0 +1,11 @@
+﻿7637ad4 Update frontend with SpeakUp changes
+b2f902c Initial push to new repository
+f0f222e last but not least
+3ff1ff0 Update project files
+bbf592e Update database and docker configuration
+7004f84 Update database and docker configuration
+1864394 Update frontend with SpeakUp changes
+613d880 Update frontend with SpeakUp changes
+0769306 Update frontend with SpeakUp changes
+640fd7c ╪º┘â╪¬╪¿ ┘ç┘å╪º ┘ê╪╡┘ü ┘ä┘ä╪¬╪╣╪»┘è┘ä╪º╪¬ ╪º┘ä╪¼╪»┘è╪»╪⌐
+d79f100 Initial commit or updates

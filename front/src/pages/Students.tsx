@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 
 import { studentsApi } from "@/api/students";
+import { branchesApi } from "@/api/branches";
 import { groupsApi } from "@/api/groups";
 
 import { DataTable } from "@/components/common/DataTable";
@@ -42,6 +43,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog";
 
 import type {
   Student,
+  Branch,
   Group,
   Certificate,
   Payment,
@@ -86,6 +88,7 @@ const updateStudentSchema = z.object({
   emergency_contact_phone: z.string().optional(),
   national_id: z.string().optional(),
   date_of_birth: z.string().optional(),
+  branch_id: z.string().optional(),
   status: z.string().optional(),
   current_level: z.string().optional(),
 });
@@ -173,10 +176,16 @@ export default function StudentsPage() {
   const [search, setSearch] =
     useState("");
 
+  const [branchId, setBranchId] =
+    useState("");
+
   const [statusFilter, setStatusFilter] =
     useState("");
 
   const [appliedSearch, setAppliedSearch] =
+    useState("");
+
+  const [appliedBranchId, setAppliedBranchId] =
     useState("");
 
   const [appliedStatus, setAppliedStatus] =
@@ -204,6 +213,7 @@ export default function StudentsPage() {
     queryKey: [
       "students",
       appliedSearch,
+      appliedBranchId,
       appliedStatus,
     ],
 
@@ -211,6 +221,9 @@ export default function StudentsPage() {
       studentsApi.findAll({
         search:
           appliedSearch || undefined,
+
+        branchId:
+          appliedBranchId || undefined,
 
         status:
           appliedStatus || undefined,
@@ -222,6 +235,15 @@ export default function StudentsPage() {
     // 5-minute staleTime with focus-refetch disabled).
     staleTime: 0,
     refetchOnWindowFocus: true,
+  });
+
+  /* =========================================================
+     BRANCHES
+  ========================================================= */
+
+  const { data: branches } = useQuery({
+    queryKey: ["branches"],
+    queryFn: branchesApi.findAll,
   });
 
   /* =========================================================
@@ -453,14 +475,17 @@ export default function StudentsPage() {
 
   const handleSearch = () => {
     setAppliedSearch(search);
+    setAppliedBranchId(branchId);
     setAppliedStatus(statusFilter);
   };
 
   const handleClear = () => {
     setSearch("");
+    setBranchId("");
     setStatusFilter("");
 
     setAppliedSearch("");
+    setAppliedBranchId("");
     setAppliedStatus("");
   };
 
@@ -518,6 +543,11 @@ export default function StudentsPage() {
     setValue(
       "date_of_birth",
       student.profile?.date_of_birth || "",
+    );
+
+    setValue(
+      "branch_id",
+      student.branch_id || "",
     );
 
     setValue(
@@ -619,6 +649,17 @@ export default function StudentsPage() {
         <Badge variant="secondary">
           {row.current_level || "—"}
         </Badge>
+      ),
+    },
+
+    {
+      key: "branch",
+      header: "Branch",
+
+      render: (row: Student) => (
+        <span className="text-xs text-muted-foreground">
+          {row.branch?.name || "—"}
+        </span>
       ),
     },
 
@@ -918,6 +959,34 @@ export default function StudentsPage() {
                         "date_of_birth",
                       )}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>
+                      Branch
+                    </Label>
+
+                    <select
+                      {...register(
+                        "branch_id",
+                      )}
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">
+                        Select branch
+                      </option>
+
+                      {branches?.map(
+                        (b: Branch) => (
+                          <option
+                            key={b.id}
+                            value={b.id}
+                          >
+                            {b.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
                   </div>
 
                   <div className="space-y-2">
@@ -1233,6 +1302,17 @@ export default function StudentsPage() {
                       {selectedStudent.profile
                         ?.address || "—"}
                     </span>
+
+                    <span className="text-muted-foreground">
+                      Branch:
+                    </span>
+
+                    <span>
+                      {
+                        selectedStudent.branch
+                          ?.name
+                      }
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -1303,6 +1383,13 @@ export default function StudentsPage() {
                             <p className="text-sm text-muted-foreground">
                               {
                                 group.course
+                                  ?.name
+                              }
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {
+                                group.branch
                                   ?.name
                               }
                             </p>
@@ -1869,6 +1956,35 @@ export default function StudentsPage() {
               }}
             />
           </div>
+        </div>
+
+        <div className="w-full space-y-2 md:w-48">
+          <label className="text-sm font-medium">
+            Branch
+          </label>
+
+          <select
+            value={branchId}
+            onChange={(e) =>
+              setBranchId(e.target.value)
+            }
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">
+              All branches
+            </option>
+
+            {branches?.map(
+              (b: Branch) => (
+                <option
+                  key={b.id}
+                  value={b.id}
+                >
+                  {b.name}
+                </option>
+              ),
+            )}
+          </select>
         </div>
 
         <div className="w-full space-y-2 md:w-40">

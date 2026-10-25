@@ -19,7 +19,7 @@ export const enrollmentsApi = {
     const { data } = await apiClient.get("/enrollments/my");
     return Array.isArray(data) ? data : data?.items ?? [];
   },
-  findAll: async (params?: { student_id?: string; group_id?: string; status?: string }): Promise<any[]> => {
+  findAll: async (params?: { student_id?: string; group_id?: string; status?: string; branch_id?: string }): Promise<any[]> => {
     const { data } = await apiClient.get("/enrollments", { params });
     return Array.isArray(data) ? data : data?.items ?? [];
   },

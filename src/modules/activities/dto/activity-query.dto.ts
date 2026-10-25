@@ -20,6 +20,11 @@ export class ActivityQueryDto {
   @MaxLength(10)
   level?: string;
 
+  @ApiPropertyOptional({ format: 'uuid', description: 'Branch filter (non-admins are locked to their own branch)' })
+  @IsOptional()
+  @IsUUID()
+  branch_id?: string;
+
   @ApiPropertyOptional({ description: 'Free-text search on title/description' })
   @IsOptional()
   @IsString()
