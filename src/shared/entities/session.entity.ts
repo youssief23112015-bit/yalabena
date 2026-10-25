@@ -40,6 +40,12 @@ export class Session {
   @Column({ type: 'varchar', length: 500, nullable: true })
   zoom_join_url: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  zoom_start_url: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  zoom_passcode: string;
+
   @Column({ type: 'varchar', length: 100, nullable: true })
   onmeet_meeting_id: string;
 

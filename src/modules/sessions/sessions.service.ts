@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { Session } from '../../shared/entities/session.entity';
 import { Group } from '../../shared/entities/group.entity';
 import { Student } from '../../shared/entities/student.entity';
+import { ApplyZoomLinkDto } from './dto/apply-zoom-link.dto';
 import { Attendance } from '../../shared/entities/attendance.entity';
 import { AttendanceStatus } from '../../common/enums/attendance-status.enum';
 import { acquireSchedulingLocks } from '../../common/utils/scheduling-locks.util';
@@ -342,6 +343,43 @@ export class SessionsService {
     }
 
     Object.assign(session, payload);
+    return this.repo.save(session);
+  }
+
+  /**
+   * Apply Zoom link fields to a session, optionally propagating to all
+   * sessions in the same group when `apply_to_all_group_sessions` is true.
+   * Safe null-checks: only fields explicitly provided in the DTO are updated.
+   */
+  async applyZoomLink(
+    sessionId: string,
+    dto: ApplyZoomLinkDto,
+  ): Promise<Session | Session[]> {
+    const session = await this.findOne(sessionId);
+
+    const updates: Partial<Session> = {};
+    if (dto.zoom_join_url !== undefined) updates.zoom_join_url = dto.zoom_join_url;
+    if (dto.zoom_meeting_id !== undefined) updates.zoom_meeting_id = dto.zoom_meeting_id;
+    if (dto.zoom_start_url !== undefined) updates.zoom_start_url = dto.zoom_start_url;
+    if (dto.zoom_passcode !== undefined) updates.zoom_passcode = dto.zoom_passcode;
+
+    if (Object.keys(updates).length === 0) {
+      return session;
+    }
+
+    if (dto.apply_to_all_group_sessions === true && session.group_id) {
+      const allSessions = await this.repo.find({
+        where: { group_id: session.group_id },
+      });
+      const updated: Session[] = [];
+      for (const s of allSessions) {
+        Object.assign(s, updates);
+        updated.push(await this.repo.save(s));
+      }
+      return updated;
+    }
+
+    Object.assign(session, updates);
     return this.repo.save(session);
   }
 

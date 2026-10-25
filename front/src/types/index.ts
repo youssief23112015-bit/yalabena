@@ -176,10 +176,7 @@ export interface Group {
   /** snake_case ids as serialized by the backend entities. */
   course_id?: string;
   teacher_id?: string;
-  branch_id?: string;
   course?: Course;
-  branchId?: string;
-  branch?: Branch;
   teacherId?: string;
   teacher?: User;
   substitute_teacher_id?: string;

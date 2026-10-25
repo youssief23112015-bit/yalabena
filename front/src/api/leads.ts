@@ -5,7 +5,6 @@ export interface LeadFilters {
   search?: string;
   status?: string;
   source?: string;
-  branch_id?: string;
   assigned_to?: string;
 }
 
@@ -19,7 +18,6 @@ export interface CreateLeadDto {
   level_interest?: string;
   notes?: string;
   assigned_to?: string;
-  branch_id?: string;
   tags?: string[];
   follow_up_date?: string;
 }

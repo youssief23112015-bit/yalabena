@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, ParseUUI
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery, ApiBody, ApiParam } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { Session } from '../../shared/entities/session.entity';
+import { ApplyZoomLinkDto } from './dto/apply-zoom-link.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AttendancesService } from '../attendance/attendance.service';
@@ -165,5 +166,38 @@ export class SessionsController {
   @ApiOperation({ summary: 'Lock attendance for the session (no further edits)' })
   async lockAttendance(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.lockAttendance(id);
+  }
+
+  @Patch(':id/zoom-link')
+  @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+  @ApiOperation({
+    summary:
+      'Apply/edit Zoom link for a session (Admin/Staff only). Optionally propagate to all sessions in the same group.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Session UUID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    description: 'Zoom link payload',
+    schema: {
+      type: 'object',
+      properties: {
+        zoom_join_url: { type: 'string', example: 'https://zoom.us/j/123456789' },
+        zoom_meeting_id: { type: 'string', example: '123456789' },
+        zoom_start_url: { type: 'string', example: 'https://zoom.us/s/123456789' },
+        zoom_passcode: { type: 'string', example: '123456' },
+        apply_to_all_group_sessions: { type: 'boolean', example: false },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Zoom link applied successfully.' })
+  @ApiResponse({ status: 404, description: 'Session not found.' })
+  async applyZoomLink(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ApplyZoomLinkDto,
+  ) {
+    return this.service.applyZoomLink(id, dto);
   }
 }
