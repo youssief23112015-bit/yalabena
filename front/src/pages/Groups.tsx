@@ -97,6 +97,10 @@ export default function GroupsPage() {
   const [scheduleForm, setScheduleForm] = useState({ day_of_week: 0, start_time: "", end_time: "" });
   const [formWeekdays, setFormWeekdays] = useState<number[]>([]);
   const [conflictWarning, setConflictWarning] = useState<string[]>([]);
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    id: string;
+    dto: Partial<Group>;
+  } | null>(null);
 
   // ── Manage Teacher modal state (direct assignment, conflict/force flow) ──
   const [teacherTarget, setTeacherTarget] = useState<Group | null>(null);
@@ -136,6 +140,7 @@ export default function GroupsPage() {
       mode: "in_person",
       status: "upcoming",
       capacity: 20,
+      schedule_weekdays: [],
     },
   });
 
@@ -167,15 +172,56 @@ export default function GroupsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, dto }: { id: string; dto: Partial<Group> }) => groupsApi.update(id, dto),
+    mutationFn: ({
+      id,
+      dto,
+    }: { id: string; dto: Partial<Group> & { cascade_prune_sessions?: boolean } }) => groupsApi.update(id, dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
       if (selectedGroupId) queryClient.invalidateQueries({ queryKey: ["group", selectedGroupId] });
       toast({ title: "Group updated successfully" });
       closeForm();
+      setPendingUpdate(null);
     },
     onError: (err: any) => {
       console.error("Group update error:", err);
+      const data = err?.response?.data;
+      const messageObj = data?.message;
+
+      // Collect details from either nested (message.details) or top-level (data.details).
+      const nestedDetails =
+        messageObj &&
+        typeof messageObj === "object" &&
+        !Array.isArray(messageObj) &&
+        Array.isArray(messageObj.details)
+          ? messageObj.details
+          : [];
+      const topLevelDetails = Array.isArray(data?.details)
+        ? data.details
+        : [];
+      const allDetails = [...nestedDetails, ...topLevelDetails];
+      const hasDetails = allDetails.length > 0;
+
+      // Structured 400: sessions fall outside the new date range.
+      if (hasDetails && pendingUpdate) {
+        const count = allDetails.length;
+        confirm({
+          title: "Sessions Outside Date Range",
+          description:
+            `Changing the group dates would leave ${count} existing session(s) outside the new start/end range.` +
+            (messageObj?.message ? ` ${messageObj.message}` : ""),
+          confirmLabel: "Proceed & Prune Sessions",
+          onConfirm: () => {
+            updateMutation.mutate({
+              id: pendingUpdate.id,
+              dto: { ...pendingUpdate.dto, cascade_prune_sessions: true },
+            });
+            setPendingUpdate(null);
+          },
+        });
+        return;
+      }
+
       toast({ variant: "destructive", title: "Error", description: err.message });
     },
   });
@@ -722,9 +768,11 @@ export default function GroupsPage() {
       zoom_link: data.zoom_link?.trim() || null,
     };
 
+    console.log("Submitting group data:", data);
     console.log("Submitting Payload:", dto);
 
     if (editingId) {
+      setPendingUpdate({ id: editingId, dto });
       updateMutation.mutate({ id: editingId, dto });
     } else {
       try {
@@ -1181,7 +1229,12 @@ export default function GroupsPage() {
         <Card>
           <CardHeader><CardTitle>{editingId ? "Edit Group" : "Create New Group"}</CardTitle></CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form
+              onSubmit={handleSubmit(onSubmit, (errors) =>
+                console.log("Form validation failed:", errors)
+              )}
+              className="space-y-4"
+            >
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Name *</Label>
@@ -1261,11 +1314,13 @@ export default function GroupsPage() {
                           value={i}
                           onChange={(e) => {
                             const val = e.target.checked;
-                            setFormWeekdays((prev) =>
-                              val
-                                ? [...prev, i]
-                                : prev.filter((x) => x !== i)
-                            );
+                            const updated = val
+                              ? [...formWeekdays, i]
+                              : formWeekdays.filter((x) => x !== i);
+                            setFormWeekdays(updated);
+                            setValue("schedule_weekdays", updated, {
+                              shouldValidate: true,
+                            });
                           }}
                           defaultChecked={formWeekdays.includes(i)}
                           className="rounded border-input bg-background text-sm"

@@ -43,9 +43,7 @@ export class LeadsService {
     const limit = Math.min(query.limit ?? 20, 100);
 
     const qb = this.repo.createQueryBuilder('lead')
-      .leftJoinAndSelect('lead.branch', 'branch')
-      // ✅ FIXED: Use the TypeScript entity property name 'assigned_agent', 
-      // NOT the database column name 'assigned_to'
+      // Branchless: branches table dropped; lead.branch_id is a plain column only
       .leftJoinAndSelect('lead.assigned_agent', 'assigned_agent') 
       .orderBy('lead.created_at', 'DESC')
       .skip((page - 1) * limit)
@@ -70,9 +68,8 @@ export class LeadsService {
   async findOne(id: string) {
     const lead = await this.repo.findOne({
       where: { id },
-      // ✅ FIXED: Use 'assigned_agent' for relations
+      // Branchless: branches table dropped
       relations: [
-        'branch', 
         'assigned_agent', 
         'activities', 
         'activities.created_by', 
@@ -151,7 +148,7 @@ export class LeadsService {
 
   async autoAssign(id: string, branchId?: string) {
     const candidates = await this.userRepo.find({
-      where: branchId ? { branch_id: branchId } : {},
+      where: {},
       order: { created_at: 'ASC' },
     });
     

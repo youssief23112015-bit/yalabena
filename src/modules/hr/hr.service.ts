@@ -61,7 +61,7 @@ export class HrService {
     const b = this.branchScope(actor);
     if (!b) return;
     const user = emp.user ?? (await this.userRepo.findOne({ where: { id: emp.user_id } }));
-    if (user?.branch_id !== b) throw new ForbiddenException('Employee belongs to another branch');
+    // Branchless architecture: users are not branch-scoped
   }
 
   private rethrowUnique(err: any, msg: string): never {

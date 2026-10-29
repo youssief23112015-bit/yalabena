@@ -9,7 +9,7 @@ export class CreateInvoiceItemDto {
 
 export class CreateInvoiceDto {
   @IsUUID() student_id: string;
-  @IsUUID() branch_id: string;
+  @IsOptional() @IsUUID() branch_id?: string;
   @IsOptional() @IsUUID() enrollment_id?: string;
   @IsArray() items: CreateInvoiceItemDto[];
   @IsOptional() @IsNumber() @Min(0) discount_amount?: number;

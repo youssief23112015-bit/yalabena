@@ -28,11 +28,6 @@ export class UpdateUserDto {
   @ApiProperty({ required: false, format: 'uuid' })
   @IsOptional()
   @IsUUID()
-  branch_id?: string;
-
-  @ApiProperty({ required: false, format: 'uuid' })
-  @IsOptional()
-  @IsUUID()
   role_id?: string;
 
   @ApiProperty({ required: false, example: 'active' })

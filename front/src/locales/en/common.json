@@ -271,7 +271,9 @@
       "fallbackTitle": "Study session",
       "joinZoom": "Join Zoom",
       "noLink": "Link available soon",
-      "withTeacher": "with {{teacher}}"
+      "withTeacher": "with {{teacher}}",
+      "joinedTitle": "Joined & marked present",
+      "joinedDesc": "You are marked as present for this session."
     },
     "courses": {
       "title": "Active Courses",

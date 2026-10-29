@@ -166,7 +166,7 @@ describe('PublicService', () => {
       const qb = qbStub(null, [{
         id: 's-1', date: TOMORROW, start_time: '10:00', end_time: '11:00',
         mode: 'in_person', capacity: 4, booked_count: 1,
-        branch: { id: 'b-1', name: 'Nasr City' },
+        branch_id: 'b-1',
         examiner_id: 'exam-1',
       }]);
       slotRepo.createQueryBuilder.mockReturnValue(qb);
@@ -174,7 +174,7 @@ describe('PublicService', () => {
       expect(qb.where).toHaveBeenCalledWith('slot.status = :status', { status: SlotStatus.OPEN });
       expect(out[0]).toEqual(expect.objectContaining({ remaining_capacity: 3 }));
       expect(out[0]).not.toHaveProperty('examiner_id');
-      expect(out[0].branch.name).toBe('Nasr City');
+      expect(out[0].branch_id).toBe('b-1');
     });
   });
 

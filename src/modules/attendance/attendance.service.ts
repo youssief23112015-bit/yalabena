@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createHmac, timingSafeEqual } from 'crypto';
@@ -108,18 +114,32 @@ export class AttendancesService {
   }
 
   private async getSessionOrFail(sessionId: string): Promise<Session> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
+    // Load the group so caller can enforce teacher ownership (group.teacher_id).
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+      relations: ['group'],
+    });
     if (!session) {
       throw new NotFoundException(`Session with ID ${sessionId} not found`);
     }
     return session;
   }
 
+  /** Teachers may only access attendance of sessions belonging to groups they teach. */
+  private assertTeacherOwnsSession(session: Session, teacherId: string): void {
+    if (!session.group || session.group.teacher_id !== teacherId) {
+      throw new ForbiddenException(
+        'You can only view or mark attendance for sessions of groups you are assigned to teach.',
+      );
+    }
+  }
+
   // ---------- roster & marking ----------
 
   /** Full roster for a session: every active group student + any recorded attendance. */
-  async getRoster(sessionId: string) {
+  async getRoster(sessionId: string, teacherId?: string) {
     const session = await this.getSessionOrFail(sessionId);
+    if (teacherId) this.assertTeacherOwnsSession(session, teacherId);
     const groupStudents = await this.groupStudentRepo.find({
       where: { group_id: session.group_id, status: 'active' },
       relations: ['student', 'student.user'],
@@ -273,10 +293,71 @@ export class AttendancesService {
     return this.repo.save(attendance);
   }
 
+  // ---------- automated attendance via Zoom join ----------
+
+  /**
+   * Auto-mark a student as PRESENT when they join a session via Zoom.
+   * Idempotent: re-joining updates the existing record's method/time but keeps
+   * the status as present (never downgrades an already-recorded mark).
+   */
+  async autoMarkAttendance(sessionId: string, studentId: string): Promise<Attendance> {
+    const session = await this.getSessionOrFail(sessionId);
+
+    if (session.cancelled_at) {
+      throw new BadRequestException('This session has been cancelled.');
+    }
+    if (session.attendance_locked) {
+      throw new BadRequestException('Attendance for this session is locked.');
+    }
+
+    const student = await this.studentRepo.findOne({ where: { id: studentId } });
+    if (!student) {
+      throw new NotFoundException('Student not found.');
+    }
+
+    const enrolled = await this.groupStudentRepo.findOne({
+      where: { group_id: session.group_id, student_id: student.id, status: 'active' },
+    });
+    if (!enrolled) {
+      throw new BadRequestException('This student is not actively enrolled in the session group.');
+    }
+
+    const now = new Date();
+    const minutesLate = this.minutesBetween(session.start_time, now, session.date);
+
+    let attendance = await this.repo.findOne({
+      where: { session_id: sessionId, student_id: studentId },
+    });
+
+    if (attendance) {
+      // Only refresh check-in metadata; preserve an existing explicit status
+      // unless it was never recorded.
+      attendance.check_in_method = CheckInMethod.AUTO;
+      attendance.check_in_time = now;
+      attendance.minutes_late = minutesLate;
+      if (!attendance.status) attendance.status = AttendanceStatus.PRESENT;
+    } else {
+      attendance = this.repo.create({
+        session_id: session.id,
+        student_id: student.id,
+        status: AttendanceStatus.PRESENT,
+        check_in_method: CheckInMethod.AUTO,
+        check_in_time: now,
+        minutes_late: minutesLate,
+        created_by: studentId,
+      });
+    }
+
+    const saved = await this.repo.save(attendance);
+    await this.syncSectionChatSafely(session.group_id);
+    return saved;
+  }
+
   // ---------- queries & reports ----------
 
-  async getForSession(sessionId: string) {
-    await this.getSessionOrFail(sessionId);
+  async getForSession(sessionId: string, teacherId?: string) {
+    const session = await this.getSessionOrFail(sessionId);
+    if (teacherId) this.assertTeacherOwnsSession(session, teacherId);
     return this.repo.find({
       where: { session_id: sessionId },
       relations: ['student', 'student.user'],
@@ -344,4 +425,94 @@ export class AttendancesService {
     const rows = await qb.getRawMany();
     return { threshold, flagged: rows.map((r) => ({ student_id: r.student_id, absences: Number(r.absences) })) };
   }
+
+  // ---------- filtered list + CSV export (role-scoped) ----------
+
+  /** List attendance records with student/session/group details, role-scoped. */
+  async listAttendance(
+    filter: AttendanceFilter,
+    userId?: string,
+    roles: string[] = [],
+  ): Promise<Attendance[]> {
+    const qb = this.repo
+      .createQueryBuilder('attendance')
+      .innerJoinAndSelect('attendance.session', 'session')
+      .innerJoinAndSelect('session.group', 'group')
+      .innerJoinAndSelect('attendance.student', 'student')
+      .innerJoinAndSelect('student.user', 'user')
+      .orderBy('session.date', 'DESC')
+      .addOrderBy('session.start_time', 'ASC')
+      .addOrderBy('user.first_name', 'ASC');
+
+    if (filter.sessionId) qb.andWhere('attendance.session_id = :sessionId', { sessionId: filter.sessionId });
+    if (filter.groupId) qb.andWhere('group.id = :groupId', { groupId: filter.groupId });
+    if (filter.from) qb.andWhere('session.date >= :from', { from: this.dateKey(filter.from) });
+    if (filter.to) qb.andWhere('session.date <= :to', { to: this.dateKey(filter.to) });
+
+    // Non-teacher roles (e.g. students) are scoped to their own records inside
+    // the controller, where the student row can be resolved first.
+    const roleSet = new Set((roles ?? []).map((r) => String(r).toLowerCase()));
+    if (!roleSet.has('super_admin') && !roleSet.has('academic') && !roleSet.has('branch_manager')) {
+      if (roleSet.has('teacher')) {
+        qb.andWhere('group.teacher_id = :teacherId', { teacherId: userId });
+      } else {
+        qb.andWhere('attendance.student_id = :studentId', { studentId: userId });
+      }
+    }
+
+    return qb.getMany();
+  }
+
+  /** CSV export of attendance records for the given filter (role-scoped). */
+  async exportAttendance(
+    filter: AttendanceFilter,
+    userId?: string,
+    roles: string[] = [],
+  ): Promise<string> {
+    const rows = await this.listAttendance(filter, userId, roles);
+    const esc = (v: unknown) => {
+      const s = v == null ? '' : String(v);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const headers = [
+      'Student',
+      'Student Number',
+      'Session',
+      'Group',
+      'Date',
+      'Status',
+      'Check-in Time',
+      'Check-in Method',
+    ];
+    const lines = [headers.join(',')];
+    for (const a of rows) {
+      const s = a as any;
+      const student = s.student ?? {};
+      const user = student.user ?? {};
+      const session = s.session ?? {};
+      const group = session.group ?? {};
+      const name = user
+        ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || student.student_number || ''
+        : student.student_number || '';
+      lines.push([
+        esc(name),
+        esc(student.student_number ?? ''),
+        esc(session.title ?? session.topic ?? ''),
+        esc(group.name ?? ''),
+        esc(session.date ? this.dateKey(session.date) : ''),
+        esc(s.status),
+        esc(s.check_in_time ? new Date(s.check_in_time).toLocaleString() : ''),
+        esc(s.check_in_method ?? ''),
+      ].join(','));
+    }
+    return lines.join('\n');
+  }
+}
+
+export interface AttendanceFilter {
+  sessionId?: string;
+  groupId?: string;
+  from?: Date | string;
+  to?: Date | string;
 }

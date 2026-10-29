@@ -7,6 +7,7 @@ import { z } from "zod";
 import { sessionsApi } from "@/api/sessions";
 import { groupsApi } from "@/api/groups";
 import { studentsApi } from "@/api/students";
+import { attendanceApi } from "@/api/attendance";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,8 +122,6 @@ export default function SessionsPage() {
       closeForm();
     },
     onError: (err: any) => {
-      // Surface structured scheduling conflicts (teacher/room/group) when the
-      // server rejects the edited window; plain errors keep their message.
       const conflictLines = Array.isArray(err?.conflicts)
         ? err.conflicts.map((c: any) => String(c?.message ?? c)).filter(Boolean)
         : [];
@@ -188,6 +187,18 @@ export default function SessionsPage() {
     mutationFn: sessionsApi.generateQrCode,
     onSuccess: (data) => {
       toast({ title: "QR Code generated", description: `Check-in code: ${data.check_in_code}` });
+    },
+    onError: (err: any) => {
+      toast({ variant: "destructive", title: "Error", description: err.message });
+    },
+  });
+
+  const joinZoomMutation = useMutation({
+    mutationFn: ({ sessionId, joinUrl }: { sessionId: string; joinUrl: string }) =>
+      attendanceApi.joinZoom(sessionId).then(() => joinUrl),
+    onSuccess: (joinUrl) => {
+      toast({ title: "Attendance marked present", description: "You are marked as present for this session." });
+      window.open(joinUrl, "_blank", "noopener,noreferrer");
     },
     onError: (err: any) => {
       toast({ variant: "destructive", title: "Error", description: err.message });
@@ -369,11 +380,20 @@ export default function SessionsPage() {
             {(() => {
               const joinUrl = (selectedSession as any).zoom_join_url || selectedSession.group?.zoom_link || null;
               if (!joinUrl) return null;
+              if (isStudent) {
+                return (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => joinZoomMutation.mutate({ sessionId: selectedSession.id, joinUrl })}
+                      disabled={joinZoomMutation.isPending}
+                    ><ExternalLink className="h-4 w-4 mr-1" /> Join Zoom</Button>
+                  </>
+                );
+              }
               return (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => window.open(joinUrl, "_blank")}><ExternalLink className="h-4 w-4 mr-1" /> Join Zoom</Button>
-                  <p className="text-xs text-muted-foreground">Link is managed from the Group settings</p>
-                </>
+                <Button variant="outline" size="sm" onClick={() => window.open(joinUrl, "_blank")}><ExternalLink className="h-4 w-4 mr-1" /> Join Zoom</Button>
               );
             })()}
           </div>
@@ -401,111 +421,113 @@ export default function SessionsPage() {
           <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">End Time</p><p className="text-lg font-bold">{selectedSession.end_time || "—"}</p></CardContent></Card>
         </div>
 
-        <Tabs defaultValue="attendance">
+        <Tabs defaultValue={isStudent ? "info" : "attendance"}>
           <TabsList>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            {!isStudent && <TabsTrigger value="attendance">Attendance</TabsTrigger>}
             <TabsTrigger value="info">Session Info</TabsTrigger>
             <TabsTrigger value="recording">Recording</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="attendance" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">Student Attendance ({students.length})</h3>
-              <div className="flex gap-2">
-                {!isLocked && (
-                  <Button size="sm" onClick={handleSaveAttendance} disabled={recordAttendanceMutation.isPending}>
-                    <CheckCircle2 className="h-4 w-4 mr-1" /> Save Attendance
+          {!isStudent && (
+            <TabsContent value="attendance" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">Student Attendance ({students.length})</h3>
+                <div className="flex gap-2">
+                  {!isLocked && (
+                    <Button size="sm" onClick={handleSaveAttendance} disabled={recordAttendanceMutation.isPending}>
+                      <CheckCircle2 className="h-4 w-4 mr-1" /> Save Attendance
+                    </Button>
+                  )}
+                  <Button size="sm" variant="outline" onClick={() => lockAttendanceMutation.mutate(selectedSession.id)} disabled={lockAttendanceMutation.isPending}>
+                    {isLocked ? <Unlock className="h-4 w-4 mr-1" /> : <Lock className="h-4 w-4 mr-1" />}
+                    {isLocked ? "Unlock" : "Lock"}
                   </Button>
-                )}
-                <Button size="sm" variant="outline" onClick={() => lockAttendanceMutation.mutate(selectedSession.id)} disabled={lockAttendanceMutation.isPending}>
-                  {isLocked ? <Unlock className="h-4 w-4 mr-1" /> : <Lock className="h-4 w-4 mr-1" />}
-                  {isLocked ? "Unlock" : "Lock"}
-                </Button>
+                </div>
               </div>
-            </div>
 
-            {students.length > 0 ? (
-              <div className="overflow-x-auto rounded-md border">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Student</th>
-                      <th className="px-4 py-2 text-left">Status</th>
-                      <th className="px-4 py-2 text-left">Notes</th>
-                      <th className="px-4 py-2 text-left">Previous</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((student: Student) => {
-                      const existing = getAttendanceForStudent(student.id);
-                      const currentStatus = attendanceMap[student.id] || existing?.status || "absent";
-                      const firstName = student.user?.first_name || student.first_name || "—";
-                      const lastName = student.user?.last_name || student.last_name || "";
-                      return (
-                        <tr key={student.id} className="border-t">
-                          <td className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                                {firstName[0]}{lastName[0] || ""}
+              {students.length > 0 ? (
+                <div className="overflow-x-auto rounded-md border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Student</th>
+                        <th className="px-4 py-2 text-left">Status</th>
+                        <th className="px-4 py-2 text-left">Notes</th>
+                        <th className="px-4 py-2 text-left">Previous</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.map((student: Student) => {
+                        const existing = getAttendanceForStudent(student.id);
+                        const currentStatus = attendanceMap[student.id] || existing?.status || "absent";
+                        const firstName = student.user?.first_name || student.first_name || "—";
+                        const lastName = student.user?.last_name || student.last_name || "";
+                        return (
+                          <tr key={student.id} className="border-t">
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                                  {firstName[0]}{lastName[0] || ""}
+                                </div>
+                                <span className="text-sm">{firstName} {lastName}</span>
                               </div>
-                              <span className="text-sm">{firstName} {lastName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-2">
-                            <select
-                              value={currentStatus}
-                              onChange={(e) => setAttendanceMap((m) => ({ ...m, [student.id]: e.target.value as Attendance["status"] }))}
-                              disabled={isLocked}
-                              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-                            >
-                              {attendanceStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-4 py-2">
-                            <Input
-                              value={attendanceNotes[student.id] || existing?.notes || ""}
-                              onChange={(e) => setAttendanceNotes((n) => ({ ...n, [student.id]: e.target.value }))}
-                              disabled={isLocked}
-                              className="h-8 text-xs"
-                              placeholder="Notes..."
-                            />
-                          </td>
-                          <td className="px-4 py-2">
-                            {existing && (
-                              <Badge className={
-                                existing.status === "present" ? "bg-green-100 text-green-800" :
-                                existing.status === "absent" ? "bg-red-100 text-red-800" :
-                                existing.status === "late" ? "bg-yellow-100 text-yellow-800" :
-                                "bg-gray-100 text-gray-800"
-                              }>
-                                {existing.status}
-                              </Badge>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">No students in this group.</div>
-            )}
+                            </td>
+                            <td className="px-4 py-2">
+                              <select
+                                value={currentStatus}
+                                onChange={(e) => setAttendanceMap((m) => ({ ...m, [student.id]: e.target.value as Attendance["status"] }))}
+                                disabled={isLocked}
+                                className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                              >
+                                {attendanceStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </td>
+                            <td className="px-4 py-2">
+                              <Input
+                                value={attendanceNotes[student.id] || existing?.notes || ""}
+                                onChange={(e) => setAttendanceNotes((n) => ({ ...n, [student.id]: e.target.value }))}
+                                disabled={isLocked}
+                                className="h-8 text-xs"
+                                placeholder="Notes..."
+                              />
+                            </td>
+                            <td className="px-4 py-2">
+                              {existing && (
+                                <Badge className={
+                                  existing.status === "present" ? "bg-green-100 text-green-800" :
+                                  existing.status === "absent" ? "bg-red-100 text-red-800" :
+                                  existing.status === "late" ? "bg-yellow-100 text-yellow-800" :
+                                  "bg-gray-100 text-gray-800"
+                                }>
+                                  {existing.status}
+                                </Badge>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">No students in this group.</div>
+              )}
 
-            {sessionAttendance && sessionAttendance.length > 0 && (
-              <Card>
-                <CardHeader><CardTitle className="text-base">Attendance Summary</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-4 text-center">
-                    <div><p className="text-2xl font-bold text-green-600">{sessionAttendance.filter((a: Attendance) => a.status === "present").length}</p><p className="text-xs text-muted-foreground">Present</p></div>
-                    <div><p className="text-2xl font-bold text-red-600">{sessionAttendance.filter((a: Attendance) => a.status === "absent").length}</p><p className="text-xs text-muted-foreground">Absent</p></div>
-                    <div><p className="text-2xl font-bold text-yellow-600">{sessionAttendance.filter((a: Attendance) => a.status === "late").length}</p><p className="text-xs text-muted-foreground">Late</p></div>
-                    <div><p className="text-2xl font-bold text-gray-600">{sessionAttendance.filter((a: Attendance) => a.status === "excused").length}</p><p className="text-xs text-muted-foreground">Excused</p></div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+              {sessionAttendance && sessionAttendance.length > 0 && (
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Attendance Summary</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-4 gap-4 text-center">
+                      <div><p className="text-2xl font-bold text-green-600">{sessionAttendance.filter((a: Attendance) => a.status === "present").length}</p><p className="text-xs text-muted-foreground">Present</p></div>
+                      <div><p className="text-2xl font-bold text-red-600">{sessionAttendance.filter((a: Attendance) => a.status === "absent").length}</p><p className="text-xs text-muted-foreground">Absent</p></div>
+                      <div><p className="text-2xl font-bold text-yellow-600">{sessionAttendance.filter((a: Attendance) => a.status === "late").length}</p><p className="text-xs text-muted-foreground">Late</p></div>
+                      <div><p className="text-2xl font-bold text-gray-600">{sessionAttendance.filter((a: Attendance) => a.status === "excused").length}</p><p className="text-xs text-muted-foreground">Excused</p></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          )}
 
           <TabsContent value="info" className="space-y-4">
             <Card>

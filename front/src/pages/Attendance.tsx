@@ -1,17 +1,17 @@
-import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { attendanceApi, type AttendanceStatus, type MarkOneDto } from "@/api/attendance";
+import { attendanceApi, type AttendanceStatus, type AttendanceRecord, type AttendanceFilter } from "@/api/attendance";
 import { groupsApi } from "@/api/groups";
 import { SessionPicker } from "@/components/attendance/SessionPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { QrCode, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Download } from "lucide-react";
 
 export const ATT_STATUSES: AttendanceStatus[] = ["present", "absent", "late", "excused"];
 
@@ -21,179 +21,254 @@ export const statusColor = (s: string) =>
   : s === "late" ? "bg-yellow-100 text-yellow-800"
   : "bg-blue-100 text-blue-800";
 
-export const displayName = (s: any) =>
-  s?.user ? `${s.user.first_name ?? ""} ${s.user.last_name ?? ""}`.trim() || s.student_number || s.id.slice(0, 8)
-  : s?.student_number || s?.id?.slice(0, 8) || "—";
+const ADMIN_ROLES = ["super_admin", "branch_manager", "academic", "auditor"];
+
+function isAdminRole(user: any): boolean {
+  const roles = user?.roles ?? (user?.role ? [user.role] : []);
+  return roles.some((r: string) => ADMIN_ROLES.includes(r));
+}
+
+function isTeacherRole(user: any): boolean {
+  const roles = user?.roles ?? (user?.role ? [user.role] : []);
+  return roles.includes("teacher");
+}
 
 export default function AttendancePage() {
   const { t } = useTranslation("common");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = isAdminRole(user);
+  const isTeacher = isTeacherRole(user);
 
   const [sessionId, setSessionId] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
-  const [draft, setDraft] = useState<Record<string, MarkOneDto>>({});
-  const [checkInForm, setCheckInForm] = useState({ session_id: "", code: "" });
+  const [dateFilter, setDateFilter] = useState("");
+  const [draft, setDraft] = useState<Record<string, { student_id: string; status: AttendanceStatus }>>({});
 
   const { data: groups } = useQuery({ queryKey: ["groups"], queryFn: () => groupsApi.findAll() });
 
-  const { data: roster, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["roster", sessionId],
-    queryFn: () => attendanceApi.getRoster(sessionId),
-    enabled: !!sessionId,
-  });
+  const filter: AttendanceFilter = {};
+  if (sessionId && sessionId !== "all") filter.sessionId = sessionId;
+  if (groupFilter) filter.groupId = groupFilter;
+  if (dateFilter) { filter.from = dateFilter; filter.to = dateFilter; }
 
-  const { data: codeData, refetch: fetchCode } = useQuery({
-    queryKey: ["checkin-code", sessionId],
-    queryFn: () => attendanceApi.getCheckInCode(sessionId),
-    enabled: false,
-  });
-
-  const { data: alerts } = useQuery({
-    queryKey: ["absence-alerts"],
-    queryFn: () => attendanceApi.absenceAlerts(3),
+  const { data: records, isLoading, isError, error } = useQuery({
+    queryKey: ["attendance-list", sessionId, groupFilter, dateFilter],
+    queryFn: () => attendanceApi.listAttendance(filter),
+    enabled: true,
   });
 
   const bulkMutation = useMutation({
-    mutationFn: () => attendanceApi.bulkMark(sessionId, Object.values(draft)),
+    mutationFn: async () => {
+      const bySession: Record<string, { student_id: string; status: AttendanceStatus }[]> = {};
+      Object.values(draft).forEach((d) => {
+        const rec = (records ?? []).find((r: any) => r.student_id === d.student_id);
+        const sid = rec?.session?.id || sessionId;
+        if (!bySession[sid]) bySession[sid] = [];
+        bySession[sid].push(d);
+      });
+      const results = await Promise.all(Object.entries(bySession).map(async ([sid, recs]) => {
+        return attendanceApi.bulkMark(sid, recs);
+      }));
+      return results;
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roster", sessionId] });
       setDraft({});
+      queryClient.invalidateQueries({ queryKey: ["attendance-list", sessionId, groupFilter, dateFilter] });
       toast({ title: t("common.success") });
     },
     onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
   });
 
-  const checkInMutation = useMutation({
-    mutationFn: () => attendanceApi.selfCheckIn(checkInForm),
-    onSuccess: () => {
-      toast({ title: t("common.success") });
-      setCheckInForm({ session_id: "", code: "" });
-      if (checkInForm.session_id === sessionId) queryClient.invalidateQueries({ queryKey: ["roster", sessionId] });
+  const downloadCsvMutation = useMutation({
+    mutationFn: async () => {
+      const blob = await attendanceApi.exportAttendance(filter);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance-${dateFilter || "all"}-${sessionId || "all"}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     },
+    onSuccess: () => toast({ title: t("common.success") }),
     onError: (e: any) => toast({ variant: "destructive", title: t("common.error"), description: e.message }),
   });
 
-  const recordedBy = (att: any[], studentId: string) => att.find((a) => (a.student_id ?? a.studentId) === studentId);
+  useEffect(() => {
+    if (sessionId === "all") setDraft({});
+  }, [sessionId]);
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">{t("nav.attendance")}</h1>
+
+      {/* Filters */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Session</CardTitle></CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Group filter</Label>
-            <select value={groupFilter} onChange={(e) => {
-              setGroupFilter(e.target.value);
-              setSessionId("");
-              setDraft({});
-            }}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-              <option value="">{t("common.all")}</option>
-              {(groups ?? []).map((g: any) => <option key={g.id} value={g.id}>{g.name}</option>)}
-            </select>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label>Session</Label>
+              <SessionPicker
+                value={sessionId}
+                groupFilter={groupFilter}
+                onChange={setSessionId}
+                includeAllOption={isAdmin || isTeacher}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              />
+            </div>
+            {groups && (
+              <div className="space-y-2">
+                <Label>Group</Label>
+                <select
+                  value={groupFilter}
+                  onChange={(e) => setGroupFilter(e.target.value)}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="">All groups</option>
+                  {groups.map((g: any) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label>Session *</Label>
-            <SessionPicker value={sessionId} groupFilter={groupFilter} onChange={(v) => { setSessionId(v); setDraft({}); }} />
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              onClick={() => downloadCsvMutation.mutate()}
+              disabled={downloadCsvMutation.isPending}
+              className="flex-1"
+            >
+              {downloadCsvMutation.isPending ? (
+                "Exporting…"
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download as CSV
+                </>
+              )}
+            </Button>
+            {sessionId && (
+              <Button
+                onClick={() => {
+                  setSessionId("");
+                  setGroupFilter("");
+                  setDateFilter("");
+                  setDraft({});
+                }}
+                variant="outline"
+              >
+                Clear filters
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
-      {sessionId && (
-        <Tabs defaultValue="roster">
-          <TabsList>
-            <TabsTrigger value="roster">Roster</TabsTrigger>
-            <TabsTrigger value="qr">QR Check-in</TabsTrigger>
-            <TabsTrigger value="alerts">Absence alerts</TabsTrigger>
-          </TabsList>
-          <TabsContent value="roster">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Roster ({roster?.students?.length ?? 0})</CardTitle>
-                {Object.keys(draft).length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Unsaved changes</span>
-                    <Button size="sm" onClick={() => bulkMutation.mutate()} disabled={bulkMutation.isPending}>
-                      <CheckCircle2 className="mr-2 h-4 w-4" /> {bulkMutation.isPending ? "Saving…" : `Save all (${Object.keys(draft).length})`}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => setDraft({})} disabled={bulkMutation.isPending}>
-                      Discard
-                    </Button>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
-                {isError && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    {(error as Error)?.message}
-                    <Button variant="outline" size="sm" onClick={() => refetch()}>{t("common.retry")}</Button>
-                  </div>
-                )}
-                {!isLoading && (roster?.students?.length ?? 0) === 0 && (
-                  <p className="text-sm text-muted-foreground">{t("common.empty")}</p>
-                )}
-                <div className="space-y-2">
-                  {(roster?.students ?? []).map((st: any) => {
-                    const rec = recordedBy(roster?.attendances ?? [], st.id);
-                    const cur = draft[st.id]?.status ?? rec?.status;
-                    return (
-                      <div key={st.id} className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-                        <span className="min-w-40 flex-1 text-sm font-medium">{displayName(st)}</span>
-                        {rec && <Badge className={statusColor(rec.status)}>{rec.status}</Badge>}
-                        {ATT_STATUSES.map((s) => (
-                          <Button key={s} size="sm" variant={cur === s ? "default" : "outline"}
-                            onClick={() => {
-                              const dto: MarkOneDto = { student_id: st.id, status: s };
-                              setDraft((d) => ({ ...d, [st.id]: dto }));
-                            }}>{s}</Button>
-                        ))}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="qr">
-            <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><QrCode className="h-4 w-4" /> Teacher QR code</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <Button variant="outline" onClick={() => fetchCode()}>Show today&apos;s code</Button>
-                {codeData && <p className="text-3xl font-mono font-bold tracking-[0.3em]">{codeData.code}</p>}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="space-y-2 md:col-span-2">
-                    <Label>Session ID (manual check-in)</Label>
-                    <Input value={checkInForm.session_id} onChange={(e) => setCheckInForm({ ...checkInForm, session_id: e.target.value })} placeholder="session uuid" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Code</Label>
-                    <Input value={checkInForm.code} onChange={(e) => setCheckInForm({ ...checkInForm, code: e.target.value })} placeholder="8-char code" />
-                  </div>
-                </div>
-                <Button onClick={() => checkInMutation.mutate()} disabled={checkInMutation.isPending || !checkInForm.session_id || !checkInForm.code}>{t("common.submit")}</Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="alerts">
-            <Card>
-              <CardHeader><CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Absence alerts</CardTitle></CardHeader>
-              <CardContent>
-                {(alerts?.flagged?.length ?? 0) === 0
-                  ? <p className="text-sm text-muted-foreground">{t("common.empty")}</p>
-                  : alerts!.flagged.map((f) => (
-                    <div key={f.student_id} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
-                      <span className="font-mono">{f.student_id.slice(0, 8)}</span>
-                      <Badge className="bg-red-100 text-red-800">{f.absences} absences</Badge>
-                    </div>
-                  ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+
+      {/* Attendance list */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            {sessionId === "all"
+              ? "All Sessions"
+              : sessionId
+              ? "Session Attendance"
+              : "Attendance Records"}
+            {records && (
+              <span className="ml-2 text-xs text-muted-foreground">({records.length} records)</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : isError ? (
+            <p className="text-sm text-destructive">{error?.message}</p>
+          ) : (records ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No attendance records found.</p>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Student</th>
+                      <th className="px-4 py-2 text-left">Student #</th>
+                      <th className="px-4 py-2 text-left">Session</th>
+                      <th className="px-4 py-2 text-left">Group</th>
+                      <th className="px-4 py-2 text-left">Date</th>
+                      <th className="px-4 py-2 text-left">Status</th>
+                      {(isAdmin || isTeacher) && <th className="px-4 py-2 text-left">Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {(records ?? []).map((r: any) => {
+                      const st = r.student || {};
+                      const userObj = st.user || {};
+                      const sess = r.session || {};
+                      const name = userObj.first_name || userObj.last_name
+                        ? `${userObj.first_name ?? ""} ${userObj.last_name ?? ""}`.trim()
+                        : st.student_number || (r.student_id ? r.student_id.slice(0, 8) : "—");
+                      const cur = draft[st.id]?.status ?? r.status;
+                      return (
+                        <tr key={r.id || Math.random()} className="border-t">
+                          <td className="px-4 py-2">{name}</td>
+                          <td className="px-4 py-2">{st.student_number || "—"}</td>
+                          <td className="px-4 py-2">{sess.title || sess.topic || "Session"}</td>
+                          <td className="px-4 py-2">{sess.group?.name || "—"}</td>
+                          <td className="px-4 py-2">{sess.date ? String(sess.date).slice(0, 10) : "—"}</td>
+                          <td className="px-4 py-2">
+                            <Badge className={statusColor(r.status)}>{r.status}</Badge>
+                          </td>
+                          {(isAdmin || isTeacher) && (
+                            <td className="px-4 py-2">
+                              {ATT_STATUSES.map((s) => (
+                                <Button
+                                  key={s}
+                                  size="sm"
+                                  variant={cur === s ? "default" : "outline"}
+                                  onClick={() => {
+                                    if (st.id) {
+                                      setDraft((d) => ({ ...d, [st.id]: { student_id: st.id, status: s } }));
+                                    }
+                                  }}
+                                >{s}</Button>
+                              ))}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {Object.keys(draft).length > 0 && (
+                <Button
+                  onClick={() => bulkMutation.mutate()}
+                  disabled={bulkMutation.isPending}
+                  className="mt-2"
+                >
+                  {bulkMutation.isPending ? "Saving…" : "Save Attendance"}
+                </Button>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
-

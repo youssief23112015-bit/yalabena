@@ -101,7 +101,6 @@ export class FinanceService {
       .innerJoinAndSelect('p.invoice', 'invoice')
       .leftJoinAndSelect('invoice.student', 'student')
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('invoice.branch', 'branch')
       .leftJoinAndSelect('p.recorder', 'recorder')
       .orderBy('p.paid_at', 'DESC');
 
@@ -143,7 +142,6 @@ export class FinanceService {
     const qb = this.refundRepo
       .createQueryBuilder('r')
       .innerJoinAndSelect('r.invoice', 'invoice')
-      .leftJoinAndSelect('invoice.branch', 'branch')
       .leftJoinAndSelect('r.payment', 'payment')
       .leftJoinAndSelect('r.approver', 'approver')
       .leftJoinAndSelect('r.processor', 'processor')
@@ -196,7 +194,6 @@ export class FinanceService {
         'invoice',
         'invoice.student',
         'invoice.student.user',
-        'invoice.branch',
         'invoice.items',
       ],
     });
@@ -206,7 +203,7 @@ export class FinanceService {
 
   // ─── INVOICES ───
 
-  async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string) {
+  async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string | null) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();

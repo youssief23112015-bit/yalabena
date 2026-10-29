@@ -45,11 +45,6 @@ export class UsersController {
   @ApiResponse({ status: 201, description: 'User created successfully.' })
   @ApiResponse({ status: 403, description: 'Forbidden: cross-branch creation.' })
   async create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthUser) {
-    if (!user.roles.includes('super_admin') && dto.branch_id !== user.branchId) {
-      throw new ForbiddenException(
-        'You can only create users in your own branch',
-      );
-    }
     return this.service.create(dto, user.userId);
   }
 
@@ -74,9 +69,6 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found.' })
   async findOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     const target = await this.service.findOne(id);
-    if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
-      throw new ForbiddenException('User belongs to a different branch');
-    }
     return target;
   }
 
@@ -118,12 +110,6 @@ export class UsersController {
     @CurrentUser() user: AuthUser,
   ) {
     const target = await this.service.findOne(id);
-    if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
-      throw new ForbiddenException('User belongs to a different branch');
-    }
-    if (!user.roles.includes('super_admin') && dto.branch_id && dto.branch_id !== user.branchId) {
-      throw new ForbiddenException('You can only move users within your own branch');
-    }
     // Role changes are super_admin-only (same rule as PATCH :id/role).
     if (dto.role_id && !user.roles.includes('super_admin')) {
       throw new ForbiddenException('Only a super admin can change roles');
@@ -142,9 +128,6 @@ export class UsersController {
     @CurrentUser() user: AuthUser,
   ) {
     const target = await this.service.findOne(id);
-    if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
-      throw new ForbiddenException('User belongs to a different branch');
-    }
     return this.service.updateStatus(id, dto.status);
   }
 
@@ -159,9 +142,6 @@ export class UsersController {
     @CurrentUser() user: AuthUser,
   ) {
     const target = await this.service.findOne(id);
-    if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
-      throw new ForbiddenException('User belongs to a different branch');
-    }
     return this.service.resetPassword(id, dto.password);
   }
 
@@ -174,9 +154,6 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'User not found.' })
   async remove(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     const target = await this.service.findOne(id);
-    if (!user.roles.includes('super_admin') && target.branch_id !== user.branchId) {
-      throw new ForbiddenException('User belongs to a different branch');
-    }
     if (target.id === user.userId) {
       throw new ForbiddenException('You cannot delete your own account');
     }

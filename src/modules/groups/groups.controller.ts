@@ -108,8 +108,12 @@ export class GroupsController {
   @ApiBody({ type: UpdateGroupDto })
   @ApiResponse({ status: 200, description: 'Group updated successfully.' })
   @ApiResponse({ status: 404, description: 'Group not found.' })
-  async update(@Param('id') id: string, @Body() dto: UpdateGroupDto) {
-    return this.service.update(id, dto);
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateGroupDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.update(id, dto, user);
   }
 
   @Delete(':id')

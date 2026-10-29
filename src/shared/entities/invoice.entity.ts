@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Enrollment } from './enrollment.entity';
 import { Student } from './student.entity';
-import { Branch } from './branch.entity';
 import { User } from './user.entity';
 import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
 import { Payment } from './payment.entity';
@@ -31,12 +30,8 @@ export class Invoice {
   @JoinColumn({ name: 'student_id' })
   student: Student;
 
-  @Column({ type: 'uuid' })
-  branch_id: string;
-
-  @ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'branch_id' })
-  branch: Branch;
+  @Column({ type: 'uuid', nullable: true })
+  branch_id?: string | null;
 
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   subtotal: number;

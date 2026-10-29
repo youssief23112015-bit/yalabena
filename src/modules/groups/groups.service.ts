@@ -93,7 +93,7 @@ export class GroupsService {
     const entityData: Partial<Group> = {
       name: dto.name,
       course_id: dto.courseId,
-      branch_id: dto.branchId,
+      branch_id: dto.branchId ?? null,
       teacher_id: dto.teacherId,
       substitute_teacher_id: dto.substitute_teacher_id || null,
       capacity: dto.capacity,
@@ -116,12 +116,11 @@ export class GroupsService {
   async findAll(filters: { branchId?: string; courseId?: string }): Promise<Group[]> {
     const query = this.repo.createQueryBuilder('group')
       .leftJoinAndSelect('group.course', 'course')
-      .leftJoinAndSelect('group.branch', 'branch')
       .leftJoinAndSelect('group.teacher', 'teacher')
       .leftJoinAndSelect('group.substitute_teacher', 'substituteTeacher');
 
     if (filters.branchId) {
-      query.andWhere('branch.id = :branchId', { branchId: filters.branchId });
+      query.andWhere('group.branch_id = :branchId', { branchId: filters.branchId });
     }
 
     if (filters.courseId) {
@@ -139,7 +138,7 @@ export class GroupsService {
   async findOne(id: string): Promise<Group & { students: Student[]; schedule: GroupSchedule[]; student_count: number }> {
     const group = await this.repo.findOne({
       where: { id },
-      relations: ['course', 'branch', 'teacher', 'substitute_teacher', 'schedules'],
+      relations: ['course', 'teacher', 'substitute_teacher', 'schedules'],
     });
 
     if (!group) {
@@ -199,8 +198,12 @@ export class GroupsService {
     return counts;
   }
 
-  async update(id: string, dto: UpdateGroupDto): Promise<Group> {
+  async update(id: string, dto: UpdateGroupDto, user: AuthUser): Promise<Group> {
     const group = await this.findOne(id);
+
+    // Branchless architecture: only a user belonging to (or allowed in) the
+    // group's branch may modify it. Super admins bypass this check.
+    assertBranchAccess(user, group.branch_id);
 
     // Snapshot the fixed meeting URL BEFORE the patch so we can keep the
     // group's generated sessions consistent with it (see below).
@@ -235,19 +238,53 @@ export class GroupsService {
       const newEnd = dto.end_date !== undefined ? new Date(dto.end_date) : group.end_date;
 
       // Existing sessions of THIS group must fall within the new date range.
-      const outOfRange = await this.sessionRepo
+      const affected = await this.sessionRepo
         .createQueryBuilder('s')
+        .select(['s.id', 's.date', 's.attendance_locked'])
         .where('s.group_id = :gid', { gid: group.id })
         .andWhere('s.cancelled_at IS NULL')
         .andWhere('(s.date < :start OR s.date > :end)', {
           start: newStart.toISOString().slice(0, 10),
           end: newEnd.toISOString().slice(0, 10),
         })
-        .getCount();
-      if (outOfRange > 0) {
-        throw new ConflictException(
-          `Changing the group dates would leave ${outOfRange} existing session(s) outside the new start/end range.`,
-        );
+        .getMany();
+
+      if (affected.length > 0) {
+        const details = affected.map((s) => ({
+          session_id: s.id,
+          date: s.date,
+          attendance_locked: s.attendance_locked,
+        }));
+
+        // Explicit opt-in: cancel sessions that fall outside the new range.
+        // Sessions that already have recorded attendance are never auto-pruned.
+        if (dto.cascade_prune_sessions === true) {
+          const prunable = affected.filter((s) => !s.attendance_locked);
+          for (const s of prunable) {
+            s.cancelled_at = new Date();
+            s.cancellation_reason =
+              'Auto-pruned: session fell outside the group\u2019s updated start/end date range.';
+          }
+          if (prunable.length > 0) {
+            await this.sessionRepo.save(prunable);
+          }
+          const locked = affected.filter((s) => s.attendance_locked);
+          if (locked.length > 0) {
+            throw new BadRequestException({
+              message:
+                'Some sessions outside the new range have recorded attendance and cannot be pruned.',
+              details: locked.map((s) => ({
+                session_id: s.id,
+                date: s.date,
+              })),
+            });
+          }
+        } else {
+          throw new BadRequestException({
+            message: `Changing the group dates would leave ${affected.length} existing session(s) outside the new start/end range.`,
+            details,
+          });
+        }
       }
 
       // Teacher overlap: the new teacher must not already teach another live
@@ -450,7 +487,6 @@ export class GroupsService {
   }): Promise<Group[]> {
     const query = this.repo.createQueryBuilder('group')
       .leftJoinAndSelect('group.course', 'course')
-      .leftJoinAndSelect('group.branch', 'branch')
       .leftJoinAndSelect('group.teacher', 'teacher');
 
     if (filters.branchId) {

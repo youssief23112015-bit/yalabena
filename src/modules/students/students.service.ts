@@ -37,7 +37,7 @@ export class StudentsService {
     if (!userId) return null;
     return this.repo.findOne({
       where: { user_id: userId },
-      relations: ['branch', 'profile'],
+      relations: ['profile'],
     });
   }
 
@@ -51,8 +51,8 @@ export class StudentsService {
    */
   async syncMissingStudentProfiles(): Promise<number> {
     const result = await this.repo.query(
-      `INSERT INTO students (user_id, branch_id, enrollment_date, status)
-       SELECT u.id, u.branch_id, CURRENT_DATE, 'active'
+      `INSERT INTO students (user_id, enrollment_date, status)
+       SELECT u.id, CURRENT_DATE, 'active'
        FROM users u
        INNER JOIN user_roles ur ON ur.user_id = u.id
        INNER JOIN roles r ON r.id = ur.role_id AND r.slug = 'student'
@@ -76,10 +76,6 @@ export class StudentsService {
 
     const query = this.repo
       .createQueryBuilder('student')
-      .leftJoinAndSelect(
-        'student.branch',
-        'branch',
-      )
       .leftJoinAndSelect(
         'student.user',
         'user',
@@ -122,7 +118,7 @@ export class StudentsService {
 
     if (filters.branchId) {
       query.andWhere(
-        'branch.id = :branchId',
+        'student.branch_id = :branchId',
         {
           branchId: filters.branchId,
         },
@@ -161,7 +157,6 @@ export class StudentsService {
       where: { id },
       relations: [
         'user',
-        'branch',
         'profile',
         'level_history',
       ],
@@ -205,7 +200,6 @@ export class StudentsService {
       relations: [
         'groups',
         'groups.course',
-        'groups.branch',
       ],
     });
 

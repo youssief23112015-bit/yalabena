@@ -69,8 +69,11 @@ export class SessionsController {
   @ApiParam({ name: 'id', description: 'Session UUID or ID', example: '123e4567-e89b-12d3-a456-426614174000' })
   @ApiResponse({ status: 200, description: 'Returns list of attendance records.' })
   @ApiResponse({ status: 404, description: 'Session not found.' })
-  async getAttendance(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.getAttendance(id);
+  async getAttendance(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: any,
+  ) {
+    return this.service.getAttendance(id, user?.id ?? user?.userId);
   }
 
   @Put(':id')
@@ -186,8 +189,6 @@ export class SessionsController {
       properties: {
         zoom_join_url: { type: 'string', example: 'https://zoom.us/j/123456789' },
         zoom_meeting_id: { type: 'string', example: '123456789' },
-        zoom_start_url: { type: 'string', example: 'https://zoom.us/s/123456789' },
-        zoom_passcode: { type: 'string', example: '123456' },
         apply_to_all_group_sessions: { type: 'boolean', example: false },
       },
     },

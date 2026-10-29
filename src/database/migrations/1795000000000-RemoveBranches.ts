@@ -66,12 +66,12 @@ export class RemoveBranches1795000000000 implements MigrationInterface {
         GROUP BY item_id
         HAVING COUNT(*) > 1
       ) agg
-      WHERE sl.id = (SELECT MIN(s2.id) FROM stock_levels s2 WHERE s2.item_id = agg.item_id);
+      WHERE sl.id = (SELECT MIN(s2.id::text)::uuid FROM stock_levels s2 WHERE s2.item_id = agg.item_id);
     `);
     await queryRunner.query(`
       DELETE FROM stock_levels sl
       USING (
-        SELECT item_id, MIN(id) AS keep_id
+        SELECT item_id, MIN(id::text)::uuid AS keep_id
         FROM stock_levels
         GROUP BY item_id
       ) agg
@@ -96,8 +96,7 @@ export class RemoveBranches1795000000000 implements MigrationInterface {
       'test_slots',
     ];
     for (const table of tablesWithBranchColumn) {
-      await queryRunner.query(`ALTER TABLE "${table}" DROP COLUMN IF EXISTS "branch_id"`);
-    }
+await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "branch_id" CASCADE;`);    }
 
     // ── 4. Promo codes: branch scoping removed ──
     await queryRunner.query(`ALTER TABLE "promo_codes" DROP COLUMN IF EXISTS "applicable_branches"`);

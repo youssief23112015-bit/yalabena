@@ -178,7 +178,6 @@ export class PublicService {
   async listPlacementSlots(branchId?: string) {
     const qb = this.slotRepo
       .createQueryBuilder('slot')
-      .innerJoin('slot.branch', 'branch')
       .where('slot.status = :status', { status: SlotStatus.OPEN })
       .andWhere('slot.date >= :today', { today: new Date().toISOString().slice(0, 10) })
       .orderBy('slot.date', 'ASC')
@@ -321,7 +320,6 @@ export class PublicService {
             password_hash: hash,
             first_name: dto.first_name,
             last_name: dto.last_name,
-            branch_id: dto.branch_id,
             language: 'ar',
             status: UserStatus.ACTIVE,
           }),

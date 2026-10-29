@@ -1,10 +1,14 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Header } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { AttendancesService } from './attendance.service';
+import { AttendancesService, AttendanceFilter } from './attendance.service';
 import { MarkAttendanceDto, BulkMarkAttendanceDto } from './dto/mark-attendance.dto';
 import { CheckInDto } from './dto/check-in.dto';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+
+type AuthedUser = { id?: string; userId?: string; roles?: string[] };
+
+const ADMIN_ROLES = ['super_admin', 'branch_manager', 'academic', 'auditor'];
 
 @ApiTags('Attendances')
 @ApiBearerAuth('JWT')
@@ -12,11 +16,18 @@ import { Roles } from '../../common/decorators/roles.decorator';
 export class AttendancesController {
   constructor(private readonly service: AttendancesService) {}
 
+  private teacherIdOf(user: AuthedUser | undefined): string | undefined {
+    return user?.id ?? user?.userId;
+  }
+
   @Get('sessions/:sessionId/roster')
   @Roles('super_admin', 'teacher', 'academic')
   @ApiOperation({ summary: 'Get session roster (students + recorded attendance)' })
-  async getRoster(@Param('sessionId') sessionId: string) {
-    return this.service.getRoster(sessionId);
+  async getRoster(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user?: AuthedUser,
+  ) {
+    return this.service.getRoster(sessionId, this.teacherIdOf(user));
   }
 
   @Post('sessions/:sessionId/mark')
@@ -45,8 +56,53 @@ export class AttendancesController {
   @Get('sessions/:sessionId')
   @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
   @ApiOperation({ summary: 'Get attendance records for a session' })
-  async getForSession(@Param('sessionId') sessionId: string) {
-    return this.service.getForSession(sessionId);
+  async getForSession(
+    @Param('sessionId') sessionId: string,
+    @CurrentUser() user?: AuthedUser,
+  ) {
+    return this.service.getForSession(sessionId, this.teacherIdOf(user));
+  }
+
+  @Post('sessions/:sessionId/join-zoom')
+  @Roles('student')
+  @ApiOperation({ summary: 'Student joins a session via Zoom — auto-marks attendance as present' })
+  @ApiResponse({ status: 201, description: 'Attendance marked present (auto).' })
+  async joinZoom(@Param('sessionId') sessionId: string, @CurrentUser('id') userId: string) {
+    return this.service.autoMarkAttendance(sessionId, userId);
+  }
+
+  @Get()
+  @Roles(...ADMIN_ROLES, 'teacher')
+  @ApiOperation({ summary: 'List attendance records (filtered by session/date, role-scoped)' })
+  @ApiQuery({ name: 'sessionId', required: false, type: String })
+  @ApiQuery({ name: 'groupId', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
+  async listAttendance(
+    @Query() filter: AttendanceFilter,
+    @CurrentUser() user?: AuthedUser,
+  ) {
+    const userId = this.teacherIdOf(user);
+    const roles = user?.roles ?? [];
+    return this.service.listAttendance(filter, userId, roles);
+  }
+
+  @Get('export')
+  @Roles(...ADMIN_ROLES, 'teacher')
+  @ApiOperation({ summary: 'Export filtered attendance records as CSV' })
+  @ApiQuery({ name: 'sessionId', required: false, type: String })
+  @ApiQuery({ name: 'groupId', required: false, type: String })
+  @ApiQuery({ name: 'from', required: false, type: String })
+  @ApiQuery({ name: 'to', required: false, type: String })
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="attendance.csv"')
+  async exportAttendance(
+    @Query() filter: AttendanceFilter,
+    @CurrentUser() user?: AuthedUser,
+  ): Promise<string> {
+    const userId = this.teacherIdOf(user);
+    const roles = user?.roles ?? [];
+    return this.service.exportAttendance(filter, userId, roles);
   }
 
   @Post('check-in')
@@ -98,3 +154,4 @@ export class AttendancesController {
     return this.service.absenceAlerts(threshold ? Number(threshold) : 3, groupId || undefined);
   }
 }
+
