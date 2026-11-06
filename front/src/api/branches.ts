@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { Branch, Classroom } from "@/types";
+import type { Classroom } from "@/types";
 
 export interface CreateBranchDto {
   name: string;

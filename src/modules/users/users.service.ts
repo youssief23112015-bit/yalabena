@@ -11,7 +11,6 @@ import { UserStatus } from '../../common/enums/user-status.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
 
 export interface FindAllUsersFilter {
-  branchId?: string;
 }
 
 /** Profile fields a client may edit through PUT /users/:id. */
@@ -42,7 +41,6 @@ export class UsersService {
   private async ensureStudentProfile(
     em: EntityManager,
     userId: string,
-    branchId?: string | null,
   ): Promise<void> {
     const repo = em.getRepository(Student);
     const existing = await repo.findOne({ where: { user_id: userId } });
@@ -62,7 +60,6 @@ export class UsersService {
       await repo.save(
         repo.create({
           user_id: userId,
-          branch_id: branchId || null,
           enrollment_date: new Date(),
         } as Partial<Student>),
       );
@@ -131,8 +128,7 @@ export class UsersService {
 
         if (role.slug === 'student') {
           await this.ensureStudentProfile(em, created.id);
-        }
-      }
+        }      }
 
       return created;
     });
@@ -241,7 +237,7 @@ export class UsersService {
       throw new ConflictException('Password must be at least 6 characters');
     }
     const hash = await bcrypt.hash(newPassword, 10);
-    await this.userRepo.update(id, { password_hash: hash });
+    await this.userRepo.update(id, { password_hash: hash, password_changed_at: new Date() });
     return { id, reset: true };
   }
 

@@ -37,9 +37,6 @@ export class Group {
   @JoinColumn({ name: 'substitute_teacher_id' })
   substitute_teacher: User;
 
-  @Column({ type: 'uuid', nullable: true })
-  branch_id?: string | null;
-
   @Column({ type: 'int' })
   capacity: number;
 

@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +12,7 @@ import { sessionsApi } from "@/api/sessions";
 import {
   Users,
   BookOpen,
+  Building2,
   CalendarDays,
   Clock,
   TrendingUp,
@@ -29,14 +29,18 @@ const normalizeArray = <T,>(res: any): T[] => {
   if (res && Array.isArray(res.leads)) return res.leads;
   if (res && Array.isArray(res.students)) return res.students;
   if (res && Array.isArray(res.courses)) return res.courses;
+  if (res && Array.isArray(res.branches)) return res.branches;
   if (res && Array.isArray(res.groups)) return res.groups;
   if (res && Array.isArray(res.sessions)) return res.sessions;
   return [];
 };
 
 /**
- * Full administrative dashboard (Leads, students, courses, groups,
+ * Full administrative dashboard (Leads, students, courses, branches, groups,
  * sessions, conversion / fill-rate KPIs, attendance summary).
+ *
+ * Rendered for: super_admin, branch_manager, sales, finance, academic
+ * (plus auditor / moderator / unknown roles) — see pages/Dashboard.tsx.
  */
 export default function AdminDashboard() {
   const { t } = useTranslation("common");
@@ -101,6 +105,7 @@ export default function AdminDashboard() {
   const totalLeads = serverStats?.total_leads ?? leads.length;
   const totalStudents = serverStats?.total_students ?? students.length;
   const totalCourses = serverStats?.total_courses ?? courses.length;
+  const totalBranches = serverStats?.total_branches ?? 0;
   const totalGroups = serverStats?.total_groups ?? groups.length;
   const totalSessions = serverStats?.total_sessions ?? sessions.length;
 
@@ -133,6 +138,7 @@ export default function AdminDashboard() {
     { title: t("nav.leads"), value: totalLeads, icon: Users, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10" },
     { title: t("nav.students"), value: totalStudents, icon: GraduationCap, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10" },
     { title: t("nav.courses"), value: totalCourses, icon: BookOpen, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10" },
+    { title: t("nav.branches"), value: totalBranches, icon: Building2, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10" },
     { title: t("nav.groups"), value: totalGroups, icon: CalendarDays, color: "text-pink-600 dark:text-pink-400", bg: "bg-pink-500/10" },
     { title: t("nav.sessions"), value: totalSessions, icon: Clock, color: "text-cyan-600 dark:text-cyan-400", bg: "bg-cyan-500/10" },
   ];
@@ -141,7 +147,6 @@ export default function AdminDashboard() {
     { title: t("inventory.valuation") || "Conversion Rate", value: `${conversionRate}%`, icon: Percent, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", sub: `${enrolledLeads} ${t("common.of")} ${totalLeads}` },
     { title: "Group Fill Rate", value: `${fillRate}%`, icon: TrendingUp, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10", sub: `${totalEnrolled} ${t("common.of")} ${totalCapacity}` },
   ];
-
   return (
     <div className="space-y-6">
       <div>
@@ -152,8 +157,8 @@ export default function AdminDashboard() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="shadow-sm border-border/60">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <Skeleton className="h-4 w-24" />

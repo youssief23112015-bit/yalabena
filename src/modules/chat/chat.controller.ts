@@ -135,7 +135,12 @@ export class ChatController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('format') format: 'csv' | 'pdf' = 'csv',
     @Res() res: Response,
+    @CurrentUser() user: any,
   ) {
+    // Access control: moderators can only export rooms they belong to.
+    // getRoom throws Forbidden if the user is not a member or is banned.
+    await this.chatService.getRoom(id, user.userId);
+
     if (format === 'pdf') {
       const buffer = await this.chatService.exportRoomMessagesPdf(id);
       res.set({

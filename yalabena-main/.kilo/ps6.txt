@@ -1,0 +1,6 @@
+﻿
+7a5457d4b656_speakup-api Up About a minute
+speakup-postgres Up 2 hours (healthy)
+speakup-redis Up 2 hours
+
+

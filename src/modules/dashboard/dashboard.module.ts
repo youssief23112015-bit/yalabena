@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Lead } from '../../shared/entities/lead.entity';
 import { Student } from '../../shared/entities/student.entity';
 import { Course } from '../../shared/entities/course.entity';
-import { Branch } from '../../shared/entities/branch.entity';
 import { Group } from '../../shared/entities/group.entity';
 import { Session } from '../../shared/entities/session.entity';
 import { Invoice } from '../../shared/entities/invoice.entity';
@@ -32,7 +31,6 @@ import { PeriodResolver } from './metrics/period.util';
       Lead,
       Student,
       Course,
-      Branch,
       Group,
       Session,
       Invoice,

@@ -1,0 +1,1 @@
+$files = Get-ChildItem -Recurse -File -Include '*.tsx','*.ts' | Where-Object { $_.FullName -notmatch 'node_modules' }; $files | Select-String -Pattern 'branch|Branch' | Select-Object -Property Path, LineNumber, Line | Format-Table -AutoSize

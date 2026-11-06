@@ -11,6 +11,10 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log', 'debug'],
   });
 
+  // Trust proxy so req.ip resolves the real client IP from x-forwarded-for /
+  // x-real-ip when behind a load balancer or reverse proxy.
+  app.set('trust proxy', true);
+
   // Global Prefix & API Versioning (ينتج عنه /api/v1/...)
   app.setGlobalPrefix('api');
   app.enableVersioning({
@@ -24,9 +28,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Serve Uploaded Files Static Directory
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/',
+  // Serve Uploaded Files Static Directory under /api/v1/uploads/
+  // استخدام process.cwd() لضمان الوصول الصحيح لمجلد uploads بغض النظر عن مجلد البناء (dist)
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/api/v1/uploads/',
   });
 
   // Global Validation Pipe Configuration
@@ -57,7 +62,7 @@ async function bootstrap() {
         description: 'Enter your JWT token',
         in: 'header',
       },
-      'JWT', // يتوافق مع @ApiBearerAuth('JWT') المستخدم في الـ Controllers
+      'JWT',
     )
     .addTag('Auth', 'Authentication & Authorization')
     .addTag('Users', 'User management & Profiles')

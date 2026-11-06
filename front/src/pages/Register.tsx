@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +19,12 @@ export default function RegisterPage() {
   const { toast } = useToast();
   const setAuth = useAuthStore((s) => s.setAuth);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Debounce guard against rapid repeated registration attempts (spam).
+  const lastSubmitAt = useRef(0);
+  // Track rate-limit cooldown so submit stays disabled after a 429.
+  const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
+
+  const isRateLimited = () => Date.now() < rateLimitedUntil;
 
   const {
     register,
@@ -29,6 +35,12 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (data: RegisterForm) => {
+    const now = Date.now();
+    if (now - lastSubmitAt.current < 1000) return; // ignore rapid re-submits
+    lastSubmitAt.current = now;
+
+    if (isRateLimited()) return; // respect 429 cooldown
+
     setIsSubmitting(true);
     try {
       const res = await authApi.register({
@@ -39,10 +51,6 @@ export default function RegisterPage() {
         phone: data.phone,
       });
 
-      localStorage.setItem("access_token", res.access_token);
-      localStorage.setItem("refresh_token", res.refresh_token);
-      localStorage.setItem("user", JSON.stringify(res.user));
-
       setAuth(res.user, res.access_token, res.refresh_token);
 
       toast({
@@ -52,6 +60,19 @@ export default function RegisterPage() {
 
       navigate("/");
     } catch (err: any) {
+      const statusCode = err?.statusCode ?? err?.response?.status;
+      if (statusCode === 429) {
+        const retryAfter = err?.retry_after ?? err?.response?.data?.retry_after ?? 60;
+        const cooldownMs = Math.min(Number(retryAfter) * 1000 || 60000, 300000);
+        setRateLimitedUntil(Date.now() + cooldownMs);
+        toast({
+          variant: "destructive",
+          title: t("auth.rateLimited"),
+          description: t("auth.rateLimitedDescription", "Too many attempts. Please try again later."),
+        });
+        setIsSubmitting(false);
+        return;
+      }
       toast({
         variant: "destructive",
         title: t("common.error"),
@@ -184,7 +205,7 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full transition-all duration-200 active:scale-95" disabled={isSubmitting}>
+            <Button type="submit" className="w-full transition-all duration-200 active:scale-95" disabled={isSubmitting || isRateLimited()}>
               {isSubmitting ? t("common.loading") : t("auth.register")}
             </Button>
             <p className="text-sm text-muted-foreground">

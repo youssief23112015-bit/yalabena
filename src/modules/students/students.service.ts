@@ -30,7 +30,7 @@ export class StudentsService {
 
   /**
    * The student row backing a logged-in user (used by the self-service
-   * booking flow to resolve current_level / branch). Returns null when the
+   * booking flow to resolve current_level). Returns null when the
    * user does not hold a student profile.
    */
   async findByUserId(userId: string): Promise<Student | null> {
@@ -65,7 +65,6 @@ export class StudentsService {
 
   async findAll(filters: {
     search?: string;
-    branchId?: string;
     status?: string;
     groupId?: string;
   }): Promise<Student[]> {
@@ -112,15 +111,6 @@ export class StudentsService {
           'student.student_number ILIKE :search)',
         {
           search: `%${filters.search}%`,
-        },
-      );
-    }
-
-    if (filters.branchId) {
-      query.andWhere(
-        'student.branch_id = :branchId',
-        {
-          branchId: filters.branchId,
         },
       );
     }

@@ -1,3 +1,5 @@
+/// <reference types="jest" />
+
 import { resolveDashboardKind, eligibleDashboardKinds } from "./Dashboard";
 
 describe("resolveDashboardKind", () => {

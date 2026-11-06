@@ -4,7 +4,6 @@ import { financeApi } from '../../api/finance';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { DateRangePicker } from '../../components/common/DateRangePicker';
-import { BranchSelector } from '../../components/common/BranchSelector';
 import { DataTable } from '../../components/common/DataTable';
 import { formatCurrency, formatDate } from '../../lib/utils';
 import { useAuthStore } from '../../store/authStore';
@@ -15,21 +14,20 @@ export const FinanceDashboard: React.FC = () => {
     from: new Date(new Date().setMonth(new Date().getMonth() - 1)),
     to: new Date(),
   });
-  const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
 
   const { data: revenueData } = useQuery({
-    queryKey: ['revenue-report', dateRange, selectedBranch],
+    queryKey: ['revenue-report', dateRange],
     queryFn: () => financeApi.getRevenueReport({
       startDate: dateRange.from.toISOString(),
       endDate: dateRange.to.toISOString(),
-      branchId: selectedBranch,
+      branchId: undefined,
       groupBy: 'day',
     }),
   });
 
   const { data: outstandingData, isLoading: outstandingLoading, isError: outstandingError } = useQuery({
-    queryKey: ['outstanding-receivables', selectedBranch],
-    queryFn: () => financeApi.getOutstandingReceivables(selectedBranch),
+    queryKey: ['outstanding-receivables'],
+    queryFn: () => financeApi.getOutstandingReceivables(undefined),
   });
 
   const isAdmin = user?.role === 'SUPER_ADMIN';
@@ -39,13 +37,6 @@ export const FinanceDashboard: React.FC = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Finance Dashboard</h1>
         <div className="flex gap-4">
-          {isAdmin && (
-            <BranchSelector
-              value={selectedBranch}
-              onChange={setSelectedBranch}
-              placeholder="All Branches"
-            />
-          )}
           <DateRangePicker
             value={dateRange}
             onChange={setDateRange}

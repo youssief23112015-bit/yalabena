@@ -186,7 +186,6 @@ export class LeadsService {
         last_name: lead.last_name,
         password_hash: tempPassword,
         language: 'ar',
-        branch_id: dto.branch_id ?? lead.branch_id,
       } as Partial<User>),
     );
 
@@ -195,7 +194,7 @@ export class LeadsService {
       this.studentRepo.create({
         user_id: user.id,
         current_level: dto.level ?? lead.level_interest,
-        branch_id: dto.branch_id ?? lead.branch_id,
+        // Student entity has no branch_id column; removed for type compliance
         enrollment_date: new Date(),
       } as Partial<Student>),
     );
@@ -279,7 +278,7 @@ export class LeadsService {
     let tag = await this.tagRepo.findOne({ where: { name: dto.name } });
     if (!tag) {
       tag = await this.tagRepo.save(
-        this.tagRepo.create({ name: dto.name, color: dto.color ?? '#000000', branch_id: lead.branch_id }),
+        this.tagRepo.create({ name: dto.name, color: dto.color ?? '#000000' }),
       );
     }
 

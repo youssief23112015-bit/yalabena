@@ -116,12 +116,6 @@ export class PublicService {
 
   // ─── Lead capture (SRS 4.14) ─────────────────────────────────
 
-  /**
-   * Anonymous lead from the public site; source is forced to `website`.
-   * Idempotent by phone OR email: an existing contact returns is_new=false
-   * without touching the row (Business Rule 1 — dedupe by phone/email;
-   * spec: public.service.spec.ts › captureLead).
-   */
   async captureLead(dto: PublicLeadDto): Promise<{ lead_id: string; is_new: boolean }> {
     const query = this.leadRepo
       .createQueryBuilder('lead')
@@ -142,7 +136,6 @@ export class PublicService {
         email: dto.email,
         level_interest: dto.level_interest,
         notes: dto.notes,
-        branch_id: dto.branch_id,
         source: LeadSource.WEBSITE,
         status: LeadStatus.NEW,
       }),
@@ -171,10 +164,6 @@ export class PublicService {
 
   // ─── Placement-test self-booking (SRS 4.3) ───────────────────
 
-  /**
-   * Open future slots with remaining capacity. Examiner details are stripped
-   * — this is an anonymous endpoint (spec: listPlacementSlots).
-   */
   async listPlacementSlots(branchId?: string) {
     const qb = this.slotRepo
       .createQueryBuilder('slot')
@@ -182,7 +171,6 @@ export class PublicService {
       .andWhere('slot.date >= :today', { today: new Date().toISOString().slice(0, 10) })
       .orderBy('slot.date', 'ASC')
       .addOrderBy('slot.start_time', 'ASC');
-    if (branchId) qb.andWhere('slot.branch_id = :branchId', { branchId });
     const rows = await qb.getMany();
     return rows.map(({ examiner_id: _examiner, ...rest }) => ({
       ...rest,
@@ -190,11 +178,6 @@ export class PublicService {
     }));
   }
 
-  /**
-   * A visitor books themselves into a slot — all inside one transaction:
-   * find-or-create the lead, reject duplicates/invalid slots, reserve the
-   * seat, schedule the test at the slot's start time (spec: bookPlacementTest).
-   */
   async bookPlacementTest(
     dto: PublicPlacementBookingDto,
   ): Promise<{ test_id: string; lead_id: string; scheduled_at: Date; message: string }> {
@@ -216,19 +199,15 @@ export class PublicService {
         throw new ConflictException('This slot is fully booked');
       }
 
-      // Business Rule 2: find-or-create the Lead by phone OR email and keep
-      // the pipeline in sync (existing leads advanced to TEST_SCHEDULED).
       const lead = await upsertLeadForPlacement(em.getRepository(Lead) as any, {
         first_name: dto.first_name,
         last_name: dto.last_name,
         phone: dto.phone,
         email: dto.email,
-        branch_id: slot.branch_id,
         level_interest: dto.level_interest,
         source: LeadSource.WEBSITE,
       });
 
-      // One active test per lead at a time.
       const activeTest = await em
         .getRepository(PlacementTest)
         .createQueryBuilder('t')
@@ -267,17 +246,9 @@ export class PublicService {
 
   // ─── Online registration (SRS 4.14) ──────────────────────────
 
-  /**
-   * Anonymous online registration: create the lead + a student login now.
-   * The invoice is created later by staff when they enroll the student in a
-   * group (invoices require an enrollment reference in this schema).
-   * User/Student/Role repos come from the entity manager so the constructor
-   * stays at the 7 repositories the spec instantiates.
-   */
   async registerStudent(dto: PublicRegistrationDto) {
     const em = this.repo.manager;
 
-    // 1) Lead (dedupe by phone, same rule as captureLead).
     let lead = await em
       .getRepository(Lead)
       .createQueryBuilder('lead')
@@ -291,14 +262,12 @@ export class PublicService {
           phone: dto.phone,
           email: dto.email,
           level_interest: dto.level_interest,
-          branch_id: dto.branch_id,
           source: LeadSource.WEBSITE,
           status: LeadStatus.NEW,
         }),
       );
     }
 
-    // 2) Student account — only when an email is provided (login key).
     let student: Student | null = null;
     if (dto.email) {
       const existingUser = await em
@@ -341,7 +310,6 @@ export class PublicService {
             user_id: user.id,
             student_number: `STU-${Date.now().toString(36).toUpperCase()}`,
             current_level: dto.level_interest,
-            branch_id: dto.branch_id,
             status: StudentStatus.ACTIVE,
             enrollment_date: new Date(),
           }),
@@ -349,7 +317,6 @@ export class PublicService {
       }
     }
 
-    // 3) Advance the lead so sales sees the follow-up.
     if (lead.status === LeadStatus.NEW) {
       lead.status = LeadStatus.CONTACTED;
       await em.getRepository(Lead).save(lead);

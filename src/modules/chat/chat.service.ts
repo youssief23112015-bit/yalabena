@@ -26,6 +26,29 @@ import { toCsvLine } from './utils/csv';
 import { isInternalUploadUrl } from './utils/attachment-url';
 import { PdfService } from '../pdf/pdf.service';
 
+/**
+ * Strips all HTML tags and escapes remaining special characters from a chat
+ * message body. Chat messages are plain text — storing raw HTML enables
+ * stored XSS when the frontend renders message bodies without escaping.
+ */
+export function sanitizeHtml(body: string): string {
+  if (!body) return body;
+  // Remove <script> blocks and their contents first (greedy, non-greedy fallback)
+  let cleaned = body.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // Strip all remaining HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  // Escape HTML special characters
+  cleaned = cleaned
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+  // Neutralize javascript: and data: URI schemes that may survive tag stripping
+  cleaned = cleaned.replace(/\b(javascript|data|vbscript):/gi, 'blocked:');
+  return cleaned.trim();
+}
+
 export interface ChatAuditRow {
   id: string;
   createdAt: Date;
@@ -299,7 +322,7 @@ export class ChatService {
       throw new BadRequestException('Attachments must be uploaded through the platform, not linked externally');
     }
 
-    const scan = this.scanMessage(dto.body || '');
+    const scan = this.scanMessage(sanitizeHtml(dto.body || ''));
     if (scan?.violation) {
       // messageId is null: the message must never be persisted once a
       // violation fires, so no message row — and therefore no id — exists.
@@ -311,6 +334,7 @@ export class ChatService {
 
     const message = this.messageRepo.create({
       ...dto,
+      body: sanitizeHtml(dto.body || ''),
       sender_id: senderId,
       type: dto.type || ChatMessageType.TEXT,
     });
@@ -384,7 +408,7 @@ export class ChatService {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     if (message.created_at < fiveMinutesAgo) throw new BadRequestException('Edit window expired (5 minutes)');
 
-    message.body = body;
+    message.body = sanitizeHtml(body);
     message.edited_at = new Date();
     message.edited_count += 1;
     return this.messageRepo.save(message);

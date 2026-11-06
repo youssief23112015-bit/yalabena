@@ -54,6 +54,7 @@ const createLeadSchema = z.object({
   level_interest: z.string().optional(),
   notes: z.string().optional(),
   assigned_to: z.string().optional(),
+
   tags: z.string().optional(),
   follow_up_date: z.string().optional(),
 });
@@ -68,6 +69,7 @@ const updateLeadSchema = z.object({
   level_interest: z.string().optional(),
   notes: z.string().optional(),
   assigned_to: z.string().optional(),
+
   tags: z.string().optional(),
   follow_up_date: z.string().optional(),
   status: z.string().optional(),

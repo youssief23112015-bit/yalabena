@@ -1,0 +1,80 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 538B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile:
+#2 transferring dockerfile: 355B 0.1s done
+#2 DONE 0.7s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 5.1s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 148B 0.0s done
+#4 DONE 0.1s
+
+#5 [builder 1/6] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#5 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.1s done
+#5 DONE 0.1s
+
+#6 [internal] load build context
+#6 transferring context: 429.80kB 5.1s
+#6 transferring context: 1.38MB 10.6s
+#6 transferring context: 1.58MB 15.6s
+#6 transferring context: 1.67MB 20.6s
+#6 transferring context: 2.01MB 25.7s
+#6 transferring context: 2.12MB 30.7s
+#6 transferring context: 2.56MB 35.9s
+#6 transferring context: 2.80MB 39.5s done
+#6 DONE 40.9s
+
+#7 [builder 2/6] WORKDIR /app
+#7 CACHED
+
+#8 [builder 3/6] COPY package*.json ./
+#8 CACHED
+
+#9 [builder 4/6] RUN npm ci
+#9 CACHED
+
+#10 [builder 5/6] COPY . .
+#10 DONE 190.3s
+
+#11 [builder 6/6] RUN npm run build
+#11 13.30 
+#11 13.30 > speakup-tms-backend@1.0.0 build
+#11 13.30 > nest build
+#11 13.30 
+#11 DONE 175.0s
+
+#7 [builder 2/6] WORKDIR /app
+#7 CACHED
+
+#12 [stage-1 3/5] COPY --from=builder /app/dist ./dist
+#12 DONE 2.0s
+
+#13 [stage-1 4/5] COPY --from=builder /app/node_modules ./node_modules
+#13 DONE 156.1s
+
+#14 [stage-1 5/5] COPY package*.json ./
+#14 DONE 3.5s
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 74.5s done
+#15 exporting manifest sha256:2c1710767559e430c1664b198dfe3a8139a0298668a20a55a6a883179b962b83
+#15 exporting manifest sha256:2c1710767559e430c1664b198dfe3a8139a0298668a20a55a6a883179b962b83 0.3s done
+#15 exporting config sha256:b01409baccfaae7a2f17e43c0af49f256f3b63211a0b619229764e32f4a22a4e
+#15 exporting config sha256:b01409baccfaae7a2f17e43c0af49f256f3b63211a0b619229764e32f4a22a4e 0.1s done
+#15 exporting attestation manifest sha256:2955a4007630bcf2143cf980c08d021eb32508a94a17e85dcb11837b18eaef95
+#15 exporting attestation manifest sha256:2955a4007630bcf2143cf980c08d021eb32508a94a17e85dcb11837b18eaef95 0.1s done
+#15 exporting manifest list sha256:7b1d9c8b751120eccca0df0c7a8af5dec427022f60bb2b183451850fa37ee37b 0.1s done
+#15 naming to docker.io/library/yalabena-main-app:latest
+#15 naming to docker.io/library/yalabena-main-app:latest 0.0s done
+#15 unpacking to docker.io/library/yalabena-main-app:latest
+#15 unpacking to docker.io/library/yalabena-main-app:latest 44.2s done
+#15 DONE 120.5s
+
+#16 resolving provenance for metadata file
+#16 DONE 2.3s

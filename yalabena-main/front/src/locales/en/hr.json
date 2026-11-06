@@ -1,0 +1,11 @@
+{
+  "title": "Human Resources",
+  "employees": "Employees",
+  "leaves": "Leave Management",
+  "myHr": "My HR",
+  "payroll": "Payroll",
+  "addEmployee": "Add employee",
+  "requestLeave": "Request leave",
+  "calculate": "Calculate teachers",
+  "export": "Export CSV"
+}

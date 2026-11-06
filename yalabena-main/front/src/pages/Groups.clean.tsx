@@ -1,0 +1,105 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen, fireEvent } from '@testing-library-library/react'
+import userEvent from '@testing-library/user-event'
+import { GroupsPage } from '../pages/Groups'
+describe('Groups Recurring Schedule Tests', () => {
+  const mockGroup = {
+    id: 'test-group-1',
+    name: 'Test Group',
+    courseId: 'course-1',
+    branchId: 'branch-1',
+    teacherId: 'teacher-1',
+    capacity: 20,
+    mode: 'online' as const,
+    status: 'upcoming' as const,
+    schedule_weekdays: [],
+    schedule_start_time: '09:00',
+    schedule_end_time: '10:00',
+    zoom_link: 'https://meet.example.com/123',
+    created_at: new Date(),
+    updated_at: new Date(),
+  }
+  const mockWeekday = (day: number, startTime = '09:00', endTime = '10:00') => ({
+    day_of_week: day,
+    start_time: startTime,
+    end_time: endTime,
+    classroom_id: undefined,
+  })
+  beforeEach(() => {
+    (apiClient.post as jest.Mock).mockResolvedValue({ data: mockGroup })
+    (apiClient.get as jest.Mock).mockResolvedValue({ data: mockGroup })
+  })
+  it('creates exactly one schedule window when one weekday is selected', async () => {
+    (apiClient.post as jest.Mock).mockResolvedValueOnce(
+      { data: { ...mockGroup, schedule_weekdays: [0], schedule_start_time: '09:00', schedule_end_time: '10:00' } }
+    )
+    render(<GroupsPage />)
+    // Select Monday (day index 1)
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /monday/i }))
+    // Submit, submit the form
+    await userEvent.click(screen.button({ type: 'submit' }))
+    // Verify exactly one schedule window was created
+    const scheduleWindows = screen.getByRole('alert', { name: /schedule schedule window/i })
+    expect(scheduleWindows).toContainExactly('1 schedule window created')
+  })
+  it('creates exactly three schedule windows when three weekdays are selected', async () => {
+    (apiClient.post as jest.Mock).mockResolvedValueOnce(
+      { data: { ...mockGroup, schedule_weekdays: [1, 3, 5], schedule_start_time: '09:00', schedule_end_time: '10:00' } }
+    )
+    render(<GroupsPage />)
+    // Select Monday, Wednesday, Friday
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /monday/i }))
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /wednesday/i }))
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /friday/i }))
+    // Submit, submit the form
+    await userEvent.click(screen.button({ type: 'submit' }))
+    // Verify three schedule windows were created
+    const scheduleWindows = screen.getByRole('alert', { name: /schedule schedule window/i })
+    expect(scheduleWindows).toContainExactly('3 schedule windows created')
+  })
+  it('rejects submission when no weekdays are selected', async () => {
+    render(<GroupsPage />)
+    // Attempt to submit without selecting any weekday
+    await userEvent.click(screen.button({ type: 'submit' }))
+    // Validation should prevent submission
+    const errorText = screen.getByText(/select at least one weekday/i)
+    expect(errorText).toBeInTheDocument()
+  })
+  it('keeps group accessible on partial API failure and reports failed windows', async () => {
+    // Mock: 2 of 3 API calls succeed, 1 fails
+    (apiClient.post as jest.Mock)
+      .mockResolvedValueOnce({ data: { ...mockGroup, id: 'schedule-1' } })
+      .mockResolvedValueOnce({ data: { ...mockGroup, id: 'b-2' } })
+      .mockRejectedValueOnce(new Error('API error'))
+    render(<GroupsPage />)
+    // Select 3 weekdays
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /monday/i }))
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /wednesday/i }))
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /friday/i }))
+    //b, submit the form
+    await userEvent.click(screen.button({ type: 'submit' }))
+    // Group should still be accessible (not rolled back)
+    const groupElement = screen.getByRole('badge', { name: /upcoming/i })
+    expect(groupElement).toBeInTheDocument()
+    // Error toast should report which windows failed/succeeded
+    const errorToast = screen.getByRole('alert', { name: /schedule failed/i })
+    expect(errorToast).toContainTheErrorText('Schedule windows')
+  })
+  it('leaves group accessible when all API calls fail, with recovery message', async () => {
+    // Mock: all 3 API calls fail
+    (apiClient.post as jest.Mock).mockRejectedValueTimes(3, new Error('API error'))
+    render(<GroupsPage />)
+    // Select 3 weekdays
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /monday/i }))
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /wednesday/i }))
+    await userEvent.click(screen(screen.queryByRole('checkbox', { name: /friday/i }))
+    //b, submit the form
+    await userEvent.click(screen.button({ type: 'submit' }))
+    // Group should still be accessible (not rolled back)
+    const groupElement = screen.getByRole('badge', { name: /upcoming/i })
+    expect(groupElement).toBeInTheDocument()
+    // Recovery message should mention Update Schedule path
+    const recoveryToast = screen.getByRole('alert', { name: /update schedule/i })
+    expect(recoveryToast).toBeInTheDocument()
+  })
+})

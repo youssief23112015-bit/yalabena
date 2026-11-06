@@ -1,0 +1,44 @@
+﻿
+   Id ProcessName        StartTime          
+   -- -----------        ---------          
+14732 com.docker.backend 10/11/26 7:56:05 PM
+20704 com.docker.backend 10/11/26 7:56:08 PM
+ 3024 com.docker.build   10/11/26 7:56:16 PM
+ 3728 docker             10/11/26 7:58:23 PM
+ 5368 docker             10/11/26 7:58:22 PM
+ 9876 docker             10/11/26 9:23:07 PM
+14148 docker             10/11/26 8:01:18 PM
+14216 docker             10/11/26 9:21:39 PM
+23524 docker             10/11/26 8:01:18 PM
+12612 Docker Desktop     10/11/26 7:56:18 PM
+13412 Docker Desktop     10/11/26 7:56:23 PM
+17072 Docker Desktop     10/11/26 7:56:27 PM
+24148 Docker Desktop     10/11/26 7:56:23 PM
+11116 docker-buildx      10/11/26 9:22:00 PM
+ 8952 docker-compose     10/11/26 9:21:48 PM
+ 1244 powershell         10/11/26 7:51:44 PM
+ 2848 powershell         10/11/26 7:51:43 PM
+ 3324 powershell         10/11/26 8:08:08 PM
+ 4680 powershell         10/11/26 8:28:03 PM
+ 6620 powershell         10/11/26 7:51:43 PM
+ 9284 powershell         10/11/26 9:00:25 PM
+ 9408 powershell         10/11/26 9:17:49 PM
+10048 powershell         10/11/26 8:01:47 PM
+11804 powershell         10/11/26 9:08:22 PM
+12132 powershell         10/11/26 8:50:28 PM
+14280 powershell         10/11/26 8:54:00 PM
+15524 powershell         10/11/26 8:52:40 PM
+16236 powershell         10/11/26 7:51:43 PM
+16340 powershell         10/11/26 9:21:33 PM
+17200 powershell         10/11/26 9:17:49 PM
+17548 powershell         10/11/26 8:36:30 PM
+19020 powershell         10/11/26 7:51:42 PM
+19064 powershell         10/11/26 8:19:53 PM
+21316 powershell         10/11/26 8:05:07 PM
+22572 powershell         10/11/26 7:55:55 PM
+23360 powershell         10/11/26 7:51:44 PM
+23940 powershell         10/11/26 7:51:43 PM
+24020 powershell         10/11/26 7:51:44 PM
+24284 powershell         10/11/26 7:51:44 PM
+
+

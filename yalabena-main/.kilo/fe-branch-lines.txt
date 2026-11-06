@@ -1,0 +1,636 @@
+﻿front\src\api\activities.ts|16|branch_id?: string;
+front\src\api\activities.ts|28|branch_id: string;
+front\src\api\branches.ts|2|import type { Branch, Classroom } from "@/types";
+front\src\api\branches.ts|4|export interface CreateBranchDto {
+front\src\api\branches.ts|13|export interface UpdateBranchDto {
+front\src\api\branches.ts|22|export const branchesApi = {
+front\src\api\branches.ts|23|findAll: async (): Promise<Branch[]> => {
+front\src\api\branches.ts|24|const { data } = await apiClient.get<Branch[]>("/branches");
+front\src\api\branches.ts|27|findOne: async (id: string): Promise<Branch> => {
+front\src\api\branches.ts|28|const { data } = await apiClient.get<Branch>(`/branches/${id}`);
+front\src\api\branches.ts|31|create: async (dto: CreateBranchDto): Promise<Branch> => {
+front\src\api\branches.ts|32|const { data } = await apiClient.post<Branch>("/branches", dto);
+front\src\api\branches.ts|35|update: async (id: string, dto: UpdateBranchDto): Promise<Branch> => {
+front\src\api\branches.ts|36|const { data } = await apiClient.put<Branch>(`/branches/${id}`, dto);
+front\src\api\branches.ts|40|const { data } = await apiClient.delete(`/branches/${id}`);
+front\src\api\branches.ts|44|const { data } = await apiClient.get<Classroom[]>(`/classrooms`, { params: { branchId: id } });
+front\src\api\branches.ts|48|const { data } = await apiClient.post<Classroom>(`/classrooms`, { ...dto, branchId: id });
+front\src\api\branches.ts|51|updateClassroom: async (_branchId: string, classroomId: string, dto: { name?: string; capacity?: number; status?: string }): Promise<Classroom> => {
+front\src\api\branches.ts|55|removeClassroom: async (_branchId: string, classroomId: string): Promise<unknown> => {
+front\src\api\certificates.ts|32|list: async (params?: { student_id?: string; course_id?: string; group_id?: string; status?: string; branch_id?: string }): Promise<any[]> => {
+front\src\api\courses.ts|45|getBranchPricing: async (id: string): Promise<Course['branch_pricing']> => {
+front\src\api\courses.ts|46|const { data } = await apiClient.get(`/courses/${id}/branch-pricing`);
+front\src\api\courses.ts|49|setBranchPricing: async (id: string, branchId: string, price: number): Promise<unknown> => {
+front\src\api\courses.ts|50|const { data } = await apiClient.post(`/courses/${id}/branch-pricing`, { branch_id: branchId, price });
+front\src\api\enrollments.ts|22|findAll: async (params?: { student_id?: string; group_id?: string; status?: string; branch_id?: string }): Promise<any[]> => {
+front\src\api\finance.ts|16|byBranch: Record<string, number>;
+front\src\api\finance.ts|54|student_id: string; branch_id: string; enrollment_id?: string;
+front\src\api\finance.ts|62|student_id?: string; branch_id?: string; status?: string;
+front\src\api\finance.ts|75|applicable_courses?: string[]; applicable_branches?: string[];
+front\src\api\finance.ts|95|listPayments: async (params?: { invoice_id?: string; branch_id?: string; from?: string; to?: string }): Promise<any[]> => {
+front\src\api\finance.ts|111|listRefunds: async (params?: { status?: string; branch_id?: string }): Promise<any[]> => {
+front\src\api\finance.ts|123|ledger: async (params?: { from?: string; to?: string; branch_id?: string }): Promise<any> => {
+front\src\api\finance.ts|127|receivables: async (branch_id?: string): Promise<any> => {
+front\src\api\finance.ts|128|const { data } = await apiClient.get("/finance/receivables", { params: branch_id ? { branch_id } : {} });
+front\src\api\finance.ts|138|branchId?: string;
+front\src\api\finance.ts|145|branch_id: params?.branchId,
+front\src\api\finance.ts|163|// The ledger endpoint is not branch-split for the caller's scope;
+front\src\api\finance.ts|164|// the By-Branch panel stays empty rather than showing wrong numbers.
+front\src\api\finance.ts|165|byBranch: {},
+front\src\api\finance.ts|172|getOutstandingReceivables: async (branchId?: string): Promise<OutstandingReceivables> => {
+front\src\api\finance.ts|174|params: branchId ? { branch_id: branchId } : {},
+front\src\api\groups.ts|5|findAll: async (params?: { branchId?: string; courseId?: string; status?: string; teacherId?: string }): Promise<Group[]> => {
+front\src\api\groups.ts|68|getCalendar: async (params: { view: 'day' | 'week' | 'month'; date: string; teacherId?: string; classroomId?: string; branchId?: string }): Promise<Group[]> => {
+front\src\api\index.ts|6|export { branchesApi } from "./branches";
+front\src\api\inventory.ts|25|export interface BranchStock { branch_id: string; branch_name: string | null; quantity: number; last_counted_at: string | null }
+front\src\api\inventory.ts|28|id: string; item_id: string; branch_id: string; type: StockMoveType; quantity: number;
+front\src\api\inventory.ts|31|branch?: { id: string; name: string };
+front\src\api\inventory.ts|36|total_quantity: number; stock: BranchStock[]; moves: StockMove[];
+front\src\api\inventory.ts|40|id: string; student_id: string; item_id: string; branch_id: string; quantity: number; cost: number;
+front\src\api\inventory.ts|47|export interface LowStockRow { item_id: string; name: string; sku: string | null; branch_id: string; branch_name: string; quantity: number; reorder_level: number; shortage: number }
+front\src\api\inventory.ts|49|export interface ValuationBranch { branch_id: string; branch_name: string; total_quantity: number; total_cost: number; items: ValuationLine[] }
+front\src\api\inventory.ts|50|export interface Valuation { branches: ValuationBranch[]; grand_total_cost: number }
+front\src\api\inventory.ts|56|branch_id?: string; initial_quantity?: number;
+front\src\api\inventory.ts|66|branch_id?: string; search?: string; category?: string; status?: string; low_stock_only?: boolean;
+front\src\api\inventory.ts|69|item: async (id: string, branch_id?: string) =>
+front\src\api\inventory.ts|70|(await apiClient.get<InventoryItemDetails>(`/inventory/${id}`, { params: clean({ branch_id }) })).data,
+front\src\api\inventory.ts|73|const { branch_id: _b, initial_quantity: _q, ...rest } = input;
+front\src\api\inventory.ts|79|receive: async (id: string, b: { branch_id: string; quantity: number; unit_cost?: number; reason?: string }) =>
+front\src\api\inventory.ts|81|adjust: async (id: string, b: { branch_id: string; quantity: number; reason: string }) =>
+front\src\api\inventory.ts|83|transfer: async (id: string, b: { from_branch_id: string; to_branch_id: string; quantity: number; reason?: string }) =>
+front\src\api\inventory.ts|86|moves: async (params?: { item_id?: string; branch_id?: string; type?: string; from?: string; to?: string; page?: number; limit?: number }) =>
+front\src\api\inventory.ts|88|issues: async (params?: { student_id?: string; branch_id?: string; open_only?: boolean; page?: number; limit?: number }) =>
+front\src\api\inventory.ts|90|issue: async (b: { item_id: string; student_id: string; branch_id: string; quantity?: number; cost?: number }) =>
+front\src\api\inventory.ts|95|lowStock: async (branch_id?: string) =>
+front\src\api\inventory.ts|96|(await apiClient.get<LowStockRow[]>("/inventory/low-stock-alerts", { params: clean({ branch_id }) })).data,
+front\src\api\inventory.ts|97|valuation: async (branch_id?: string) =>
+front\src\api\inventory.ts|98|(await apiClient.get<Valuation>("/inventory/valuation-report", { params: clean({ branch_id }) })).data,
+front\src\api\inventory.ts|99|movementReport: async (params?: { branch_id?: string; from?: string; to?: string }) =>
+front\src\api\leads.ts|8|branch_id?: string;
+front\src\api\leads.ts|22|branch_id?: string;
+front\src\api\public.ts|2|import type { Course, Branch } from "@/types";
+front\src\api\public.ts|13|branch_id?: string;
+front\src\api\public.ts|27|branch_id: string;
+front\src\api\public.ts|28|branch?: Branch;
+front\src\api\public.ts|43|branch_id: string;
+front\src\api\public.ts|86|/* â”€â”€ Branches â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+front\src\api\public.ts|88|export async function fetchPublicBranches(): Promise<Branch[]> {
+front\src\api\public.ts|89|const { data } = await apiClient.get<Branch[]>("/branches");
+front\src\api\public.ts|102|export async function fetchPublicTestSlots(branchId?: string): Promise<PublicTestSlot[]> {
+front\src\api\public.ts|104|params: branchId ? { branch_id: branchId } : {},
+front\src\api\public.ts|128|branch_id?: string;
+front\src\api\students.ts|6|branchId?: string;
+front\src\api\students.ts|23|branch_id?: string;
+front\src\api\testSlots.ts|5|branch_id: string;
+front\src\api\testSlots.ts|14|branch?: any;
+front\src\api\users.ts|10|branch_id?: string;
+front\src\api\users.ts|20|branch_id?: string;
+front\src\api\users.ts|26|findAll: async (params?: { branchId?: string; roleId?: string; status?: string; search?: string }): Promise<User[]> => {
+front\src\api\waitlists.ts|10|branch_id?: string;
+front\src\api\waitlists.ts|11|branch?: any;
+front\src\api\waitlists.ts|21|findAll: async (params?: { branch_id?: string; level?: string; status?: string; course_id?: string }): Promise<WaitlistEntry[]> => {
+front\src\components\common\BranchSelector.tsx|3|interface BranchSelectorProps {
+front\src\components\common\BranchSelector.tsx|9|export const BranchSelector: React.FC<BranchSelectorProps> = ({ value, onChange, placeholder = 'Select Branch' }) => {
+front\src\components\common\BranchSelector.tsx|18|<option value="branch-1">Main Branch</option>
+front\src\components\common\BranchSelector.tsx|19|<option value="branch-2">Second Branch</option>
+front\src\components\inventory\ItemFormDialog.tsx|10|import type { Branch } from "@/types";
+front\src\components\inventory\ItemFormDialog.tsx|17|branches: Branch[];
+front\src\components\inventory\ItemFormDialog.tsx|18|defaultBranchId?: string;
+front\src\components\inventory\ItemFormDialog.tsx|22|export function ItemFormDialog({ open, item, branches, defaultBranchId, onClose }: Props) {
+front\src\components\inventory\ItemFormDialog.tsx|29|branch_id: "", initial_quantity: "0", status: "active" as InventoryStatus,
+front\src\components\inventory\ItemFormDialog.tsx|41|branch_id: defaultBranchId ?? "", initial_quantity: "0", status: item?.status ?? "active",
+front\src\components\inventory\ItemFormDialog.tsx|43|}, [open, item, defaultBranchId]);
+front\src\components\inventory\ItemFormDialog.tsx|54|if (qty > 0 && !f.branch_id) throw new Error(t("errOpeningBranch"));
+front\src\components\inventory\ItemFormDialog.tsx|62|: inventoryApi.createItem({ ...base, branch_id: f.branch_id || undefined, initial_quantity: qty || undefined });
+front\src\components\inventory\ItemFormDialog.tsx|103|<label className="text-sm">{t("fOpeningBranch")}
+front\src\components\inventory\ItemFormDialog.tsx|104|<select className={field} value={f.branch_id} onChange={set("branch_id")}>
+front\src\components\inventory\ItemFormDialog.tsx|106|{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\components\inventory\StockActionDialog.tsx|8|import type { Branch } from "@/types";
+front\src\components\inventory\StockActionDialog.tsx|20|branches: Branch[];
+front\src\components\inventory\StockActionDialog.tsx|21|defaultBranchId?: string;
+front\src\components\inventory\StockActionDialog.tsx|25|export function StockActionDialog({ mode, item, branches, defaultBranchId, onClose }: Props) {
+front\src\components\inventory\StockActionDialog.tsx|29|const [branch, setBranch] = useState("");
+front\src\components\inventory\StockActionDialog.tsx|30|const [toBranch, setToBranch] = useState("");
+front\src\components\inventory\StockActionDialog.tsx|41|setBranch(defaultBranchId ?? ""); setToBranch(""); setQty(mode === "adjust" ? "" : "1");
+front\src\components\inventory\StockActionDialog.tsx|44|}, [mode, item, defaultBranchId]);
+front\src\components\inventory\StockActionDialog.tsx|65|if (!branch) throw new Error(t("errBranch"));
+front\src\components\inventory\StockActionDialog.tsx|69|return inventoryApi.receive(item.id, { branch_id: branch, quantity: n, unit_cost: c, reason: reason.trim() || undefined });
+front\src\components\inventory\StockActionDialog.tsx|73|return inventoryApi.adjust(item.id, { branch_id: branch, quantity: n, reason: reason.trim() });
+front\src\components\inventory\StockActionDialog.tsx|76|if (!toBranch) throw new Error(t("errDest"));
+front\src\components\inventory\StockActionDialog.tsx|77|if (toBranch === branch) throw new Error(t("errSame"));
+front\src\components\inventory\StockActionDialog.tsx|78|return inventoryApi.transfer(item.id, { from_branch_id: branch, to_branch_id: toBranch, quantity: n, reason: reason.trim() || undefined });
+front\src\components\inventory\StockActionDialog.tsx|83|return inventoryApi.issue({ item_id: item.id, student_id: student, branch_id: branch, quantity: n, cost });
+front\src\components\inventory\StockActionDialog.tsx|94|const branchSelect = (label: string, value: string, onChange: (v: string) => void) => (
+front\src\components\inventory\StockActionDialog.tsx|97|<option value="">{t("selectBranch")}</option>
+front\src\components\inventory\StockActionDialog.tsx|98|{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\components\inventory\StockActionDialog.tsx|109|{branchSelect(mode === "transfer" ? t("fromBranch") : t("branch"), branch, setBranch)}
+front\src\components\inventory\StockActionDialog.tsx|110|{mode === "transfer" && branchSelect(t("toBranch"), toBranch, setToBranch)}
+front\src\components\layout\Sidebar.tsx|51|{ to: "/leads", label: "nav.leads", icon: Users, roles: ["super_admin", "branch_manager", "sales"] },
+front\src\components\layout\Sidebar.tsx|52|{ to: "/students", label: "nav.students", icon: GraduationCap, roles: ["super_admin", "branch_manager", "sales", "finance", "academic", "teacher"] },
+front\src\components\layout\Sidebar.tsx|53|{ to: "/courses", label: "nav.courses", icon: BookOpen, roles: ["super_admin", "branch_manager", "academic", "teacher"] },
+front\src\components\layout\Sidebar.tsx|54|{ to: "/groups", label: "nav.groups", icon: CalendarDays, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+front\src\components\layout\Sidebar.tsx|55|{ to: "/sessions", label: "nav.sessions", icon: Clock, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+front\src\components\layout\Sidebar.tsx|56|{ to: "/attendance", label: "nav.attendance", icon: ClipboardCheck, roles: ["super_admin", "academic", "branch_manager", "teacher"] },
+front\src\components\layout\Sidebar.tsx|57|{ to: "/placement-tests", label: "nav.placementTests", icon: BookMarked, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+front\src\components\layout\Sidebar.tsx|58|{ to: "/test-slots", label: "nav.testSlots", icon: Calendar, roles: ["super_admin", "branch_manager", "academic"] },
+front\src\components\layout\Sidebar.tsx|59|{ to: "/waitlists", label: "nav.waitlists", icon: Hourglass, roles: ["super_admin", "branch_manager", "sales", "academic"] },
+front\src\components\layout\Sidebar.tsx|60|{ to: "/enrollments", label: "nav.enrollments", icon: ScrollText, roles: ["super_admin", "branch_manager", "sales", "finance", "academic"] },
+front\src\components\layout\Sidebar.tsx|61|{ to: "/finance", label: "nav.finance", icon: Wallet, roles: ["super_admin", "finance", "branch_manager"] },
+front\src\components\layout\Sidebar.tsx|62|{ to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "branch_manager", "academic", "finance", "teacher"] },
+front\src\components\layout\Sidebar.tsx|66|{ to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "branch_manager", "teacher", "finance"] },
+front\src\components\layout\Sidebar.tsx|67|{ to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "branch_manager", "academic", "teacher", "sales"] },
+front\src\components\layout\Sidebar.tsx|68|{ to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance"] },
+front\src\components\layout\Sidebar.tsx|69|{ to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "branch_manager", "academic", "teacher", "student", "moderator"] },
+front\src\components\layout\Sidebar.tsx|70|{ to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
+front\src\components\layout\Sidebar.tsx|71|{ to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance", "auditor"] },
+front\src\components\layout\Sidebar.tsx|73|{ to: "/branches", label: "nav.branches", icon: Building2, roles: ["super_admin", "branch_manager"] },
+front\src\components\layout\Sidebar.tsx|74|{ to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
+front\src\components\layout\Sidebar.tsx|97|if (roles.some((r) => ["super_admin", "hr", "branch_manager"].includes(r))) return "/hr";
+front\src\components\notifications\SendNotificationModal.tsx|38|const ADMIN_TARGETING_ROLES = ["super_admin", "admin", "branch_manager", "hr", "academic"];
+front\src\components\notifications\SendNotificationModal.tsx|118|// â”€â”€ "Specific Person" picker: full (branch-scoped) user list, filtered
+front\src\components\public\LeadCaptureForm.tsx|15|import { capturePublicLead, fetchPublicBranches } from "@/api/public";
+front\src\components\public\LeadCaptureForm.tsx|23|branch_id: z.string().optional(),
+front\src\components\public\LeadCaptureForm.tsx|34|const { data: branches } = useQuery({
+front\src\components\public\LeadCaptureForm.tsx|35|queryKey: ["public-branches"],
+front\src\components\public\LeadCaptureForm.tsx|36|queryFn: fetchPublicBranches,
+front\src\components\public\LeadCaptureForm.tsx|61|branch_id: data.branch_id || undefined,
+front\src\components\public\LeadCaptureForm.tsx|129|<Select onValueChange={(val) => setValue("branch_id", val)}>
+front\src\components\public\LeadCaptureForm.tsx|131|<SelectValue placeholder={t("public.leadForm.branch", "Preferred Branch")} />
+front\src\components\public\LeadCaptureForm.tsx|134|{(branches ?? []).map((b) => (
+front\src\lib\rbac.ts|3|export const HR_VIEW_ROLES = ["super_admin", "hr", "branch_manager"];
+front\src\pages\activities\ActivityFormPage.tsx|4|import { branchesApi } from "@/api/branches";
+front\src\pages\activities\ActivityFormPage.tsx|32|interface Branch {
+front\src\pages\activities\ActivityFormPage.tsx|45|const [branches, setBranches] = useState<Branch[]>([]);
+front\src\pages\activities\ActivityFormPage.tsx|54|branch_id: "",
+front\src\pages\activities\ActivityFormPage.tsx|66|const branchesRes = (await branchesApi.findAll?.()) as any;
+front\src\pages\activities\ActivityFormPage.tsx|67|const branchList = Array.isArray(branchesRes)
+front\src\pages\activities\ActivityFormPage.tsx|68|? branchesRes
+front\src\pages\activities\ActivityFormPage.tsx|69|: branchesRes?.data ?? [];
+front\src\pages\activities\ActivityFormPage.tsx|70|setBranches(branchList);
+front\src\pages\activities\ActivityFormPage.tsx|82|branch_id: activity.branch_id,
+front\src\pages\activities\ActivityFormPage.tsx|178|<Label htmlFor="branch">Branch *</Label>
+front\src\pages\activities\ActivityFormPage.tsx|180|value={form.branch_id}
+front\src\pages\activities\ActivityFormPage.tsx|181|onValueChange={(v) => update("branch_id", v)}
+front\src\pages\activities\ActivityFormPage.tsx|184|<SelectTrigger id="branch">
+front\src\pages\activities\ActivityFormPage.tsx|185|<SelectValue placeholder="Select a branch" />
+front\src\pages\activities\ActivityFormPage.tsx|188|{branches.map((branch) => (
+front\src\pages\activities\ActivityFormPage.tsx|189|<SelectItem key={branch.id} value={branch.id}>
+front\src\pages\activities\ActivityFormPage.tsx|190|{branch.name}
+front\src\pages\dashboards\AdminDashboard.tsx|10|import { branchesApi } from "@/api/branches";
+front\src\pages\dashboards\AdminDashboard.tsx|33|if (res && Array.isArray(res.branches)) return res.branches;
+front\src\pages\dashboards\AdminDashboard.tsx|40|* Full administrative dashboard (Leads, students, courses, branches, groups,
+front\src\pages\dashboards\AdminDashboard.tsx|43|* Rendered for: super_admin, branch_manager, sales, finance, academic
+front\src\pages\dashboards\AdminDashboard.tsx|75|const { data: rawBranches, isLoading: branchesLoading } = useQuery({
+front\src\pages\dashboards\AdminDashboard.tsx|76|queryKey: ["dashboard-branches"],
+front\src\pages\dashboards\AdminDashboard.tsx|77|queryFn: () => branchesApi.findAll(),
+front\src\pages\dashboards\AdminDashboard.tsx|79|const branches = normalizeArray<any>(rawBranches);
+front\src\pages\dashboards\AdminDashboard.tsx|109|const isLoading = leadsLoading || studentsLoading || coursesLoading || branchesLoading || groupsLoading || sessionsLoading;
+front\src\pages\dashboards\AdminDashboard.tsx|115|const totalBranches = serverStats?.total_branches ?? branches.length;
+front\src\pages\dashboards\AdminDashboard.tsx|148|{ title: t("nav.branches"), value: totalBranches, icon: Building2, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10" },
+front\src\pages\dashboards\StudentDashboard.tsx|364|{s.branch ? ` â€” ${s.branch.name}` : ""} ({seats}{" "}
+front\src\pages\dashboards\StudentDashboard.tsx|407|{pt.slot?.branch?.name ??
+front\src\pages\finance\FinanceDashboard.tsx|7|import { BranchSelector } from '../../components/common/BranchSelector';
+front\src\pages\finance\FinanceDashboard.tsx|18|const [selectedBranch, setSelectedBranch] = useState<string | undefined>();
+front\src\pages\finance\FinanceDashboard.tsx|21|queryKey: ['revenue-report', dateRange, selectedBranch],
+front\src\pages\finance\FinanceDashboard.tsx|25|branchId: selectedBranch,
+front\src\pages\finance\FinanceDashboard.tsx|31|queryKey: ['outstanding-receivables', selectedBranch],
+front\src\pages\finance\FinanceDashboard.tsx|32|queryFn: () => financeApi.getOutstandingReceivables(selectedBranch),
+front\src\pages\finance\FinanceDashboard.tsx|43|<BranchSelector
+front\src\pages\finance\FinanceDashboard.tsx|44|value={selectedBranch}
+front\src\pages\finance\FinanceDashboard.tsx|45|onChange={setSelectedBranch}
+front\src\pages\finance\FinanceDashboard.tsx|46|placeholder="All Branches"
+front\src\pages\finance\FinanceDashboard.tsx|163|<CardTitle>By Branch</CardTitle>
+front\src\pages\finance\FinanceDashboard.tsx|166|{Object.entries(revenueData?.byBranch || {}).map(([branch, amount]) => (
+front\src\pages\finance\FinanceDashboard.tsx|167|<div key={branch} className="flex justify-between py-2 border-b">
+front\src\pages\finance\FinanceDashboard.tsx|168|<span>{branch}</span>
+front\src\pages\hr\LeavesPage.tsx|8|const roles=useUserRoles();const canDecide=hasAnyRole(roles,["super_admin","hr","branch_manager"]);const[items,setItems]=useState<LeaveRequest[]>([]);const[employees,setEmployees]=useState<Employee[]>([]);const[status,setStatus]=useState("");const[employee,setEmployee]=useState("");const[decision,setDecision]=useState<{id:string;action:"approve"|"reject"}|null>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState("");
+front\src\pages\inventory\InventoryPage.tsx|12|import { branchesApi } from "@/api/branches";
+front\src\pages\inventory\InventoryPage.tsx|39|const canManage = hasAnyRole(roles, ["super_admin", "branch_manager"]);
+front\src\pages\inventory\InventoryPage.tsx|40|const canIssue = hasAnyRole(roles, ["super_admin", "branch_manager", "sales"]);
+front\src\pages\inventory\InventoryPage.tsx|41|const ownBranch: string | undefined = user?.branchId ?? user?.branch_id ?? undefined;
+front\src\pages\inventory\InventoryPage.tsx|45|const [branchId, setBranchId] = useState<string>(isGlobal ? "" : ownBranch ?? "");
+front\src\pages\inventory\InventoryPage.tsx|59|const scopedBranch = branchId || undefined;
+front\src\pages\inventory\InventoryPage.tsx|61|const { data: branches = [] } = useQuery({ queryKey: ["branches"], queryFn: () => branchesApi.findAll() });
+front\src\pages\inventory\InventoryPage.tsx|64|queryKey: ["inventory", "items", { scopedBranch, q, category, status, lowOnly }],
+front\src\pages\inventory\InventoryPage.tsx|65|queryFn: () => inventoryApi.items({ branch_id: scopedBranch, search: q, category, status, low_stock_only: lowOnly || undefined, limit: 200 }),
+front\src\pages\inventory\InventoryPage.tsx|69|queryKey: ["inventory", "moves", { scopedBranch, moveType, from, to }],
+front\src\pages\inventory\InventoryPage.tsx|70|queryFn: () => inventoryApi.moves({ branch_id: scopedBranch, type: moveType, from, to, limit: 200 }),
+front\src\pages\inventory\InventoryPage.tsx|74|queryKey: ["inventory", "issues", { scopedBranch, openIssuesOnly }],
+front\src\pages\inventory\InventoryPage.tsx|75|queryFn: () => inventoryApi.issues({ branch_id: scopedBranch, open_only: openIssuesOnly || undefined, limit: 200 }),
+front\src\pages\inventory\InventoryPage.tsx|78|const lowQ = useQuery({ queryKey: ["inventory", "low", scopedBranch], queryFn: () => inventoryApi.lowStock(scopedBranch), enabled: tab === "alerts" });
+front\src\pages\inventory\InventoryPage.tsx|79|const valQ = useQuery({ queryKey: ["inventory", "valuation", scopedBranch], queryFn: () => inventoryApi.valuation(scopedBranch), enabled: tab === "valuation" });
+front\src\pages\inventory\InventoryPage.tsx|81|queryKey: ["inventory", "movement-report", { scopedBranch, from, to }],
+front\src\pages\inventory\InventoryPage.tsx|82|queryFn: () => inventoryApi.movementReport({ branch_id: scopedBranch, from, to }),
+front\src\pages\inventory\InventoryPage.tsx|86|queryKey: ["inventory", "item", detailsId, scopedBranch],
+front\src\pages\inventory\InventoryPage.tsx|87|queryFn: () => inventoryApi.item(detailsId!, scopedBranch),
+front\src\pages\inventory\InventoryPage.tsx|107|const branchSelect = (
+front\src\pages\inventory\InventoryPage.tsx|108|<select className={sel} value={branchId} onChange={(e) => setBranchId(e.target.value)} disabled={!isGlobal && !!ownBranch} aria-label={t("branch")}>
+front\src\pages\inventory\InventoryPage.tsx|109|{isGlobal && <option value="">{t("allBranches")}</option>}
+front\src\pages\inventory\InventoryPage.tsx|110|{branches.filter((b) => isGlobal || b.id === ownBranch).map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\inventory\InventoryPage.tsx|120|{ key: "quantity", header: scopedBranch ? t("colOnHandBranch") : t("colOnHandAll"), sortable: true, render: (r) => (
+front\src\pages\inventory\InventoryPage.tsx|136|], [canManage, canIssue, scopedBranch, t]);
+front\src\pages\inventory\InventoryPage.tsx|141|{ key: "branch", header: t("colBranch"), render: (r) => r.branch?.name ?? "â€”" },
+front\src\pages\inventory\InventoryPage.tsx|165|{ key: "branch_name", header: t("colBranch") },
+front\src\pages\inventory\InventoryPage.tsx|181|{branchSelect}
+front\src\pages\inventory\InventoryPage.tsx|241|keyExtractor={(r) => `${r.item_id}-${r.branch_id}`} />
+front\src\pages\inventory\InventoryPage.tsx|248|<Button variant="outline" size="sm" disabled={!valQ.data?.branches.length} onClick={() => downloadCsv("inventory-valuation.csv", [
+front\src\pages\inventory\InventoryPage.tsx|249|["Branch", "Item", "SKU", "Quantity", "Unit cost", "Total"],
+front\src\pages\inventory\InventoryPage.tsx|250|...(valQ.data?.branches ?? []).flatMap((b) => b.items.map((i) => [b.branch_name, i.item_name, i.sku, i.quantity, i.unit_cost, i.total_cost])),
+front\src\pages\inventory\InventoryPage.tsx|255|{valQ.data && (valQ.data.branches.length === 0 ? <p className="text-sm text-muted-foreground">{t("noStock")}</p> : (
+front\src\pages\inventory\InventoryPage.tsx|257|{valQ.data.branches.map((b) => (
+front\src\pages\inventory\InventoryPage.tsx|258|<div key={b.branch_id} className="rounded-lg border p-4">
+front\src\pages\inventory\InventoryPage.tsx|259|<div className="flex justify-between font-medium"><span>{b.branch_name}</span><span>{b.total_quantity} {t("units")} Â· {money(b.total_cost)}</span></div>
+front\src\pages\inventory\InventoryPage.tsx|294|<ItemFormDialog open={formItem !== undefined} item={formItem ?? null} branches={branches} defaultBranchId={scopedBranch ?? ownBranch} onClose={() => setFormItem(undefined)} />
+front\src\pages\inventory\InventoryPage.tsx|295|<StockActionDialog mode={action?.mode ?? null} item={action?.item ?? null} branches={branches} defaultBranchId={scopedBranch ?? ownBranch} onClose={() => setAction(null)} />
+front\src\pages\inventory\InventoryPage.tsx|333|<h3 className="mb-1 font-semibold">{t("stockByBranch")}</h3>
+front\src\pages\inventory\InventoryPage.tsx|336|<li key={s.branch_id} className="flex justify-between p-2"><span>{s.branch_name ?? s.branch_id.slice(0, 8)}</span><span>{s.quantity}</span></li>))}</ul>)}
+front\src\pages\public\CourseDetailPage.tsx|163|{course.branch_pricing && course.branch_pricing.length > 0 && (
+front\src\pages\public\CourseDetailPage.tsx|167|{t("public.courseDetail.branchPricing", "Branch Pricing")}
+front\src\pages\public\CourseDetailPage.tsx|170|{course.branch_pricing.map((bp) => (
+front\src\pages\public\CourseDetailPage.tsx|172|<span>{bp.branch?.name ?? bp.branch_id}</span>
+front\src\pages\public\CourseDetailPage.tsx|234|to={`/placement-booking?courseId=${course.id}&branchId=${(course as any).branch_id ?? ""}`}
+front\src\pages\public\PlacementBookingPage.tsx|32|fetchPublicBranches,
+front\src\pages\public\PlacementBookingPage.tsx|62|// /placement-booking?courseId=â€¦&branchId=â€¦
+front\src\pages\public\PlacementBookingPage.tsx|65|const branchContextId = searchParams.get("branchId") ?? "";
+front\src\pages\public\PlacementBookingPage.tsx|74|// URL context pre-selects the branch in BOTH paths.
+front\src\pages\public\PlacementBookingPage.tsx|75|const [branchId, setBranchId] = useState<string>(branchContextId);
+front\src\pages\public\PlacementBookingPage.tsx|77|const [instantBranchId, setInstantBranchId] = useState<string>(branchContextId);
+front\src\pages\public\PlacementBookingPage.tsx|84|const { data: branches } = useQuery({
+front\src\pages\public\PlacementBookingPage.tsx|85|queryKey: ["public-branches"],
+front\src\pages\public\PlacementBookingPage.tsx|86|queryFn: fetchPublicBranches,
+front\src\pages\public\PlacementBookingPage.tsx|90|queryKey: ["public-placement-slots", branchId],
+front\src\pages\public\PlacementBookingPage.tsx|91|queryFn: () => fetchPublicTestSlots(branchId || undefined),
+front\src\pages\public\PlacementBookingPage.tsx|97|// â”€â”€ Path A â€” instant test form (Name/Phone/Email/branch) â”€â”€
+front\src\pages\public\PlacementBookingPage.tsx|109|branch_id?: string;
+front\src\pages\public\PlacementBookingPage.tsx|133|branch_id: instantBranchId || undefined,
+front\src\pages\public\PlacementBookingPage.tsx|201|{t("public.placementBook.subtitle", "Find a slot at your preferred branch and reserve your free placement test.")}
+front\src\pages\public\PlacementBookingPage.tsx|270|<Select value={instantBranchId || "none"} onValueChange={(v) => setInstantBranchId(v === "none" ? "" : v)}>
+front\src\pages\public\PlacementBookingPage.tsx|272|<SelectValue placeholder={t("public.leadForm.branch", "Preferred Branch")} />
+front\src\pages\public\PlacementBookingPage.tsx|276|{t("public.placementBook.noBranch", "No preference")}
+front\src\pages\public\PlacementBookingPage.tsx|278|{(branches ?? []).map((b) => (
+front\src\pages\public\PlacementBookingPage.tsx|337|<Select value={branchId || "all"} onValueChange={(v) => setBranchId(v === "all" ? "" : v)}>
+front\src\pages\public\PlacementBookingPage.tsx|339|<SelectValue placeholder={t("public.placementBook.allBranches", "All Branches")} />
+front\src\pages\public\PlacementBookingPage.tsx|343|{t("public.placementBook.allBranches", "All Branches")}
+front\src\pages\public\PlacementBookingPage.tsx|345|{(branches ?? []).map((b) => (
+front\src\pages\public\PlacementBookingPage.tsx|379|{slot.branch && (
+front\src\pages\public\PlacementBookingPage.tsx|382|{slot.branch.name}
+front\src\pages\public\PlacementBookingPage.tsx|415|{selectedSlot.branch ? ` â€” ${selectedSlot.branch.name}` : ""}
+front\src\pages\public\RegisterOnlinePage.tsx|22|fetchPublicBranches,
+front\src\pages\public\RegisterOnlinePage.tsx|34|branch_id: z.string().min(1, "Branch is required"),
+front\src\pages\public\RegisterOnlinePage.tsx|52|const { data: branches } = useQuery({
+front\src\pages\public\RegisterOnlinePage.tsx|53|queryKey: ["public-branches"],
+front\src\pages\public\RegisterOnlinePage.tsx|54|queryFn: fetchPublicBranches,
+front\src\pages\public\RegisterOnlinePage.tsx|103|{t("public.registerOnline.subtitle", "Pick a course and branch, and we will create your invoice instantly.")}
+front\src\pages\public\RegisterOnlinePage.tsx|199|<Select onValueChange={(val) => setValue("branch_id", val)}>
+front\src\pages\public\RegisterOnlinePage.tsx|201|<SelectValue placeholder={t("public.registerOnline.branch", "Branch")} />
+front\src\pages\public\RegisterOnlinePage.tsx|204|{(branches ?? []).map((b) => (
+front\src\pages\public\RegisterOnlinePage.tsx|211|{errors.branch_id && (
+front\src\pages\public\RegisterOnlinePage.tsx|212|<p className="mt-1 text-xs text-red-500">{errors.branch_id.message}</p>
+front\src\pages\Activities.tsx|8|import { branchesApi } from "@/api/branches";
+front\src\pages\Activities.tsx|98|branch_id: z.string().min(1, "Branch is required"),
+front\src\pages\Activities.tsx|117|branch_id: "",
+front\src\pages\Activities.tsx|134|const canManage = isSuper || roles.some((r) => ["branch_manager", "academic"].includes(r));
+front\src\pages\Activities.tsx|138|const canPickBranch = isSuper || roles.includes("branch_manager");
+front\src\pages\Activities.tsx|147|branch_id: string;
+front\src\pages\Activities.tsx|150|}>({ type: "", level: "", branch_id: "", status: "", search: "" });
+front\src\pages\Activities.tsx|169|branch_id: filters.branch_id || undefined,
+front\src\pages\Activities.tsx|186|const { data: branches } = useQuery({
+front\src\pages\Activities.tsx|187|queryKey: ["branches"],
+front\src\pages\Activities.tsx|188|queryFn: branchesApi.findAll,
+front\src\pages\Activities.tsx|189|enabled: canPickBranch,
+front\src\pages\Activities.tsx|335|branch_id: row.branch_id,
+front\src\pages\Activities.tsx|347|branch_id: canPickBranch ? user?.branch_id ?? "" : "",
+front\src\pages\Activities.tsx|432|key: "branch",
+front\src\pages\Activities.tsx|433|header: "Branch",
+front\src\pages\Activities.tsx|435|<span className="text-sm">{row.branch?.name ?? row.branch_id.slice(0, 8)}</span>
+front\src\pages\Activities.tsx|540|{canPickBranch && (
+front\src\pages\Activities.tsx|542|<Label className="text-xs">Branch</Label>
+front\src\pages\Activities.tsx|545|value={filters.branch_id}
+front\src\pages\Activities.tsx|546|onChange={(e) => setFilters({ ...filters, branch_id: e.target.value })}
+front\src\pages\Activities.tsx|549|<option value="">All branches</option>
+front\src\pages\Activities.tsx|550|{(branches ?? []).map((b: any) => (
+front\src\pages\Activities.tsx|650|<Label>Branch *</Label>
+front\src\pages\Activities.tsx|651|{canPickBranch ? (
+front\src\pages\Activities.tsx|652|<select {...register("branch_id")} className={filterSelect + " w-full"}>
+front\src\pages\Activities.tsx|653|<option value="">Select branch</option>
+front\src\pages\Activities.tsx|654|{(branches ?? []).map((b: any) => (
+front\src\pages\Activities.tsx|661|<Input {...register("branch_id")} readOnly placeholder="Your branch" />
+front\src\pages\Activities.tsx|663|{errors.branch_id && (
+front\src\pages\Activities.tsx|664|<p className="text-sm text-destructive">{errors.branch_id.message}</p>
+front\src\pages\Branches.tsx|7|import { branchesApi } from "@/api/branches";
+front\src\pages\Branches.tsx|18|import type { Branch, User, Classroom } from "@/types";
+front\src\pages\Branches.tsx|24|const branchSchema = z.object({
+front\src\pages\Branches.tsx|38|type BranchForm = z.infer<typeof branchSchema>;
+front\src\pages\Branches.tsx|41|export default function BranchesPage() {
+front\src\pages\Branches.tsx|50|const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+front\src\pages\Branches.tsx|55|data: branches,
+front\src\pages\Branches.tsx|61|queryKey: ["branches"],
+front\src\pages\Branches.tsx|62|queryFn: branchesApi.findAll,
+front\src\pages\Branches.tsx|67|queryFn: () => usersApi.findAll({ roleId: "branch_manager" }),
+front\src\pages\Branches.tsx|70|const { data: selectedBranch } = useQuery({
+front\src\pages\Branches.tsx|71|queryKey: ["branch", selectedBranchId],
+front\src\pages\Branches.tsx|72|queryFn: () => branchesApi.findOne(selectedBranchId!),
+front\src\pages\Branches.tsx|73|enabled: !!selectedBranchId && view === "detail",
+front\src\pages\Branches.tsx|77|queryKey: ["branch-classrooms", selectedBranchId],
+front\src\pages\Branches.tsx|78|queryFn: () => branchesApi.getClassrooms(selectedBranchId!),
+front\src\pages\Branches.tsx|79|enabled: !!selectedBranchId && view === "detail",
+front\src\pages\Branches.tsx|83|mutationFn: branchesApi.create,
+front\src\pages\Branches.tsx|85|queryClient.invalidateQueries({ queryKey: ["branches"] });
+front\src\pages\Branches.tsx|86|toast({ title: "Branch created successfully" });
+front\src\pages\Branches.tsx|95|mutationFn: ({ id, dto }: { id: string; dto: any }) => branchesApi.update(id, dto),
+front\src\pages\Branches.tsx|97|queryClient.invalidateQueries({ queryKey: ["branches"] });
+front\src\pages\Branches.tsx|98|if (selectedBranchId) queryClient.invalidateQueries({ queryKey: ["branch", selectedBranchId] });
+front\src\pages\Branches.tsx|99|toast({ title: "Branch updated successfully" });
+front\src\pages\Branches.tsx|108|mutationFn: branchesApi.remove,
+front\src\pages\Branches.tsx|110|queryClient.invalidateQueries({ queryKey: ["branches"] });
+front\src\pages\Branches.tsx|111|toast({ title: "Branch deleted successfully" });
+front\src\pages\Branches.tsx|120|mutationFn: ({ id, dto }: { id: string; dto: ClassroomForm }) => branchesApi.createClassroom(id, dto),
+front\src\pages\Branches.tsx|122|queryClient.invalidateQueries({ queryKey: ["branch-classrooms", selectedBranchId] });
+front\src\pages\Branches.tsx|133|mutationFn: ({ branchId, classroomId, dto }: { branchId: string; classroomId: string; dto: any }) =>
+front\src\pages\Branches.tsx|134|branchesApi.updateClassroom(branchId, classroomId, dto),
+front\src\pages\Branches.tsx|136|queryClient.invalidateQueries({ queryKey: ["branch-classrooms", selectedBranchId] });
+front\src\pages\Branches.tsx|147|mutationFn: ({ branchId, classroomId }: { branchId: string; classroomId: string }) => branchesApi.removeClassroom(branchId, classroomId),
+front\src\pages\Branches.tsx|149|queryClient.invalidateQueries({ queryKey: ["branch-classrooms", selectedBranchId] });
+front\src\pages\Branches.tsx|158|register: registerBranch,
+front\src\pages\Branches.tsx|159|handleSubmit: handleBranchSubmit,
+front\src\pages\Branches.tsx|160|reset: resetBranch,
+front\src\pages\Branches.tsx|161|setValue: setBranchValue,
+front\src\pages\Branches.tsx|162|formState: { errors: branchErrors },
+front\src\pages\Branches.tsx|163|} = useForm<BranchForm>({
+front\src\pages\Branches.tsx|164|resolver: zodResolver(branchSchema),
+front\src\pages\Branches.tsx|181|resetBranch();
+front\src\pages\Branches.tsx|184|const onBranchSubmit = (data: BranchForm) => {
+front\src\pages\Branches.tsx|201|if (!selectedBranchId) return;
+front\src\pages\Branches.tsx|203|updateClassroomMutation.mutate({ branchId: selectedBranchId, classroomId: editingClassroomId, dto: data });
+front\src\pages\Branches.tsx|205|createClassroomMutation.mutate({ id: selectedBranchId, dto: data });
+front\src\pages\Branches.tsx|209|const startEditBranch = (branch: Branch) => {
+front\src\pages\Branches.tsx|210|setEditingId(branch.id);
+front\src\pages\Branches.tsx|212|setBranchValue("name", branch.name);
+front\src\pages\Branches.tsx|213|setBranchValue("address", branch.address);
+front\src\pages\Branches.tsx|214|setBranchValue("phone", branch.phone);
+front\src\pages\Branches.tsx|215|setBranchValue("email", branch.email || "");
+front\src\pages\Branches.tsx|216|setBranchValue("manager_id", branch.manager_id || "");
+front\src\pages\Branches.tsx|217|setBranchValue("status", branch.status);
+front\src\pages\Branches.tsx|234|render: (row: Branch) => (
+front\src\pages\Branches.tsx|241|render: (row: Branch) => <span className="text-xs">{row.classroom_count}</span>,
+front\src\pages\Branches.tsx|246|render: (row: Branch) => (
+front\src\pages\Branches.tsx|255|render: (row: Branch) => (
+front\src\pages\Branches.tsx|257|<Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setSelectedBranchId(row.id); setView("detail"); }}>
+front\src\pages\Branches.tsx|260|<Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); startEditBranch(row); }}>
+front\src\pages\Branches.tsx|263|<Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); confirm({ title: "Delete Branch", description: `Delete ${row.name}?`, variant: "destructive", confirmLabel: "Delete", onConfirm: () => deleteMutation.mutate(row.id) }); }}>
+front\src\pages\Branches.tsx|272|if (view === "detail" && selectedBranch) {
+front\src\pages\Branches.tsx|276|<Button variant="outline" onClick={() => { setView("list"); setSelectedBranchId(null); }} className="gap-2">
+front\src\pages\Branches.tsx|277|<ChevronLeft className="h-4 w-4" /> Back to Branches
+front\src\pages\Branches.tsx|282|<h1 className="text-2xl font-bold">{selectedBranch.name}</h1>
+front\src\pages\Branches.tsx|284|<span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {selectedBranch.address}</span>
+front\src\pages\Branches.tsx|285|<span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {selectedBranch.phone}</span>
+front\src\pages\Branches.tsx|286|{selectedBranch.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {selectedBranch.email}</span>}
+front\src\pages\Branches.tsx|290|<Badge className={selectedBranch.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+front\src\pages\Branches.tsx|291|{selectedBranch.status}
+front\src\pages\Branches.tsx|293|<Button onClick={() => startEditBranch(selectedBranch)}><Pencil className="h-4 w-4 mr-2" /> Edit</Button>
+front\src\pages\Branches.tsx|298|<Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Manager</p><p className="text-lg font-bold">{selectedBranch.manager ? `${selectedBranch.manager.first_name} ${selectedBranch.manager.last_name}` : "Unassigned"}</p></CardContent></Card>
+front\src\pages\Branches.tsx|300|<Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Status</p><p className="text-lg font-bold capitalize">{selectedBranch.status}</p></CardContent></Card>
+front\src\pages\Branches.tsx|306|<TabsTrigger value="info">Branch Info</TabsTrigger>
+front\src\pages\Branches.tsx|357|<Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => confirm({ title: "Delete Classroom", description: `Delete ${classroom.name}?`, variant: "destructive", confirmLabel: "Delete", onConfirm: () => deleteClassroomMutation.mutate({ branchId: selectedBranch.id, classroomId: classroom.id }) })}>
+front\src\pages\Branches.tsx|375|<span className="text-muted-foreground">Name:</span><span>{selectedBranch.name}</span>
+front\src\pages\Branches.tsx|376|<span className="text-muted-foreground">Address:</span><span>{selectedBranch.address}</span>
+front\src\pages\Branches.tsx|377|<span className="text-muted-foreground">Phone:</span><span>{selectedBranch.phone}</span>
+front\src\pages\Branches.tsx|378|<span className="text-muted-foreground">Email:</span><span>{selectedBranch.email || "â€”"}</span>
+front\src\pages\Branches.tsx|379|<span className="text-muted-foreground">Manager:</span><span>{selectedBranch.manager ? `${selectedBranch.manager.first_name} ${selectedBranch.manager.last_name}` : "â€”"}</span>
+front\src\pages\Branches.tsx|380|<span className="text-muted-foreground">Status:</span><span className="capitalize">{selectedBranch.status}</span>
+front\src\pages\Branches.tsx|381|<span className="text-muted-foreground">Created:</span><span>{new Date(selectedBranch.created_at).toLocaleDateString()}</span>
+front\src\pages\Branches.tsx|396|<h1 className="text-2xl font-bold tracking-tight">{t("nav.branches")}</h1>
+front\src\pages\Branches.tsx|399|{showForm ? "Cancel" : "Add Branch"}
+front\src\pages\Branches.tsx|405|<CardHeader><CardTitle>{editingId ? "Edit Branch" : "Create New Branch"}</CardTitle></CardHeader>
+front\src\pages\Branches.tsx|407|<form onSubmit={handleBranchSubmit(onBranchSubmit)} className="space-y-4">
+front\src\pages\Branches.tsx|411|<Input {...registerBranch("name")} />
+front\src\pages\Branches.tsx|412|{branchErrors.name && <p className="text-sm text-destructive">{branchErrors.name.message}</p>}
+front\src\pages\Branches.tsx|416|<Input {...registerBranch("address")} />
+front\src\pages\Branches.tsx|417|{branchErrors.address && <p className="text-sm text-destructive">{branchErrors.address.message}</p>}
+front\src\pages\Branches.tsx|421|<Input {...registerBranch("phone")} />
+front\src\pages\Branches.tsx|422|{branchErrors.phone && <p className="text-sm text-destructive">{branchErrors.phone.message}</p>}
+front\src\pages\Branches.tsx|426|<Input type="email" {...registerBranch("email")} />
+front\src\pages\Branches.tsx|430|<select {...registerBranch("manager_id")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\Branches.tsx|437|<select {...registerBranch("status")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\Branches.tsx|454|data={branches || []}
+front\src\pages\Branches.tsx|460|onRowClick={(row) => { setSelectedBranchId(row.id); setView("detail"); }}
+front\src\pages\Courses.tsx|8|import { branchesApi } from "@/api/branches";
+front\src\pages\Courses.tsx|20|import type { Course, Branch } from "@/types";
+front\src\pages\Courses.tsx|55|const [branchPriceInput, setBranchPriceInput] = useState<{ branchId: string; price: string }>({ branchId: "", price: "" });
+front\src\pages\Courses.tsx|68|const { data: branches } = useQuery({
+front\src\pages\Courses.tsx|69|queryKey: ["branches"],
+front\src\pages\Courses.tsx|70|queryFn: branchesApi.findAll,
+front\src\pages\Courses.tsx|85|const { data: branchPricing } = useQuery({
+front\src\pages\Courses.tsx|86|queryKey: ["course-branch-pricing", selectedCourseId],
+front\src\pages\Courses.tsx|87|queryFn: () => coursesApi.getBranchPricing(selectedCourseId!),
+front\src\pages\Courses.tsx|150|const setBranchPriceMutation = useMutation({
+front\src\pages\Courses.tsx|151|mutationFn: ({ id, branchId, price }: { id: string; branchId: string; price: number }) => coursesApi.setBranchPricing(id, branchId, price),
+front\src\pages\Courses.tsx|153|queryClient.invalidateQueries({ queryKey: ["course-branch-pricing", selectedCourseId] });
+front\src\pages\Courses.tsx|154|toast({ title: "Branch pricing updated" });
+front\src\pages\Courses.tsx|155|setBranchPriceInput({ branchId: "", price: "" });
+front\src\pages\Courses.tsx|300|<TabsTrigger value="pricing">Branch Pricing</TabsTrigger>
+front\src\pages\Courses.tsx|384|{/* Set Branch Price */}
+front\src\pages\Courses.tsx|386|<CardHeader><CardTitle className="text-base">Set Branch-Specific Price</CardTitle></CardHeader>
+front\src\pages\Courses.tsx|390|<Label className="text-xs mb-1 block">Branch</Label>
+front\src\pages\Courses.tsx|392|value={branchPriceInput.branchId}
+front\src\pages\Courses.tsx|393|onChange={(e) => setBranchPriceInput((p) => ({ ...p, branchId: e.target.value }))}
+front\src\pages\Courses.tsx|396|<option value="">Select branch</option>
+front\src\pages\Courses.tsx|397|{branches?.map((b: Branch) => (
+front\src\pages\Courses.tsx|407|value={branchPriceInput.price}
+front\src\pages\Courses.tsx|408|onChange={(e) => setBranchPriceInput((p) => ({ ...p, price: e.target.value }))}
+front\src\pages\Courses.tsx|413|if (branchPriceInput.branchId && branchPriceInput.price) {
+front\src\pages\Courses.tsx|414|setBranchPriceMutation.mutate({
+front\src\pages\Courses.tsx|416|branchId: branchPriceInput.branchId,
+front\src\pages\Courses.tsx|417|price: parseFloat(branchPriceInput.price),
+front\src\pages\Courses.tsx|421|disabled={!branchPriceInput.branchId || !branchPriceInput.price || setBranchPriceMutation.isPending}
+front\src\pages\Courses.tsx|429|{/* Current Branch Pricing */}
+front\src\pages\Courses.tsx|431|<h3 className="text-sm font-medium">Current Branch Pricing</h3>
+front\src\pages\Courses.tsx|432|{branchPricing && branchPricing.length > 0 ? (
+front\src\pages\Courses.tsx|434|{branchPricing.map((bp: any) => (
+front\src\pages\Courses.tsx|439|<span className="font-medium">{bp.branch?.name || "Unknown Branch"}</span>
+front\src\pages\Courses.tsx|447|<p className="text-sm text-muted-foreground">No branch-specific pricing set. Using default price.</p>
+front\src\pages\Dashboard.tsx|14|"branch_manager",
+front\src\pages\Enrollments.tsx|132|key: "branch",
+front\src\pages\Enrollments.tsx|133|header: "Branch",
+front\src\pages\Enrollments.tsx|134|render: (e: any) => e?.group?.branch?.name ?? e?.student?.branch?.name ?? "â€”",
+front\src\pages\Finance.tsx|6|import { branchesApi } from "@/api/branches";
+front\src\pages\Finance.tsx|23|show: false, student_id: "", branch_id: "",
+front\src\pages\Finance.tsx|38|const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: () => branchesApi.findAll() });
+front\src\pages\Finance.tsx|42|student_id: invForm.student_id, branch_id: invForm.branch_id,
+front\src\pages\Finance.tsx|123|<Label>Branch *</Label>
+front\src\pages\Finance.tsx|124|<select value={invForm.branch_id} onChange={(e) => setInvForm({ ...invForm, branch_id: e.target.value })}
+front\src\pages\Finance.tsx|127|{(branches ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\Finance.tsx|148|disabled={invM.isPending || !invForm.student_id || !invForm.branch_id || !invForm.description}
+front\src\pages\Groups.tsx|9|import { branchesApi } from "@/api/branches";
+front\src\pages\Groups.tsx|22|import type { Group, Course, Branch, User, GroupSchedule } from "@/types";
+front\src\pages\Groups.tsx|35|branchId: z.string().min(1, "Branch is required"),
+front\src\pages\Groups.tsx|95|const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: branchesApi.findAll });
+front\src\pages\Groups.tsx|480|branchId: data.branchId,
+front\src\pages\Groups.tsx|504|setValue("branchId", group.branchId || "");
+front\src\pages\Groups.tsx|539|key: "branch",
+front\src\pages\Groups.tsx|540|header: "Branch",
+front\src\pages\Groups.tsx|541|render: (row: Group) => <span className="text-xs text-muted-foreground">{row.branch?.name || row.branchId || "â€”"}</span>,
+front\src\pages\Groups.tsx|679|<Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Branch</p><p className="text-lg font-bold">{selectedGroup.branch?.name || selectedGroup.branchId || "â€”"}</p></CardContent></Card>
+front\src\pages\Groups.tsx|804|<span className="text-muted-foreground">Branch:</span><span>{selectedGroup.branch?.name || "â€”"}</span>
+front\src\pages\Groups.tsx|861|<Label>Branch *</Label>
+front\src\pages\Groups.tsx|863|{...register("branchId")}
+front\src\pages\Groups.tsx|866|<option value="">Select branch</option>
+front\src\pages\Groups.tsx|867|{branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\Groups.tsx|869|{errors.branchId && <p className="text-sm text-destructive">{errors.branchId.message}</p>}
+front\src\pages\KnowledgeBase.tsx|12|const canManageRoles = ["super_admin", "hr", "branch_manager", "teacher"];
+front\src\pages\KnowledgeBase.tsx|13|const canManageCategoryRoles = ["super_admin", "hr", "branch_manager"];
+front\src\pages\Leads.tsx|8|import { branchesApi } from "@/api/branches";
+front\src\pages\Leads.tsx|20|import type { Lead, Branch, User, LeadActivity } from "@/types";
+front\src\pages\Leads.tsx|58|branch_id: z.string().optional(),
+front\src\pages\Leads.tsx|73|branch_id: z.string().optional(),
+front\src\pages\Leads.tsx|96|const [filterBranchId, setFilterBranchId] = useState("");
+front\src\pages\Leads.tsx|111|const { data: branches } = useQuery({
+front\src\pages\Leads.tsx|112|queryKey: ["branches"],
+front\src\pages\Leads.tsx|113|queryFn: branchesApi.findAll,
+front\src\pages\Leads.tsx|248|branch_id: data.branch_id || undefined,
+front\src\pages\Leads.tsx|266|branch_id: data.branch_id || undefined,
+front\src\pages\Leads.tsx|286|setUpdateValue("branch_id", lead.branch_id || "");
+front\src\pages\Leads.tsx|298|branch_id: filterBranchId || undefined,
+front\src\pages\Leads.tsx|306|setFilterBranchId("");
+front\src\pages\Leads.tsx|388|key: "branch",
+front\src\pages\Leads.tsx|389|header: "Branch",
+front\src\pages\Leads.tsx|391|<span className="text-xs text-muted-foreground">{row.branch?.name || "â€”"}</span>
+front\src\pages\Leads.tsx|497|<span className="text-muted-foreground">Branch:</span>
+front\src\pages\Leads.tsx|498|<span>{selectedLead.branch?.name || "â€”"}</span>
+front\src\pages\Leads.tsx|662|<Label className="text-xs mb-1 block">Branch</Label>
+front\src\pages\Leads.tsx|663|<select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\Leads.tsx|664|<option value="">All Branches</option>
+front\src\pages\Leads.tsx|665|{branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\Leads.tsx|723|<Label>Branch</Label>
+front\src\pages\Leads.tsx|724|<select {...(editingId ? registerUpdate("branch_id") : registerCreate("branch_id"))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\Leads.tsx|725|<option value="">Select branch</option>
+front\src\pages\Leads.tsx|726|{branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\Lms.tsx|247|['super_admin', 'academic', 'branch_manager', 'teacher'].includes(r)
+front\src\pages\Notifications.tsx|16|const BROADCAST_ROLES = ["super_admin", "branch_manager", "admin", "hr", "academic", "teacher"];
+front\src\pages\Reports.tsx|15|{ key: "sales-funnel", label: "Sales funnel", description: "Lead volume grouped by current CRM status.", roles: ["super_admin", "branch_manager", "sales"], needsDates: true },
+front\src\pages\Reports.tsx|16|{ key: "lead-source-roi", label: "Lead source ROI", description: "Leads and enrolled conversions by acquisition source.", roles: ["super_admin", "branch_manager", "sales"], needsDates: true },
+front\src\pages\Reports.tsx|17|{ key: "group-fill-rate", label: "Group fill rate", description: "Current capacity and active enrollment by group.", roles: ["super_admin", "branch_manager", "academic"] },
+front\src\pages\Reports.tsx|18|{ key: "teacher-utilization", label: "Teacher utilization", description: "Scheduled sessions and teaching hours for a month.", roles: ["super_admin", "branch_manager", "hr"] },
+front\src\pages\Reports.tsx|19|{ key: "student-progress", label: "Student progress", description: "Enrollment and attendance summary for one student.", roles: ["super_admin", "branch_manager", "academic", "teacher"], needsStudent: true },
+front\src\pages\Reports.tsx|20|{ key: "revenue", label: "Revenue", description: "Completed payments grouped by month.", roles: ["super_admin", "branch_manager", "finance"], needsDates: true },
+front\src\pages\Reports.tsx|21|{ key: "outstanding-payments", label: "Outstanding payments", description: "Invoices with unpaid balances, ordered by due date.", roles: ["super_admin", "branch_manager", "finance"] },
+front\src\pages\Reports.tsx|22|{ key: "attendance", label: "Attendance", description: "Attendance status counts by session date for a group.", roles: ["super_admin", "branch_manager", "academic", "teacher"], needsDates: true, needsGroup: true },
+front\src\pages\Students.tsx|15|import { branchesApi } from "@/api/branches";
+front\src\pages\Students.tsx|46|Branch,
+front\src\pages\Students.tsx|91|branch_id: z.string().optional(),
+front\src\pages\Students.tsx|179|const [branchId, setBranchId] =
+front\src\pages\Students.tsx|188|const [appliedBranchId, setAppliedBranchId] =
+front\src\pages\Students.tsx|216|appliedBranchId,
+front\src\pages\Students.tsx|225|branchId:
+front\src\pages\Students.tsx|226|appliedBranchId || undefined,
+front\src\pages\Students.tsx|241|BRANCHES
+front\src\pages\Students.tsx|244|const { data: branches } = useQuery({
+front\src\pages\Students.tsx|245|queryKey: ["branches"],
+front\src\pages\Students.tsx|246|queryFn: branchesApi.findAll,
+front\src\pages\Students.tsx|478|setAppliedBranchId(branchId);
+front\src\pages\Students.tsx|484|setBranchId("");
+front\src\pages\Students.tsx|488|setAppliedBranchId("");
+front\src\pages\Students.tsx|549|"branch_id",
+front\src\pages\Students.tsx|550|student.branch_id || "",
+front\src\pages\Students.tsx|656|key: "branch",
+front\src\pages\Students.tsx|657|header: "Branch",
+front\src\pages\Students.tsx|661|{row.branch?.name || "â€”"}
+front\src\pages\Students.tsx|966|Branch
+front\src\pages\Students.tsx|971|"branch_id",
+front\src\pages\Students.tsx|976|Select branch
+front\src\pages\Students.tsx|979|{branches?.map(
+front\src\pages\Students.tsx|980|(b: Branch) => (
+front\src\pages\Students.tsx|1307|Branch:
+front\src\pages\Students.tsx|1312|selectedStudent.branch
+front\src\pages\Students.tsx|1392|group.branch
+front\src\pages\Students.tsx|1963|Branch
+front\src\pages\Students.tsx|1967|value={branchId}
+front\src\pages\Students.tsx|1969|setBranchId(e.target.value)
+front\src\pages\Students.tsx|1974|All branches
+front\src\pages\Students.tsx|1977|{branches?.map(
+front\src\pages\Students.tsx|1978|(b: Branch) => (
+front\src\pages\TestSlotsPage.tsx|8|import { branchesApi } from "@/api/branches";
+front\src\pages\TestSlotsPage.tsx|20|branch_id: z.string().min(1, "Branch is required"),
+front\src\pages\TestSlotsPage.tsx|43|const { data: branches } = useQuery({
+front\src\pages\TestSlotsPage.tsx|44|queryKey: ["branches"],
+front\src\pages\TestSlotsPage.tsx|45|queryFn: () => branchesApi.findAll(),
+front\src\pages\TestSlotsPage.tsx|102|key: "branch",
+front\src\pages\TestSlotsPage.tsx|103|header: "Branch",
+front\src\pages\TestSlotsPage.tsx|104|render: (r: TestSlot) => r.branch?.name ?? r.branch_id.slice(0, 8),
+front\src\pages\TestSlotsPage.tsx|131|branch_id: r.branch_id,
+front\src\pages\TestSlotsPage.tsx|173|<Label>Branch *</Label>
+front\src\pages\TestSlotsPage.tsx|174|<select {...register("branch_id")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\TestSlotsPage.tsx|175|<option value="">Select branch</option>
+front\src\pages\TestSlotsPage.tsx|176|{(branches ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\TestSlotsPage.tsx|178|{errors.branch_id && <p className="text-sm text-destructive">{errors.branch_id.message}</p>}
+front\src\pages\Users.tsx|8|import { branchesApi } from "@/api/branches";
+front\src\pages\Users.tsx|19|import type { User, Branch, Role } from "@/types";
+front\src\pages\Users.tsx|31|branch_id: z.string().optional(),
+front\src\pages\Users.tsx|41|branch_id: z.string().optional(),
+front\src\pages\Users.tsx|69|const [filterBranchId, setFilterBranchId] = useState("");
+front\src\pages\Users.tsx|72|const [appliedFilters, setAppliedFilters] = useState({ search: "", branchId: "", roleId: "", status: "" });
+front\src\pages\Users.tsx|84|branchId: appliedFilters.branchId || undefined,
+front\src\pages\Users.tsx|90|const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: branchesApi.findAll });
+front\src\pages\Users.tsx|210|setUpdateValue("branch_id", user.branch_id || "");
+front\src\pages\Users.tsx|222|setAppliedFilters({ search, branchId: filterBranchId, roleId: filterRoleId, status: filterStatus });
+front\src\pages\Users.tsx|227|setFilterBranchId("");
+front\src\pages\Users.tsx|230|setAppliedFilters({ search: "", branchId: "", roleId: "", status: "" });
+front\src\pages\Users.tsx|256|key: "branch",
+front\src\pages\Users.tsx|257|header: "Branch",
+front\src\pages\Users.tsx|258|render: (row: User) => <span className="text-xs text-muted-foreground">{row.branch_id || "â€”"}</span>,
+front\src\pages\Users.tsx|312|<Label className="text-xs mb-1 block">Branch</Label>
+front\src\pages\Users.tsx|313|<select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\Users.tsx|315|{branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\Users.tsx|379|<Label>Branch</Label>
+front\src\pages\Users.tsx|380|<select {...(editingId ? registerUpdate("branch_id") : registerCreate("branch_id"))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+front\src\pages\Users.tsx|381|<option value="">Select branch</option>
+front\src\pages\Users.tsx|382|{branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
+front\src\pages\Waitlists.tsx|112|{(r.branch_id ?? "").slice(0, 8)} Â· {r.level} Â· {r.waiting}
+front\src\types\index.ts|22|branch_id?: string;
+front\src\types\index.ts|41|export interface Branch {
+front\src\types\index.ts|60|branch_id: string;
+front\src\types\index.ts|104|branch_id?: string;
+front\src\types\index.ts|105|branch?: Branch;
+front\src\types\index.ts|139|branch_pricing?: CourseBranchPricing[];
+front\src\types\index.ts|153|export interface CourseBranchPricing {
+front\src\types\index.ts|156|branch_id: string;
+front\src\types\index.ts|157|branch?: Branch;
+front\src\types\index.ts|179|branch_id?: string;
+front\src\types\index.ts|181|branchId?: string;
+front\src\types\index.ts|182|branch?: Branch;
+front\src\types\index.ts|268|branch_id?: string;
+front\src\types\index.ts|269|branch?: Branch;
+front\src\types\index.ts|348|total_branches: number;
+front\src\types\index.ts|380|branch_id?: string;
+front\src\types\index.ts|498|branch_id: string;
+front\src\types\index.ts|499|branch?: Branch;
+front\src\App.tsx|22|import BranchesPage from '@/pages/Branches';
+front\src\App.tsx|183|['super_admin', 'branch_manager', 'sales'],
+front\src\App.tsx|191|['super_admin', 'branch_manager', 'academic', 'teacher', 'student', 'moderator'],
+front\src\App.tsx|201|'branch_manager',
+front\src\App.tsx|214|['super_admin', 'branch_manager', 'academic', 'teacher'],
+front\src\App.tsx|225|'branch_manager',
+front\src\App.tsx|238|'branch_manager',
+front\src\App.tsx|249|['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
+front\src\App.tsx|256|['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
+front\src\App.tsx|263|['super_admin', 'branch_manager', 'academic'],
+front\src\App.tsx|270|['super_admin', 'branch_manager', 'academic', 'teacher'],
+front\src\App.tsx|277|['super_admin', 'branch_manager', 'academic', 'teacher', 'sales'],
+front\src\App.tsx|285|['super_admin', 'academic', 'branch_manager', 'teacher'],
+front\src\App.tsx|293|['super_admin', 'branch_manager', 'sales', 'academic'],
+front\src\App.tsx|301|['super_admin', 'branch_manager', 'academic'],
+front\src\App.tsx|309|['super_admin', 'branch_manager', 'sales', 'academic'],
+front\src\App.tsx|316|element={roleGate(['super_admin', 'hr', 'branch_manager', 'teacher', 'finance'], <HrLayout />)}
+front\src\App.tsx|318|<Route index element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeesPage />)} />
+front\src\App.tsx|319|<Route path="employees/:id" element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeeDetailsPage />)} />
+front\src\App.tsx|320|<Route path="leaves" element={roleGate(['super_admin', 'hr', 'branch_manager'], <LeavesPage />)} />
+front\src\App.tsx|327|element={roleGate(['super_admin', 'branch_manager', 'sales', 'finance', 'auditor'], <InventoryPage />)}
+front\src\App.tsx|334|['super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance'],
+front\src\App.tsx|341|['super_admin', 'branch_manager', 'sales', 'academic', 'finance', 'hr', 'teacher'],
+front\src\App.tsx|349|['super_admin', 'branch_manager', 'sales', 'finance', 'academic'],
+front\src\App.tsx|357|['super_admin', 'finance', 'branch_manager'],
+front\src\App.tsx|365|['super_admin', 'branch_manager', 'academic', 'finance', 'teacher'],
+front\src\App.tsx|371|path="/branches"
+front\src\App.tsx|373|['super_admin', 'branch_manager'],
+front\src\App.tsx|374|<BranchesPage />,
+front\src\App.tsx|381|['super_admin', 'branch_manager', 'hr'],

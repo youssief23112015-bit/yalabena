@@ -19,7 +19,6 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
-  branch_id?: string;
   language: string;
   avatar_url?: string;
   phone?: string;
@@ -36,22 +35,6 @@ export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   user: User;
-}
-
-export interface Branch {
-  id: string;
-  name: string;
-  address: string;
-  phone: string;
-  email?: string;
-  manager_id?: string;
-  manager?: User;
-  classroom_count: number;
-  classrooms?: Classroom[];
-  logo_url?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface Classroom {
@@ -101,8 +84,6 @@ export interface Lead {
   notes?: string;
   assigned_to?: string;
   assigned_to_user?: User;
-  branch_id?: string;
-  branch?: Branch;
   converted_to_student_id?: string;
   converted_at?: string;
   tags?: string[];
@@ -267,9 +248,6 @@ export interface Student {
   last_name?: string;
   email?: string;
   phone?: string;
-
-  branch_id?: string;
-  branch?: Branch;
 
   current_level?: string;
   status?: string;
@@ -498,8 +476,6 @@ export interface Activity {
   start_time?: string | null;
   end_time?: string | null;
   location?: string | null;
-  branch_id: string;
-  branch?: Branch;
   capacity: number;
   fee: number;
   target_levels?: string[] | null;

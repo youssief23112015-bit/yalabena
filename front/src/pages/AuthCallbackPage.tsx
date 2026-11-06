@@ -107,12 +107,6 @@ export default function AuthCallbackPage() {
       }
     }
 
-    // Keep the legacy localStorage keys in sync (mirrors RegisterPage and
-    // the cleanup performed by `authStore.clearAuth()`).
-    localStorage.setItem("access_token", accessToken);
-    localStorage.setItem("refresh_token", refreshToken);
-    localStorage.setItem("user", JSON.stringify(user));
-
     setAuth(user, accessToken, refreshToken);
 
     const providerLabel = t(`auth.${provider}`);

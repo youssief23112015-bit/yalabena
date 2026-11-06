@@ -19,7 +19,6 @@ import StudentsPage from '@/pages/Students';
 import CoursesPage from '@/pages/Courses';
 import GroupsPage from '@/pages/Groups';
 import SessionsPage from '@/pages/Sessions';
-import BranchesPage from '@/pages/Branches';
 import UsersPage from '@/pages/Users';
 import RolesPage from '@/pages/Roles';
 import AttendancePage from '@/pages/Attendance';
@@ -83,18 +82,9 @@ function App() {
   return (
     <>
       <Routes>
-        {/* Public Landing & Catalog Routes */}
-        {/* Authenticated users never see the guest landing page: `/` and
-            `/welcome` resolve to their role-aware dashboard (same rule the
-            /login and /register routes already apply). */}
-        <Route
-          path="/"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
-        />
-        <Route
-          path="/welcome"
-          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />}
-        />
+        {/* Public Landing & Catalog Routes - تظهر للجميع فور فتح الموقع */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/welcome" element={<LandingPage />} />
         <Route path="/catalog" element={<PublicCoursesPage />} />
         <Route path="/catalog/:id" element={<CourseDetailPage />} />
         <Route path="/blog" element={<BlogPage />} />
@@ -364,14 +354,6 @@ function App() {
               element={roleGate(
                 ['super_admin', 'branch_manager', 'academic', 'finance', 'teacher'],
                 <CertificatesPage />,
-              )}
-            />
-
-            <Route
-              path="/branches"
-              element={roleGate(
-                ['super_admin', 'branch_manager'],
-                <BranchesPage />,
               )}
             />
 

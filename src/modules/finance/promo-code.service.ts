@@ -42,13 +42,7 @@ export class PromoCodeService {
     ) {
       throw new BadRequestException('Promo code not applicable to this course');
     }
-    if (
-      branchId &&
-      promo.applicable_branches &&
-      !promo.applicable_branches.includes(branchId)
-    ) {
-      throw new BadRequestException('Promo code not applicable to this branch');
-    }
+   
     return promo;
   }
 

@@ -12,12 +12,17 @@ import {
   UseGuards,
   Res,
   BadRequestException,
+  NotFoundException,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { randomUUID } from 'crypto';
 
 // ✅ Guards
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -50,6 +55,9 @@ import { CreateGradebookEntryDto } from './dto/create-gradebook-entry.dto';
 import { ReorderModulesDto } from './dto/reorder-modules.dto';
 import { PullQuestionsDto } from './dto/pull-questions.dto';
 import { SetReleaseModeDto } from './dto/set-release-mode.dto';
+
+// LMS resource upload directory — static assets are served from /uploads/
+const LMS_UPLOAD_DIR = join(process.cwd(), 'uploads', 'lms');
 
 @ApiTags('LMS')
 @ApiBearerAuth('JWT')
@@ -255,19 +263,63 @@ export class LmsController {
       },
     },
   })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          if (!existsSync(LMS_UPLOAD_DIR)) {
+            mkdirSync(LMS_UPLOAD_DIR, { recursive: true });
+          }
+          cb(null, LMS_UPLOAD_DIR);
+        },
+        filename: (_req, file, cb) => {
+          const safeExt = file.originalname?.includes('.')
+            ? `.${file.originalname.split('.').pop()}`
+            : '.bin';
+          cb(null, `${randomUUID()}${safeExt}`);
+        },
+      }),
+    }),
+  )
   async uploadResource(
     @UploadedFile() file: UploadedMulterFile & { filename?: string; path?: string; destination?: string },
     @Body() dto: { lesson_id: string; title: string; type: string },
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const fileUrl = `/uploads/${file.filename}`;
+    const fileUrl = `/lms/uploads/lms/${file.filename}`;
     return this.lmsService.createResource({
       lesson_id: dto.lesson_id,
       title: dto.title,
       type: dto.type as CreateResourceDto['type'],
       file_url: fileUrl,
     });
+  }
+
+  @Get('uploads/lms/:filename')
+  @UseGuards(JwtAuthGuard, RolesGuard, EnrollmentGuard)
+  @Roles('super_admin', 'academic', 'teacher', 'student')
+  @ApiOperation({ summary: 'Serve LMS uploaded files (authenticated)' })
+  serveLmsUpload(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ) {
+    const filePath = join(LMS_UPLOAD_DIR, filename);
+    if (!existsSync(filePath)) {
+      throw new NotFoundException('File not found on disk');
+    }
+    return res.sendFile(filePath);
+  }
+
+  @Delete('resources/:id')
+  @Roles('super_admin', 'academic', 'teacher')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'Delete a lesson resource attachment' })
+  async deleteResource(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: any,
+  ) {
+    await this.lmsService.deleteResource(id, user?.userId ?? user?.id);
+    return { message: 'Resource deleted' };
   }
 
   @Get('resources/:id/download')

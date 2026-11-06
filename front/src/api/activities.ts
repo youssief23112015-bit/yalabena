@@ -13,7 +13,6 @@ export interface ActivityFilters {
   type?: ActivityEventType;
   status?: ActivityStatusValue;
   level?: string;
-  branch_id?: string;
   search?: string;
 }
 
@@ -25,7 +24,6 @@ export interface CreateActivityDto {
   start_time?: string;
   end_time?: string;
   location?: string;
-  branch_id: string;
   capacity: number;
   fee?: number;
   target_levels?: string[];

@@ -1,0 +1,54 @@
+{
+  "title": "Dashboard",
+  "subtitle": "Overview of key metrics across the academy.",
+  "greeting": "Welcome back, {{name}}",
+  "lastUpdated": "Last updated {{time}}",
+  "refresh": "Refresh",
+  "period": "Period",
+  "today": "Today",
+  "last7d": "Last 7 days",
+  "last30d": "Last 30 days",
+  "thisMonth": "This month",
+  "thisQuarter": "This quarter",
+  "thisYear": "This year",
+  "custom": "Custom range",
+  "from": "From",
+  "to": "To",
+  "branch": "Branch",
+  "allBranches": "All branches",
+  "selectBranch": "Select a branch",
+  "branchOnly": "Branch data is locked to your own branch.",
+  "noData": "No data available",
+  "loadError": "Could not load dashboard data.",
+  "retry": "Retry",
+  "kpi": {
+    "value": "Value",
+    "previous": "Previous",
+    "change": "Change"
+  },
+  "trend": {
+    "up": "Up {{pct}}%",
+    "down": "Down {{pct}}%",
+    "noChange": "No change"
+  },
+  "alert": {
+    "info": "Info",
+    "warning": "Warning",
+    "critical": "Critical",
+    "dismiss": "Dismiss"
+  },
+  "sections": {
+    "revenue": "Revenue",
+    "students": "Students",
+    "groups": "Groups",
+    "sessions": "Sessions",
+    "attendance": "Attendance",
+    "leads": "Leads",
+    "employees": "Employees",
+    "payroll": "Payroll"
+  },
+  "actions": {
+    "viewAll": "View all",
+    "deepLink": "Open {target}"
+  }
+}

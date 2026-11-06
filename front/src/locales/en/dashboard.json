@@ -26,16 +26,25 @@
     "previous": "Previous",
     "change": "Change"
   },
-  "trend": {
-    "up": "Up {{pct}}%",
-    "down": "Down {{pct}}%",
-    "noChange": "No change"
-  },
-  "alert": {
-    "info": "Info",
-    "warning": "Warning",
-    "critical": "Critical",
-    "dismiss": "Dismiss"
+  "finance": {
+    "overview": "Finance Overview",
+    "kpis": {
+      "revenue_collected": "Revenue Collected",
+      "invoiced_amount": "Invoiced Amount",
+      "collection_rate": "Collection Rate",
+      "outstanding_balance": "Outstanding Balance",
+      "overdue_amount": "Overdue Amount"
+    },
+    "revenue_trend": "Revenue Trend",
+    "income_vs_expenses": "Income vs Expenses",
+    "invoices_by_status": "Invoices by Status",
+    "aging_buckets": "Aging Buckets",
+    "recent_activity": "Recent Activity",
+    "instalments_due": "Instalments Due",
+    "top_debtors": "Top Debtors",
+    "pending_refunds": "Pending Refunds",
+    "failed_payments": "Failed EasyKash Payments",
+    "latest_payments": "Latest Payments"
   },
   "sections": {
     "revenue": "Revenue",

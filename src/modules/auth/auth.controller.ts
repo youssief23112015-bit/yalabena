@@ -1,13 +1,21 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UsePipes, ValidationPipe, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TwoFactorCodeDto, TwoFactorLoginDto } from './dto/two-factor.dto';
 import { ResetPasswordDto, ResetPasswordRequestDto } from './dto/password-reset.dto';
+import { extractClientIp } from '../../common/utils/extract-client-ip';
+
+const strictValidation = new ValidationPipe({
+  whitelist: true,
+  forbidNonWhitelisted: true,
+  transform: true,
+});
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -16,6 +24,8 @@ export class AuthController {
 
   @Public()
   @Post('register')
+  @RateLimit({ max: 5, windowMs: 60_000 })
+  @UsePipes(strictValidation)
   @ApiOperation({ summary: 'Register new user' })
   @ApiResponse({ status: 201, description: 'User registered successfully' })
   register(@Body() dto: RegisterDto) {
@@ -25,10 +35,15 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @RateLimit({ max: 5, windowMs: 60_000 })
+  @UsePipes(strictValidation)
   @ApiOperation({ summary: 'Login user' })
   @ApiResponse({ status: 200, description: 'Login successful' })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Body() dto: LoginDto, @Req() req: any) {
+    // Extract the real client IP server-side (first IP from x-forwarded-for,
+    // trimmed). Never trust a client-supplied IP value.
+    const clientIp = extractClientIp(req);
+    return this.authService.login(dto, clientIp);
   }
 
   @Public()
@@ -43,6 +58,7 @@ export class AuthController {
 
   @Public()
   @Post('2fa/verify')
+  @RateLimit({ max: 5, windowMs: 60_000 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Complete a 2FA-gated login with a TOTP code' })
   @ApiResponse({ status: 200, description: 'Tokens issued.' })
@@ -80,6 +96,7 @@ export class AuthController {
 
   @Post('forgot-password')
   @Public()
+  @RateLimit({ max: 3, windowMs: 60_000 })
   @ApiOperation({ summary: 'Request a password reset link' })
   @ApiResponse({ status: 200, description: 'Reset link sent to email' })
   @ApiResponse({ status: 400, description: 'Invalid email' })
@@ -89,6 +106,7 @@ export class AuthController {
 
   @Post('reset-password')
   @Public()
+  @RateLimit({ max: 5, windowMs: 60_000 })
   @ApiOperation({ summary: 'Reset password with token' })
   @ApiResponse({ status: 200, description: 'Password reset successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })

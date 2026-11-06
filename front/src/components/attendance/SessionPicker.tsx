@@ -24,7 +24,6 @@ export function SessionPicker(p: {
   value: string;
   groupFilter: string;
   onChange: (v: string) => void;
-  includeAllOption?: boolean;
 }) {
   const { data: sessions, isLoading, isError } = useQuery({
     queryKey: ["sessions"],
@@ -49,15 +48,9 @@ export function SessionPicker(p: {
         aria-label="Select session"
         className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
       >
-        {p.includeAllOption ? (
-          <option value="all">
-            {isLoading ? "Loading sessions…" : isError ? "Could not load sessions" : "Select All Sessions"}
-          </option>
-        ) : (
-          <option value="">
-            {isLoading ? "Loading sessions…" : isError ? "Could not load sessions" : "Select session"}
-          </option>
-        )}
+        <option value="">
+          {isLoading ? "Loading sessions…" : isError ? "Could not load sessions" : "Select session"}
+        </option>
         {list.map((s) => {
           const label = [
             s.topic?.trim() || s.title?.trim() || "Session",

@@ -128,6 +128,16 @@ export const financeApi = {
     const { data } = await apiClient.get("/finance/receivables", { params: branch_id ? { branch_id } : {} });
     return data;
   },
+
+  /**
+   * GET /dashboard/finance — finance officer dashboard metrics (KPIs + time series + breakdowns).
+   */
+  getFinanceDashboard: async (params?: {
+    period?: string; from?: string; to?: string; branch_id?: string;
+  }): Promise<any> => {
+    const { data } = await apiClient.get("/dashboard/finance", { params });
+    return data;
+  },
   /**
    * GET /finance/ledger adapter (backend returns raw {total,type,month} rows).
    * Normalized to the shape FinanceDashboard renders.

@@ -1,0 +1,6 @@
+﻿
+7a5457d4b656_speakup-api Up 2 minutes yalabena-main-app
+speakup-postgres Up 2 hours (healthy) postgres:15-alpine
+speakup-redis Up 2 hours redis:7-alpine
+
+

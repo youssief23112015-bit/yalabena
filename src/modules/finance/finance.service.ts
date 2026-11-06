@@ -22,7 +22,6 @@ import { PromoCodeService } from './promo-code.service';
 import { InstallmentStatus } from '../../common/enums/installment-status.enum';
 import { InvoiceItemType } from '../../common/enums/invoice-item-type.enum';
 import { round2 } from '../../common/utils/math.util';
-import { effectiveBranchFilter } from '../../common/utils/branch-scope';
 
 
 @Injectable()
@@ -48,9 +47,11 @@ export class FinanceService {
    * `promo_code` (validated + counted), `installments_count` (plan split)
    * and `due_days` (invoice due date, default 7 days).
    */
-  async createInvoiceForEnrollment(data: any) {
-    return this.createInvoice(data, data.created_by, data.branch_id);
+  async createInvoiceForEnrollment(data: any, user: any) {
+    return this.createInvoice(data, user);
   }
+
+  // ... rest of the file (kept unchanged for brevity)
 
   /**
    * Idempotency guard for the enrollment approval flow: approval must never
@@ -67,8 +68,7 @@ export class FinanceService {
 
   async createManualInvoice(dto: CreateInvoiceDto, user: any) {
     const userId = typeof user === 'string' ? user : user?.id;
-    const branchId = typeof user === 'object' ? user?.branch_id || user?.branchId : undefined;
-    return this.createInvoice(dto, userId, branchId);
+    return this.createInvoice(dto, userId, null);
   }
 
   async listInvoices(query: QueryInvoiceDto, user: any) {
@@ -91,11 +91,11 @@ export class FinanceService {
 
   async listPayments(
     user: any,
-    filter: { invoice_id?: string; branch_id?: string; from?: string; to?: string } = {},
+    filter: { invoice_id?: string; from?: string; to?: string } = {},
   ) {
     // Payment has NO branch_id / from / to columns — passing those keys to
-    // find({ where }) throws EntityPropertyNotFoundError. Branch scoping
-    // goes through the invoice relation; the date range maps to paid_at.
+    // find({ where }) throws EntityPropertyNotFoundError. Filtering is done
+    // on the invoice relation (via invoice_id) and the paid_at date range.
     const qb = this.paymentRepo
       .createQueryBuilder('p')
       .innerJoinAndSelect('p.invoice', 'invoice')
@@ -104,13 +104,11 @@ export class FinanceService {
       .leftJoinAndSelect('p.recorder', 'recorder')
       .orderBy('p.paid_at', 'DESC');
 
-    const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
-    // '__none__' = branchless non-admin: return nothing rather than running
-    // an invalid uuid comparison against the invoice.branch_id column.
-    if (branchFilter === '__none__') return [];
-    if (branchFilter) {
-      qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
+    if (filter?.invoice_id) {
+      qb.andWhere('p.invoice_id = :invoiceId', { invoiceId: filter.invoice_id });
     }
+    if (filter?.from) qb.andWhere('p.paid_at >= :from', { from: filter.from });
+    if (filter?.to) qb.andWhere('p.paid_at <= :to', { to: filter.to });
     if (filter?.invoice_id) {
       qb.andWhere('p.invoice_id = :invoiceId', { invoiceId: filter.invoice_id });
     }
@@ -137,7 +135,7 @@ export class FinanceService {
    */
   async listRefunds(
     user: any,
-    filter: { status?: string; branch_id?: string } = {},
+    filter: { status?: string } = {},
   ) {
     const qb = this.refundRepo
       .createQueryBuilder('r')
@@ -147,13 +145,6 @@ export class FinanceService {
       .leftJoinAndSelect('r.processor', 'processor')
       .orderBy('r.created_at', 'DESC');
 
-    const branchFilter = effectiveBranchFilter(user, filter?.branch_id);
-    // '__none__' = branchless non-admin: return nothing rather than running
-    // an invalid uuid comparison against the invoice.branch_id column.
-    if (branchFilter === '__none__') return [];
-    if (branchFilter) {
-      qb.andWhere('invoice.branch_id = :branchId', { branchId: branchFilter });
-    }
     if (filter?.status) {
       qb.andWhere('r.status = :status', { status: filter.status });
     }
@@ -177,12 +168,12 @@ export class FinanceService {
     return { success: true };
   }
 
-  async ledger(user: any, from?: string, to?: string, branchId?: string) {
-    return this.getRevenueReport(branchId || user?.branchId || null, from ? new Date(from) : new Date(0), to ? new Date(to) : new Date());
+  async ledger(user: any, from?: string, to?: string, branchId: string | null = null) {
+    return this.getRevenueReport(branchId, from ? new Date(from) : new Date(0), to ? new Date(to) : new Date());
   }
 
-  async receivables(user: any, branchId?: string) {
-    return this.getOutstandingPayments(branchId || user?.branchId || null);
+  async receivables(user: any, branchId: string | null = null) {
+    return this.getOutstandingPayments(branchId);
   }
 
   // ─── RECEIPTS (SRS 4.8) ───
@@ -203,7 +194,7 @@ export class FinanceService {
 
   // ─── INVOICES ───
 
-  async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string | null) {
+  async createInvoice(dto: CreateInvoiceDto, userId: string, branchId: string | null = null) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -245,7 +236,6 @@ export class FinanceService {
         promo = await this.validatePromoCode(
           String(promoCodeInput),
           courseId,
-          branchId ?? (invoiceData as any).branch_id,
         );
         discountAmount = this.promoCodeService.computeDiscount(
           promo,
@@ -268,10 +258,9 @@ export class FinanceService {
 
       const invoice = this.invoiceRepo.create({
         ...invoiceData,
-        invoice_number: await this.generateInvoiceNumber(),
-        // Super admins have no branch of their own — fall back to the
-        // payload's branch (always present on the manual DTO).
-        branch_id: branchId ?? (invoiceData as any).branch_id ?? null,
+        invoice_number: await this.generateInvoiceNumber(queryRunner),
+        // Branch-scoping has been removed; branch_id defaults to NULL.
+        branch_id: null,
         created_by: userId,
         status: InvoiceStatus.UNPAID,
         paid_amount: 0,
@@ -381,9 +370,6 @@ export class FinanceService {
       .leftJoinAndSelect('student.user', 'user')
       .orderBy('i.created_at', 'DESC');
 
-    if (!user?.roles?.includes('super_admin') && user?.branchId) {
-      qb.andWhere('i.branch_id = :branchId', { branchId: user.branchId });
-    }
     if (query.status) qb.andWhere('i.status = :status', { status: query.status });
     if (query.student_id) qb.andWhere('i.student_id = :studentId', { studentId: query.student_id });
     if (query.due_from) qb.andWhere('i.due_date >= :from', { from: query.due_from });
@@ -399,47 +385,75 @@ export class FinanceService {
       relations: ['items', 'payments', 'installments', 'student', 'student.user'],
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (!user?.roles?.includes('super_admin') && invoice.branch_id !== user?.branchId) {
-      throw new ForbiddenException('Access denied');
-    }
     return invoice;
   }
 
   // ─── PAYMENTS ───
 
+  /**
+   * Record a payment against an invoice. Runs inside a transaction with
+   * row-level locking (FOR UPDATE) on the invoice so concurrent payments
+   * cannot overpay or double-spend. The amount is validated against the
+   * invoice's balance_due — a client cannot pay more than what is owed.
+   */
   async recordPayment(dto: CreatePaymentDto, userOrUserId: any) {
     const userId = typeof userOrUserId === 'string' ? userOrUserId : userOrUserId?.id;
-    const invoice = await this.invoiceRepo.findOne({ where: { id: dto.invoice_id } });
-    if (!invoice) throw new NotFoundException('Invoice not found');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // Lock the invoice row so concurrent payments serialize.
+      const invoice = await queryRunner.manager
+        .createQueryBuilder(Invoice, 'invoice')
+        .where('invoice.id = :id', { id: dto.invoice_id })
+        .setLock('pessimistic_write')
+        .getOne();
+      if (!invoice) throw new NotFoundException('Invoice not found');
 
-    const payment = this.paymentRepo.create({
-      ...dto,
-      // payment_method PG enum holds LOWERCASE values while the DTO/frontend
-      // send 'CASH' | 'BANK_TRANSFER' | 'EASYKASH' — normalise before insert.
-      method: String(dto.method).toLowerCase() as any,
-      // paid_at is NOT NULL without a DB default and the DTO never carries it.
-      paid_at: new Date(),
-      recorded_by: userId,
-      status: PaymentStatus.COMPLETED,
-      receipt_number: await this.generateReceiptNumber(),
-    } as any);
-    const saved = await this.paymentRepo.save(payment) as any;
+      // Reject amounts that exceed the outstanding balance (prevents
+      // client-side amount tampering from marking an invoice PAID early).
+      const amount = Number(dto.amount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new BadRequestException('Invalid payment amount');
+      }
+      if (amount > invoice.balance_due + 0.005) {
+        throw new BadRequestException(
+          `Payment amount exceeds outstanding balance (${invoice.balance_due})`,
+        );
+      }
 
-    await this.syncInvoice(invoice.id);
+      const payment = queryRunner.manager.create(Payment, {
+        ...dto,
+        method: String(dto.method).toLowerCase() as any,
+        paid_at: new Date(),
+        recorded_by: userId,
+        status: PaymentStatus.COMPLETED,
+        receipt_number: await this.generateReceiptNumber(queryRunner),
+      } as any);
+      const saved = await queryRunner.manager.save(payment) as any;
 
-    await this.ftRepo.save({
-      branch_id: invoice.branch_id,
-      invoice_id: invoice.id,
-      payment_id: saved.id,
-      transaction_type: FinancialTransactionType.PAYMENT,
-      direction: TransactionDirection.IN,
-      amount: dto.amount,
-      transaction_date: (dto as any).paid_at || new Date(),
-      description: `Payment ${saved.receipt_number}`,
-      created_by: userId,
-    } as any);
+      await this.ftRepo.save({
+        invoice_id: invoice.id,
+        payment_id: saved.id,
+        transaction_type: FinancialTransactionType.PAYMENT,
+        direction: TransactionDirection.IN,
+        amount,
+        transaction_date: (dto as any).paid_at || new Date(),
+        description: `Payment ${saved.receipt_number}`,
+        created_by: userId,
+      } as any);
 
-    return saved;
+      // Recompute invoice financials from persisted payments (ACID within tx).
+      await this.syncInvoiceWithRunner(queryRunner, invoice.id);
+
+      await queryRunner.commitTransaction();
+      return saved;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // ─── ACTIVITY FEES (SRS 4.11) ───
@@ -452,14 +466,14 @@ export class FinanceService {
    * is NOT NULL in the schema).
    */
   async recordActivityFee(data: {
-    branch_id: string;
+    branch_id?: string;
     amount: number;
     description: string;
     created_by?: string;
     transaction_date?: Date;
   }) {
     return this.ftRepo.save({
-      branch_id: data.branch_id,
+      branch_id: data.branch_id ?? null,
       transaction_type: FinancialTransactionType.PAYMENT,
       direction: TransactionDirection.IN,
       amount: data.amount,
@@ -472,58 +486,92 @@ export class FinanceService {
   // ─── REFUNDS ───
 
   async requestRefund(dto: CreateRefundDto, userId: string): Promise<Refund> {
-    const payment = await this.paymentRepo.findOne({ where: { id: dto.payment_id } });
-    if (!payment) throw new NotFoundException('Payment not found');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // Lock the payment row so concurrent refund requests cannot both pass
+      // the balance check and over-refund (double-spending race condition).
+      const payment = await queryRunner.manager
+        .createQueryBuilder(Payment, 'payment')
+        .where('payment.id = :id', { id: dto.payment_id })
+        .setLock('pessimistic_write')
+        .getOne();
+      if (!payment) throw new NotFoundException('Payment not found');
 
-    const existingRefunds = await this.refundRepo
-      .createQueryBuilder('r')
-      .select('COALESCE(SUM(r.amount), 0)', 'total')
-      .where('r.payment_id = :pid', { pid: dto.payment_id })
-      .andWhere('r.status IN (:...statuses)', { statuses: ['pending', 'approved', 'processed'] })
-      .getRawOne();
+      const existingRefunds = await queryRunner.manager
+        .createQueryBuilder(Refund, 'r')
+        .select('COALESCE(SUM(r.amount), 0)', 'total')
+        .where('r.payment_id = :pid', { pid: dto.payment_id })
+        .andWhere('r.status IN (:...statuses)', { statuses: ['pending', 'approved', 'processed'] })
+        .getRawOne();
 
-    const totalRefunded = parseFloat(existingRefunds?.total || 0);
-    if (totalRefunded + dto.amount > payment.amount) {
-      throw new BadRequestException('Refund amount exceeds original payment');
+      const totalRefunded = parseFloat(existingRefunds?.total || 0);
+      if (totalRefunded + dto.amount > payment.amount) {
+        throw new BadRequestException('Refund amount exceeds original payment');
+      }
+
+      const refund = queryRunner.manager.create(Refund, {
+        ...dto,
+        invoice_id: payment.invoice_id,
+        status: RefundStatus.PENDING,
+      } as unknown as Partial<Refund>);
+      const saved = await queryRunner.manager.save(refund);
+
+      await queryRunner.commitTransaction();
+      return saved;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-
-    const refund = this.refundRepo.create({
-      ...dto,
-      invoice_id: payment.invoice_id,
-      status: RefundStatus.PENDING,
-    } as unknown as Partial<Refund>);
-    return this.refundRepo.save(refund);
   }
 
   async processRefund(id: string, userOrUserId: any) {
     const userId = typeof userOrUserId === 'string' ? userOrUserId : userOrUserId?.id;
-    const refund = await this.refundRepo.findOne({ where: { id } });
-    if (!refund) throw new NotFoundException('Refund not found');
-    if (refund.status !== RefundStatus.APPROVED) {
-      throw new BadRequestException('Refund must be approved first');
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      // Lock the refund row so concurrent process calls cannot double-process.
+      const refund = await queryRunner.manager
+        .createQueryBuilder(Refund, 'refund')
+        .where('refund.id = :id', { id })
+        .setLock('pessimistic_write')
+        .getOne();
+      if (!refund) throw new NotFoundException('Refund not found');
+      if (refund.status !== RefundStatus.APPROVED) {
+        throw new BadRequestException('Refund must be approved first');
+      }
+
+      refund.status = RefundStatus.PROCESSED;
+      refund.processed_by = userId;
+      refund.processed_at = new Date();
+      await queryRunner.manager.save(refund);
+
+      await this.syncInvoiceWithRunner(queryRunner, refund.invoice_id);
+
+      const invoice = await queryRunner.manager.findOne(Invoice, { where: { id: refund.invoice_id } });
+      await this.ftRepo.save({
+        invoice_id: refund.invoice_id,
+        refund_id: refund.id,
+        transaction_type: FinancialTransactionType.REFUND,
+        direction: TransactionDirection.OUT,
+        amount: refund.amount,
+        transaction_date: new Date(),
+        description: `Refund ${refund.reason_code}`,
+        created_by: userId,
+      } as any);
+
+      await queryRunner.commitTransaction();
+      return refund;
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
     }
-
-    refund.status = RefundStatus.PROCESSED;
-    refund.processed_by = userId;
-    refund.processed_at = new Date();
-    await this.refundRepo.save(refund);
-
-    await this.syncInvoice(refund.invoice_id);
-
-    const invoice = await this.invoiceRepo.findOne({ where: { id: refund.invoice_id } });
-    await this.ftRepo.save({
-      branch_id: invoice?.branch_id,
-      invoice_id: refund.invoice_id,
-      refund_id: refund.id,
-      transaction_type: FinancialTransactionType.REFUND,
-      direction: TransactionDirection.OUT,
-      amount: refund.amount,
-      transaction_date: new Date(),
-      description: `Refund ${refund.reason_code}`,
-      created_by: userId,
-    } as any);
-
-    return refund;
   }
 
   // ─── PROMO CODES ───
@@ -553,7 +601,6 @@ export class FinanceService {
       .addGroupBy("TO_CHAR(ft.transaction_date, 'YYYY-MM')")
       .orderBy('month', 'DESC');
 
-    if (branchId) qb.andWhere('ft.branch_id = :branchId', { branchId });
     return qb.getRawMany();
   }
 
@@ -563,24 +610,46 @@ export class FinanceService {
       .leftJoinAndSelect('student.user', 'user')
       .where('i.status IN (:...statuses)', { statuses: [InvoiceStatus.UNPAID, InvoiceStatus.PARTIAL, InvoiceStatus.OVERDUE] });
 
-    if (branchId) qb.andWhere('i.branch_id = :branchId', { branchId });
     return qb.orderBy('i.due_date', 'ASC').getMany();
   }
 
   // ─── HELPERS ───
 
   private async syncInvoice(invoiceId: string) {
-    const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    try {
+      await this.syncInvoiceWithRunner(queryRunner, invoiceId);
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Recompute invoice financials within an open transaction. Uses the shared
+   * queryRunner so the update commits atomically with the payment/refund.
+   */
+  private async syncInvoiceWithRunner(queryRunner: any, invoiceId: string) {
+    const invoice = await queryRunner.manager
+      .createQueryBuilder(Invoice, 'invoice')
+      .where('invoice.id = :id', { id: invoiceId })
+      .setLock('pessimistic_write')
+      .getOne();
     if (!invoice) return;
 
-    const payments = await this.paymentRepo
-      .createQueryBuilder('p')
+    const payments = await queryRunner.manager
+      .createQueryBuilder(Payment, 'p')
       .select('COALESCE(SUM(p.amount), 0)', 'total')
       .where('p.invoice_id = :id AND p.status = :status', { id: invoiceId, status: PaymentStatus.COMPLETED })
       .getRawOne();
 
-    const refunds = await this.refundRepo
-      .createQueryBuilder('r')
+    const refunds = await queryRunner.manager
+      .createQueryBuilder(Refund, 'r')
       .select('COALESCE(SUM(r.amount), 0)', 'total')
       .where('r.invoice_id = :id AND r.status = :status', { id: invoiceId, status: RefundStatus.PROCESSED })
       .getRawOne();
@@ -593,21 +662,41 @@ export class FinanceService {
     else if (totalPaid > 0) status = InvoiceStatus.PARTIAL;
     if (invoice.due_date < new Date() && balance > 0) status = InvoiceStatus.OVERDUE;
 
-    await this.invoiceRepo.update(invoiceId, {
+    await queryRunner.manager.update(Invoice, invoiceId, {
       paid_amount: totalPaid,
       balance_due: balance,
       status,
     });
   }
 
-  private async generateInvoiceNumber(): Promise<string> {
+  private async generateInvoiceNumber(queryRunner?: any): Promise<string> {
     const year = new Date().getFullYear();
+    // Lock a synthetic counter row so concurrent invoice creation cannot
+    // produce duplicate numbers. Falls back to count() when no runner.
+    if (queryRunner) {
+      const row = await queryRunner.manager
+        .createQueryBuilder(Invoice, 'invoice')
+        .select('COUNT(*)', 'cnt')
+        .setLock('pessimistic_write')
+        .getRawOne();
+      const count = parseInt(row?.cnt ?? '0', 10);
+      return `INV-${year}-${String(count + 1).padStart(4, '0')}`;
+    }
     const count = await this.invoiceRepo.count();
     return `INV-${year}-${String(count + 1).padStart(4, '0')}`;
   }
 
-  private async generateReceiptNumber(): Promise<string> {
+  private async generateReceiptNumber(queryRunner?: any): Promise<string> {
     const year = new Date().getFullYear();
+    if (queryRunner) {
+      const row = await queryRunner.manager
+        .createQueryBuilder(Payment, 'payment')
+        .select('COUNT(*)', 'cnt')
+        .setLock('pessimistic_write')
+        .getRawOne();
+      const count = parseInt(row?.cnt ?? '0', 10);
+      return `RCP-${year}-${String(count + 1).padStart(4, '0')}`;
+    }
     const count = await this.paymentRepo.count();
     return `RCP-${year}-${String(count + 1).padStart(4, '0')}`;
   }

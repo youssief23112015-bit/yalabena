@@ -61,6 +61,7 @@ export class AuthService {
           last_name: dto.last_name,
           language: dto.language || 'ar',
           status: UserStatus.ACTIVE,
+          password_changed_at: new Date(),
         }),
       );
 
@@ -91,7 +92,7 @@ export class AuthService {
     return this.buildAuthResponse(user, roles, permissions);
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, clientIp?: string) {
     // Query builder (not findOne) so password_hash + two_factor_enabled are
     // selected for the 2FA gate below.
     const user = await this.userRepo
@@ -113,7 +114,10 @@ export class AuthService {
       return { requires_2fa: true, temp_token };
     }
 
-    await this.userRepo.update(user.id, { last_login_at: new Date() });
+    await this.userRepo.update(user.id, {
+      last_login_at: new Date(),
+      last_login_ip: clientIp ?? null,
+    });
 
     const roles = await this.getUserRoles(user.id);
     const permissions = await this.getUserPermissions(user.id);
@@ -221,7 +225,10 @@ export class AuthService {
 
     // Hash the new password and update the user
     const hash = await bcrypt.hash(newPassword, 12);
-    await this.userRepo.update(user.id, { password_hash: hash });
+    await this.userRepo.update(user.id, {
+      password_hash: hash,
+      password_changed_at: new Date(),
+    });
 
     // Return fresh tokens so the user is logged in immediately
     const roles = await this.getUserRoles(user.id);
@@ -262,7 +269,15 @@ export class AuthService {
     roles: string[] = ['student'],
     permissions: string[] = [],
   ) {
-    const payload = { sub: user.id, email: user.email, roles };
+    // `pwd` binds every issued JWT to the user's last password-change time.
+    // When the password is later changed, JwtStrategy rejects all tokens
+    // carrying an older `pwd`, invalidating all active sessions.
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      roles,
+      pwd: user.password_changed_at ? user.password_changed_at.getTime() : 0,
+    };
 
     return {
       access_token: this.jwtService.sign(payload),

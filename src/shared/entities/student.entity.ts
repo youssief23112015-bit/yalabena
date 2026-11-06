@@ -47,9 +47,6 @@ export class Student {
   enrollment_date: Date;
 
   @Column({ type: 'uuid', nullable: true })
-  branch_id: string;
-
-  @Column({ type: 'uuid', nullable: true })
   placement_test_id: string;
 
   @CreateDateColumn({ type: 'timestamptz' })

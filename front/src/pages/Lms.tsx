@@ -1,4 +1,6 @@
-import  { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { unwrapApiResponse } from '@/lib/apiFetch';
+import { downloadProtected, api } from '@/lib/axios';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -32,19 +34,21 @@ import {
   HelpCircle,
   FileSpreadsheet,
   Layers,
+  Trash2,
 } from 'lucide-react';
 
 // ==========================================
 // TYPES & INTERFACES
 // ==========================================
 
-export type ResourceType = 'pdf' | 'video' | 'audio' | 'link' | 'doc';
+export type ResourceType = 'pdf' | 'video' | 'audio' | 'link' | 'file';
 
 export interface Resource {
   id: string;
   title: string;
   type: ResourceType;
   url: string;
+  downloadPath?: string;
   size?: string;
   duration?: string;
   watermarked?: boolean;
@@ -185,18 +189,59 @@ const ensureArray = <T,>(data: any): T[] => {
   return [];
 };
 
+/** Map backend LMS entities (snake_case `name`/`file_url`/`external_url`) to the
+ *  frontend view model (`title`/`url`), prefixing relative file URLs with the
+ *  API base so links open correctly. */
+const mapBackendResourceToView = (r: any): Resource => {
+  if (!r) {
+    return { id: '', title: '', type: 'file', url: '', watermarked: false };
+  }
+  // Backend wraps JSON responses as { success, data }. Unwrap defensively in
+  // case the raw entity is nested under .data.
+  const raw = r.data ?? r;
+  // Prefer `file_url` (the canonical backend property). Do NOT fall back to
+  // `raw.path` — that can pick up the request path from the global
+  // TransformInterceptor instead of a real file URL.
+  const rawUrl =
+    raw.file_url ?? raw.filePath ?? raw.url ?? raw.external_url ?? '';
+  const fullUrl =
+    rawUrl && String(rawUrl).startsWith('/')
+      ? `${API_BASE_URL}${String(rawUrl)}`
+      : rawUrl || '';
+  const downloadPath =
+    rawUrl && String(rawUrl).startsWith('/') ? String(rawUrl) : undefined;
+  return {
+    id: raw.id ?? r.id,
+    title: raw.name ?? raw.title ?? r.title ?? '',
+    type: raw.type ?? r.type,
+    url: fullUrl,
+    downloadPath,
+    size: raw.file_size ?? undefined,
+    duration: raw.duration ?? undefined,
+    watermarked: Boolean(raw.watermarked ?? r.watermarked),
+  };
+};
+
+const mapBackendLessonToView = (l: any): Lesson => ({
+  id: l.id,
+  title: l?.name ?? l?.title,
+  description: l.description,
+  durationMinutes: l?.duration_minutes ?? l?.durationMinutes,
+  completed: l.completed,
+  resources: ensureArray<Resource>(l?.resources).map(mapBackendResourceToView),
+});
+
+const mapBackendModuleToView = (m: any): Module => ({
+  id: m.id,
+  title: m?.name ?? m?.title,
+  description: m.description,
+  order: m.order,
+  lessons: ensureArray<Lesson>(m?.lessons).map(mapBackendLessonToView),
+});
+
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const getToken = (): string | null => {
-    const authData = localStorage.getItem('speakup-auth');
-    if (authData) {
-      try {
-        const parsed = JSON.parse(authData);
-        return parsed?.state?.accessToken || null;
-      } catch {
-        return null;
-      }
-    }
-    return localStorage.getItem('lms_token');
+    return useAuthStore.getState().getAccessToken();
   };
 
   const token = getToken();
@@ -214,10 +259,7 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     const errorData = await res.json().catch(() => ({}));
     
     if (res.status === 401) {
-      localStorage.removeItem('speakup-auth');
-      localStorage.removeItem('lms_token');
-      localStorage.removeItem('lms_user');
-      
+      useAuthStore.getState().clearAuth();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
@@ -244,7 +286,7 @@ export default function LmsPage() {
     : ['student'];
 
   const isTeacherOrAdmin = userRoles.some((r) =>
-    ['super_admin', 'academic', 'branch_manager', 'teacher'].includes(r)
+    ['super_admin', 'academic',  'teacher'].includes(r)
   );
 
   // Active UI States
@@ -273,6 +315,11 @@ export default function LmsPage() {
   const [submittingAssignment, setSubmittingAssignment] = useState<Assignment | null>(null);
   const [submissionTextInput, setSubmissionTextInput] = useState('');
 
+  // Add Module modal state
+  const [showAddModuleModal, setShowAddModuleModal] = useState(false);
+  const [newModuleTitle, setNewModuleTitle] = useState('');
+  const [newModuleDescription, setNewModuleDescription] = useState('');
+
   const [evaluatingSurvey, setEvaluatingSurvey] = useState<EvaluationSurvey | null>(null);
   const [evalRating, setEvalRating] = useState<number>(5);
   const [evalComment, setEvalComment] = useState('');
@@ -280,6 +327,13 @@ export default function LmsPage() {
   const [newResourceModal, setNewResourceModal] = useState<{ moduleId: string; lessonId: string } | null>(null);
   const [newResourceTitle, setNewResourceTitle] = useState('');
   const [newResourceType, setNewResourceType] = useState<ResourceType>('pdf');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Add Lesson modal state
+  const [showAddLessonModal, setShowAddLessonModal] = useState(false);
+  const [addLessonModuleId, setAddLessonModuleId] = useState('');
+  const [newLessonTitle, setNewLessonTitle] = useState('');
+  const [newLessonDuration, setNewLessonDuration] = useState(30);
 
   // 1. Fetch My Courses on Load — GET /lms/my-courses returns the groups of
   //    the student's ACTIVE enrollments (approved bookings) with full course
@@ -330,7 +384,7 @@ export default function LmsPage() {
         apiFetch<any>(`/lms/groups/${groupId}/evaluations`),
       ]);
 
-      const modulesRes = ensureArray<Module>(rawModules);
+      const modulesRes = ensureArray<Module>(rawModules).map(mapBackendModuleToView);
       const assignmentsRes = ensureArray<Assignment>(rawAssignments);
       const quizzesRes = ensureArray<Quiz>(rawQuizzes);
       const gradeItemsRes = ensureArray<GradeItem>(rawGrades);
@@ -447,16 +501,26 @@ export default function LmsPage() {
     if (!newResourceModal || !newResourceTitle.trim()) return;
     try {
       setIsSubmitting(true);
-      const createdResource = await apiFetch<Resource>(
-        `/lms/modules/${newResourceModal.moduleId}/lessons/${newResourceModal.lessonId}/resources`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            title: newResourceTitle,
-            type: newResourceType,
-          }),
-        }
-      );
+      const formData = new FormData();
+      formData.append('lesson_id', newResourceModal.lessonId);
+      formData.append('title', newResourceTitle.trim());
+      formData.append('type', newResourceType);
+      if (selectedFile) formData.append('file', selectedFile);
+
+      const token = useAuthStore.getState().getAccessToken();
+      const res = await fetch(`${API_BASE_URL}/lms/resources/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `API Error: ${res.statusText}`);
+      }
+
+      const createdResourceRaw = unwrapApiResponse<Resource>(await res.json());
+      const createdResource = mapBackendResourceToView(createdResourceRaw);
 
       setModules((prev) =>
         ensureArray<Module>(prev).map((m) =>
@@ -474,9 +538,86 @@ export default function LmsPage() {
       );
 
       setNewResourceTitle('');
+      setNewResourceType('pdf');
+      setSelectedFile(null);
       setNewResourceModal(null);
     } catch (err: any) {
       alert('خطأ أثناء إضافة الملف: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResourceDownload = async (path: string, title: string) => {
+    try {
+      await downloadProtected(path, title);
+    } catch (err: any) {
+      alert('تعذر تحميل الملف: ' + err.message);
+    }
+  };
+
+  const handleDeleteResource = async (resourceId: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا المرفق؟')) return;
+    try {
+      await api.delete(`/lms/resources/${resourceId}`);
+      setModules((prev) =>
+        ensureArray<Module>(prev).map((m) =>
+          m.lessons ? {
+            ...m,
+            lessons: ensureArray<Lesson>(m.lessons).map((l) =>
+              l.resources
+                ? {
+                    ...l,
+                    resources: ensureArray<Resource>(l.resources).filter((r) => r.id !== resourceId),
+                  }
+                : l
+            ),
+          }
+          : m
+        )
+      );
+    } catch (err: any) {
+      alert('تعذر حذف المرفق: ' + err.message);
+    }
+  };
+
+  const handleAddLesson = async () => {
+    if (!addLessonModuleId || !newLessonTitle.trim()) return;
+    try {
+      setIsSubmitting(true);
+      const targetModule = ensureArray<Module>(modules).find((m) => m.id === addLessonModuleId);
+      const orderIndex = (ensureArray<Lesson>(targetModule?.lessons).length || 0) + 1;
+      const createdLesson = await apiFetch<Lesson>(
+        '/lms/lessons',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            module_id: addLessonModuleId,
+            title: newLessonTitle.trim(),
+            order_index: orderIndex,
+          }),
+        }
+      );
+
+      const normalizedLesson = mapBackendLessonToView(createdLesson);
+
+      setModules((prev) =>
+        ensureArray<Module>(prev).map((m) =>
+          m.id === addLessonModuleId
+            ? {
+                ...m,
+                lessons: [...ensureArray<Lesson>(m.lessons), normalizedLesson],
+              }
+            : m
+        )
+      );
+
+      setNewLessonTitle('');
+      setNewLessonDuration(30);
+      setShowAddLessonModal(false);
+      setAddLessonModuleId('');
+    } catch (err: any) {
+      alert('خطأ أثناء إضافة الدرس: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -841,18 +982,11 @@ export default function LmsPage() {
                 </div>
                 {isTeacherOrAdmin && (
                   <button
-                    onClick={async () => {
-                      const title = prompt('Enter Module Title:');
-                      if (!title) return;
-                      try {
-                        const newMod = await apiFetch<Module>(`/lms/groups/${selectedGroupId}/modules`, {
-                          method: 'POST',
-                          body: JSON.stringify({ title, description: 'New Module' }),
-                        });
-                        setModules([...safeModules, newMod]);
-                      } catch (err: any) {
-                        alert('Error adding module: ' + err.message);
-                      }
+                    type="button"
+                    onClick={() => {
+                      setNewModuleTitle('');
+                      setNewModuleDescription('');
+                      setShowAddModuleModal(true);
                     }}
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                   >
@@ -886,6 +1020,19 @@ export default function LmsPage() {
                             </div>
                           </div>
                           <span className="text-xs text-muted-foreground font-medium">{moduleLessons.length} Lessons</span>
+                          {isTeacherOrAdmin && (
+                            <button
+                              onClick={() => {
+                                setAddLessonModuleId(module.id);
+                                setNewLessonTitle('');
+                                setNewLessonDuration(30);
+                                setShowAddLessonModal(true);
+                              }}
+                              className="inline-flex items-center gap-1 text-xs text-primary font-semibold hover:underline ml-2"
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Add Lesson
+                            </button>
+                          )}
                         </div>
 
                         {isExpanded && (
@@ -930,7 +1077,7 @@ export default function LmsPage() {
                                             {res.type === 'video' && <PlayCircle className="h-4 w-4 text-blue-500" />}
                                             {res.type === 'audio' && <File className="h-4 w-4 text-purple-500" />}
                                             {res.type === 'link' && <ExternalLink className="h-4 w-4 text-emerald-500" />}
-                                            {res.type === 'doc' && <FileSpreadsheet className="h-4 w-4 text-amber-500" />}
+                                            {res.type === 'file' && <File className="h-4 w-4 text-amber-500" />}
                                             <span className="font-medium">{res.title}</span>
                                             {res.watermarked && (
                                               <span className="inline-flex items-center gap-1 rounded bg-indigo-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-600">
@@ -938,14 +1085,39 @@ export default function LmsPage() {
                                               </span>
                                             )}
                                           </div>
-                                          <a
-                                            href={res.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
-                                          >
-                                            <Download className="h-3.5 w-3.5" /> Open / Download
-                                          </a>
+                                          {res.url && (
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.preventDefault();
+                                                  void handleResourceDownload(
+                                                    res.downloadPath ?? res.url,
+                                                    res.title,
+                                                  );
+                                                }}
+                                                className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
+                                              >
+                                                <Download className="h-3.5 w-3.5" /> Open / Download
+                                              </button>
+                                              {isTeacherOrAdmin && (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    void handleDeleteResource(
+                                                      res.id,
+                                                    );
+                                                  }}
+                                                  className="text-destructive hover:text-destructive/90"
+                                                  title="Delete attachment"
+                                                >
+                                                  <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                              )}
+                                            </div>
+                                          )}
                                         </div>
                                       ))}
                                     </div>
@@ -1219,8 +1391,8 @@ export default function LmsPage() {
                     </p>
                     {q.options && (
                       <div className="space-y-2 pt-1">
-                        {ensureArray<string>(q.options).map((opt) => (
-                          <label key={opt} className="flex items-center gap-2 text-xs p-2.5 rounded-md border border-border cursor-pointer hover:bg-muted/50">
+                       {ensureArray<string>(q.options).map((opt, optIdx) => (
+  <label key={`${q.id}-${opt}-${optIdx}`} className="flex items-center gap-2 text-xs p-2.5 rounded-md border border-border cursor-pointer hover:bg-muted/50">
                             <input
                               type="radio"
                               name={q.id}
@@ -1303,7 +1475,7 @@ export default function LmsPage() {
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold">Attach Resource</h3>
-              <button onClick={() => setNewResourceModal(null)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => { setSelectedFile(null); setNewResourceModal(null); }} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -1323,10 +1495,26 @@ export default function LmsPage() {
               <option value="video">Video</option>
               <option value="audio">Audio</option>
               <option value="link">Link</option>
-              <option value="doc">Document</option>
+              <option value="file">File</option>
             </select>
+            <label className="block text-sm font-medium">File</label>
+            <input
+              type="file"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setSelectedFile(file);
+                if (file && !newResourceTitle.trim()) setNewResourceTitle(file.name);
+              }}
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+            />
+            {selectedFile && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Upload className="h-3 w-3" />
+                <span className="truncate">{selectedFile.name}</span>
+              </div>
+            )}
             <div className="flex justify-end gap-3">
-              <button onClick={() => setNewResourceModal(null)} className="px-4 py-2 text-xs font-semibold rounded-lg border border-input">
+              <button onClick={() => { setSelectedFile(null); setNewResourceModal(null); }} className="px-4 py-2 text-xs font-semibold rounded-lg border border-input">
                 Cancel
               </button>
               <button
@@ -1335,6 +1523,122 @@ export default function LmsPage() {
                 className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground flex items-center gap-1"
               >
                 {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save Resource
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD MODULE */}
+      {showAddModuleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Add Module</h3>
+              <button onClick={() => setShowAddModuleModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!newModuleTitle.trim()) return;
+              setIsSubmitting(true);
+              apiFetch<Module>('/lms/modules', {
+                method: 'POST',
+                body: JSON.stringify({
+                  title: newModuleTitle.trim(),
+                  description: newModuleDescription.trim() || '',
+                  group_id: selectedGroupId,
+                  order_index: safeModules.length + 1,
+                }),
+              })
+                .then((newMod) => {
+                  setModules([...safeModules, newMod]);
+                  setShowAddModuleModal(false);
+                  setNewModuleTitle('');
+                  setNewModuleDescription('');
+                })
+                .catch((err: any) => {
+                  alert('Error adding module: ' + err.message);
+                })
+                .finally(() => {
+                  setIsSubmitting(false);
+                });
+            }}
+            className="space-y-4"
+          >
+              <label className="block text-sm font-medium">Title</label>
+              <input
+                type="text"
+                placeholder="Module title"
+                value={newModuleTitle}
+                onChange={(e) => setNewModuleTitle(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                required
+              />
+              <label className="block text-sm font-medium">Description</label>
+              <textarea
+                placeholder="Module description"
+                value={newModuleDescription}
+                onChange={(e) => setNewModuleDescription(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                rows={3}
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModuleModal(false)}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-input"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !newModuleTitle.trim()}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground flex items-center gap-1"
+                >
+                  {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Add Module
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD LESSON */}
+      {showAddLessonModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Add Lesson</h3>
+              <button onClick={() => setShowAddLessonModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="Lesson title"
+              value={newLessonTitle}
+              onChange={(e) => setNewLessonTitle(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+            />
+            <input
+              type="number"
+              placeholder="Duration (minutes)"
+              value={newLessonDuration}
+              onChange={(e) => setNewLessonDuration(Number(e.target.value) || 30)}
+              className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowAddLessonModal(false)} className="px-4 py-2 text-xs font-semibold rounded-lg border border-input">
+                Cancel
+              </button>
+              <button
+                onClick={handleAddLesson}
+                disabled={isSubmitting || !newLessonTitle.trim()}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground flex items-center gap-1"
+              >
+                {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Add Lesson
               </button>
             </div>
           </div>

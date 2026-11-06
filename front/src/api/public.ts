@@ -1,5 +1,5 @@
 import apiClient from "./client";
-import type { Course, Branch } from "@/types";
+import type { Course } from "@/types";
 
 /* ── Public website API (no auth required) ─────────────────────────── */
 
@@ -10,7 +10,6 @@ export interface PublicLeadInput {
   email?: string;
   level_interest?: string;
   notes?: string;
-  branch_id?: string;
 }
 
 export interface PublicPlacementBookingInput {
@@ -24,8 +23,6 @@ export interface PublicPlacementBookingInput {
 
 export interface PublicTestSlot {
   id: string;
-  branch_id: string;
-  branch?: Branch;
   start_time: string;
   end_time: string;
   mode: string;

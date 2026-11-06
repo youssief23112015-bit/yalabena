@@ -30,7 +30,7 @@ import {
   validateScheduleConfig,
 } from '../../common/utils/recurring-schedule.util';
 import { acquireSchedulingLocks } from '../../common/utils/scheduling-locks.util';
-import { AuthUser, assertBranchAccess } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/branch-scope';
 
 /** Structured conflict line returned to staff when validation fails. */
 export interface ScheduleConflict {
@@ -495,9 +495,11 @@ export class SessionSchedulingService {
         relations: ['schedules', 'teacher'],
       });
       if (!group) throw new NotFoundException(`Group with ID ${groupId} not found`);
-      if (user) assertBranchAccess(user, group.branch_id);
-
-      const alreadyActive = group.status === GroupStatus.ACTIVE;
+      
+      let alreadyActive = false;
+      if (user) {
+        alreadyActive = group.status === GroupStatus.ACTIVE;
+      }
       const windows: ScheduleWindow[] = (group.schedules ?? [])
         .filter((s) => s.is_recurring !== false)
         .map((s) => ({
@@ -597,9 +599,11 @@ export class SessionSchedulingService {
         relations: ['schedules', 'teacher'],
       });
       if (!group) throw new NotFoundException(`Group with ID ${groupId} not found`);
-      if (user) assertBranchAccess(user, group.branch_id);
-
-      const startDate = dateStr(group.start_date);
+      
+      let startDate = dateStr(group.start_date);
+      if (user) {
+        startDate = dateStr(group.start_date);
+      }
       const endDate = dateStr(group.end_date);
       if (effectiveDate > endDate) {
         throw new BadRequestException({
@@ -772,8 +776,3 @@ export class SessionSchedulingService {
     };
   }
 }
-
-
-
-
-

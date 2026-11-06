@@ -16,11 +16,10 @@ export class ClassroomsService {
   }
 
   async findAll(branchId?: string): Promise<Classroom[]> {
-    const query = this.repo.createQueryBuilder('classroom')
-      .leftJoinAndSelect('classroom.branch', 'branch');
+    const query = this.repo.createQueryBuilder('classroom');
 
     if (branchId) {
-      query.andWhere('branch.id = :branchId', { branchId });
+      query.andWhere('classroom.branch_id = :branchId', { branchId });
     }
 
     return query.getMany();
@@ -29,7 +28,6 @@ export class ClassroomsService {
   async findOne(id: string): Promise<Classroom> {
     const classroom = await this.repo.findOne({
       where: { id },
-      relations: ['branch'],
     });
 
     if (!classroom) {

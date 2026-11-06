@@ -1,7 +1,6 @@
-import React from "react";
 import { cn } from "@/lib/utils";
 
-interface AlertItem {
+export interface AlertItem {
   id: string;
   title: string;
   description?: string;

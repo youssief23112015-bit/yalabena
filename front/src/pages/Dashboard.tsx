@@ -69,6 +69,8 @@ const DASHBOARD_COMPONENTS: Record<DashboardKind, React.ComponentType> = {
 
 /**
  * Resolve the primary dashboard kind for a set of roles.
+ * Multi-role users get the highest-precedence role as the default.
+ * Unknown/custom roles fall back to "generic".
  */
 export function resolveDashboardKind(roles: string[]): DashboardKind {
   for (const kind of DASHBOARD_ROLE_PRECEDENCE) {
@@ -80,7 +82,8 @@ export function resolveDashboardKind(roles: string[]): DashboardKind {
 }
 
 /**
- * Return all dashboard-kind tabs a multi-role user is eligible for.
+ * Return all dashboard-kind tabs a multi-role user is eligible for,
+ * ordered by precedence.
  */
 export function eligibleDashboardKinds(roles: string[]): DashboardKind[] {
   return DASHBOARD_ROLE_PRECEDENCE.filter((kind) =>
@@ -97,9 +100,11 @@ export default function DashboardPage() {
   const defaultKind = eligibleKinds.length > 0 ? eligibleKinds[0] : "generic";
 
   // Multi-role users: show a tab switcher at the top.
+  const Component = DASHBOARD_COMPONENTS[defaultKind];
+
+  // Multi-role users: show a tab switcher at the top.
   if (eligibleKinds.length > 1) {
     const [activeKind, setActiveKind] = React.useState<DashboardKind>(defaultKind);
-    const Component = DASHBOARD_COMPONENTS[activeKind];
 
     return (
       <div className="space-y-6">
@@ -124,7 +129,7 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const Component = DASHBOARD_COMPONENTS[defaultKind];
   return <Component />;
 }
+
+

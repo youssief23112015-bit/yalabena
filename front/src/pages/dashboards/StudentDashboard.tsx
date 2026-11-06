@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { sessionsApi } from "@/api/sessions";
-import { attendanceApi } from "@/api/attendance";
 import { lmsApi } from "@/api/lms";
 import { placementAdminApi } from "@/api/placementAdmin";
 import { fetchPublicTestSlots } from "@/api/public";
@@ -121,25 +120,6 @@ export default function StudentDashboard() {
       void queryClient.invalidateQueries({ queryKey: ["dashboard", "my-placement-tests"] });
       void queryClient.invalidateQueries({ queryKey: ["public-placement-slots"] });
       void queryClient.invalidateQueries({ queryKey: ["leads"] });
-    },
-    onError: (e: any) =>
-      toast({
-        variant: "destructive",
-        title: t("common.error", "Error"),
-        description: e?.message,
-      }),
-  });
-
-  /** Student joins a session via Zoom — backend auto-marks attendance as present. */
-  const joinZoomM = useMutation({
-    mutationFn: ({ sessionId, joinUrl }: { sessionId: string; joinUrl: string }) =>
-      attendanceApi.joinZoom(sessionId).then(() => joinUrl),
-    onSuccess: (joinUrl) => {
-      toast({
-        title: t("studentDashboard.upcoming.joinedTitle", "Joined & marked present"),
-        description: t("studentDashboard.upcoming.joinedDesc", "You are marked as present for this session."),
-      });
-      window.open(joinUrl, "_blank", "noopener,noreferrer");
     },
     onError: (e: any) =>
       toast({
@@ -322,6 +302,8 @@ export default function StudentDashboard() {
                     const teacherName = s.group?.teacher
                       ? `${s.group.teacher.first_name ?? ""} ${s.group.teacher.last_name ?? ""}`.trim()
                       : "";
+                    // The fixed meeting URL of the session's group — backend
+                    // resolves it onto the session; the group link is the fallback.
                     const joinUrl = s.zoom_join_url || s.group?.zoom_link || null;
                     return (
                       <div
@@ -339,7 +321,7 @@ export default function StudentDashboard() {
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <Badge variant="outline" className="shrink-0">
+                          <Badge variant="info" className="shrink-0">
                             {t("studentDashboard.stats.scheduled")}
                           </Badge>
                           {joinUrl ? (
@@ -347,8 +329,7 @@ export default function StudentDashboard() {
                               size="sm"
                               variant="outline"
                               className="gap-1"
-                              onClick={() => joinZoomM.mutate({ sessionId: String(s.id || sessionSortMs(s)), joinUrl })}
-                              disabled={joinZoomM.isPending}
+                              onClick={() => window.open(joinUrl, "_blank", "noopener,noreferrer")}
                             >
                               <Video className="h-3.5 w-3.5" />
                               {t("studentDashboard.upcoming.joinZoom")}
@@ -381,6 +362,7 @@ export default function StudentDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Available slots → booking */}
               {(placementSlotsQ.data ?? []).length > 0 && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div className="min-w-[16rem] flex-1 space-y-1">
@@ -403,8 +385,7 @@ export default function StudentDashboard() {
                         const seats = Math.max(0, (s.capacity ?? 0) - (s.booked_count ?? 0));
                         return (
                           <option key={s.id} value={s.id} disabled={seats <= 0}>
-                            {s.date ?? ""} {String(s.start_time ?? "").slice(0, 5)}
-                            {s.branch ? ` — ${s.branch.name}` : ""} ({seats}{" "}
+                            {s.date ?? ""} {String(s.start_time ?? "").slice(0, 5)} ({seats}{" "}
                             {t("studentDashboard.placement.seats", "seats")})
                           </option>
                         );
@@ -424,6 +405,7 @@ export default function StudentDashboard() {
                 </div>
               )}
 
+              {/* My tests: schedule + status + evaluated degree/level */}
               {(placementTestsQ.data ?? []).length > 0 ? (
                 <div className="space-y-3">
                   {(placementTestsQ.data ?? []).map((pt) => {
@@ -446,8 +428,7 @@ export default function StudentDashboard() {
                               : t("studentDashboard.placement.unknownTime", "Scheduled test")}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
-                            {pt.slot?.branch?.name ??
-                              pt.slot?.mode ??
+                            {pt.slot?.mode ??
                               t("studentDashboard.placement.awaitingNotes", "Awaiting evaluation results")}
                           </p>
                         </div>

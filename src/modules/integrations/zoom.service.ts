@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 const fetchFn: any = (globalThis as any).fetch;
 
@@ -118,10 +119,18 @@ export class ZoomService {
     }
   }
 
-  /** Verify a Zoom webhook (shared-secret style check). */
+  /** Verify a Zoom webhook (shared-secret style check). Fails closed when
+   *  ZOOM_WEBHOOK_SECRET is not configured. Uses timingSafeEqual to avoid
+   *  timing side-channels. */
   verifyWebhook(authorization: string | undefined): boolean {
     const secret = this.config.get<string>('ZOOM_WEBHOOK_SECRET');
-    if (!secret) return true; // not enforcing
-    return authorization === secret;
+    if (!secret) {
+      this.logger.error('ZOOM_WEBHOOK_SECRET not configured — rejecting all webhooks (fail closed)');
+      return false;
+    }
+    if (!authorization) return false;
+    const a = Buffer.from(secret);
+    const b = Buffer.from(authorization);
+    return a.length === b.length && timingSafeEqual(a, b);
   }
 }

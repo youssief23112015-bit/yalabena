@@ -53,6 +53,14 @@ export class User {
   @Column({ type: 'varchar', length: 45, nullable: true })
   last_login_ip: string;
 
+  /**
+   * Timestamp of the last password change. Used as a JWT "pwd" claim so that
+   * every access/refresh token issued before a password change is rejected on
+   * validation, forcing re-login and invalidating all active sessions.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  password_changed_at: Date;
+
   @Column({ type: 'timestamptz', nullable: true })
   chat_policy_accepted_at: Date;
 

@@ -1,0 +1,654 @@
+SR. SPECIFICATION
+Speak Up English Academy
+Training Management Platform
+Document
+Prepared for
+Prepared by
+Ahmed Farouk
+Document Version
+1.0
+Date
+April 2026
+Status
+Draft for Implementation
+Reference Product
+Tamkeen TMS
+Confidential — for the named recipient only
+Table of Contents
+Table of Contents<w:t>1
+1. Document Control<w:t>1
+2. Introduction<w:t>1
+2.1 Purpose<w:t>1
+2.2 In-Scope<w:t>1
+2.3 Out-of-Scope (Explicitly Excluded)<w:t>1
+2.4 Stakeholders<w:t>1
+2.5 Definitions &amp; Acronyms<w:t>1
+3. System Overview<w:t>1
+3.1 Vision<w:t>1
+3.2 User Roles<w:t>1
+3.3 High-Level Architecture (Recommended)<w:t>1
+3.4 Localization<w:t>1
+4. Functional Requirements (Master Checklist)<w:t>1
+4.1 CRM — Student &amp; Lead Management<w:t>1
+4.2 Sales &amp; Marketing<w:t>1
+4.3 Placement Test<w:t>1
+4.4 Distribution &amp; Waitlists<w:t>1
+4.5 Training Management (TMS Core)<w:t>1
+4.5.1 Course Catalog<w:t>1
+4.5.2 Group / Class Scheduling<w:t>1
+4.5.3 Attendance<w:t>1
+4.5.4 Hybrid Support<w:t>1
+4.6 LMS — Learning Management<w:t>1
+4.7 Live Chat (NEW Module — Critical)<w:t>1
+4.7.1 Core Chat Features<w:t>1
+4.7.2 Monitoring &amp; Compliance (MANDATORY)<w:t>1
+4.8 Finance &amp; Payments<w:t>1
+4.9 Certificates<w:t>1
+4.10 HR Management<w:t>1
+4.11 Activities Management<w:t>1
+4.12 Inventory (Training Materials)<w:t>1
+4.13 Knowledge Base<w:t>1
+4.14 Public Website<w:t>1
+4.15 Branch Management<w:t>1
+4.16 Roles &amp; Permissions (RBAC)<w:t>1
+4.17 Reports &amp; Analytics<w:t>1
+4.18 Notifications<w:t>1
+4.19 Mobile Access<w:t>1
+5. Whitelisted Integrations<w:t>1
+5.1 Zoom<w:t>1
+5.2 OnMeet<w:t>1
+5.3 EasyKash<w:t>1
+6. Live Chat — Detailed Compliance Specification<w:t>1
+6.1 Phone-Number Detection<w:t>1
+6.2 Email Detection<w:t>1
+6.3 Other Contact-Sharing Patterns<w:t>1
+6.4 Detection Engine Behavior<w:t>1
+6.5 Moderator Tools<w:t>1
+6.6 Privacy &amp; Legal<w:t>1
+7. Non-Functional Requirements<w:t>1
+7.1 Performance<w:t>1
+7.2 Security<w:t>1
+7.3 Privacy<w:t>1
+7.4 Usability<w:t>1
+7.5 Reliability<w:t>1
+7.6 Localization<w:t>1
+7.7 Browser Support<w:t>1
+8. High-Level Data Model (Reference)<w:t>1
+9. Deliverables Checklist for Hassan<w:t>1
+9.1 Code &amp; Repos<w:t>1
+9.2 Documentation<w:t>1
+9.3 Testing<w:t>1
+9.4 Deployment<w:t>1
+9.5 Knowledge Transfer<w:t>1
+9.6 Source &amp; IP<w:t>1
+10. Acceptance Criteria<w:t>1
+11. Suggested Phases &amp; Milestones<w:t>1
+12. Risks &amp; Mitigations<w:t>1
+13. Out-of-Scope (Reaffirmed)<w:t>1
+14. Sign-off<w:t>1
+1. Document Control
+Field
+Value
+Project Name
+Learning Management System (LMS)
+Project Owner
+Speak Up English Academy
+Implementer
+Reference / Inspiration
+Tamkeen TMS (clone)
+Primary Languages
+Arabic (RTL) + English (LTR)
+Deployment Target
+Self-hosted / Cloud (TBD)
+Document Owner
+Ahmed Farouk
+2. Introduction
+2.1 Purpose
+This document defines the complete functional and non-functional requirements for a custom Training Management System for Speak Up English Academy. The system is a clone of the Tamkeen TMS feature set, excluding the AI module and excluding all third-party integrations except the three explicitly whitelisted in Section 5. A new monitored Live Chat module is added.
+2.2 In-Scope
+Full CRM, TMS, LMS, Finance, HR, Certificates, Inventory, Activities, Knowledge Base.
+New monitored Student–Teacher Live Chat module.
+Integrations limited to: Zoom, OnMeet, EasyKash.
+Arabic + English UI with RTL/LTR support.
+Multi-branch, multi-role architecture.
+AI module (Chatbot,AI grading, Ai Agent).
+KPis for system users.
+WhatsApp Business / WhatsApp Cloud API integration.
+SMS Misr SMS gateways.
+Facebook / Meta Ads Lead integration.
+EasyKash Integration.
+Call Center / IVR integrations.
+2.4 Stakeholders
+Role
+Responsibility
+Academy Owner
+Final approval, business priorities
+Operations Manager
+Day-to-day system admin, branch oversight
+Sales &amp; Reception
+CRM, registration, payments
+Finance
+Invoicing, installments, reconciliation
+Trainer / Teacher
+LMS, attendance, grading, live chat with students
+Student
+Self-service portal, classes, payments, chat
+Moderator
+Live chat oversight &amp; flag review
+2.5 Definitions &amp; Acronyms
+Term
+Meaning
+TMS
+Training Management System
+LMS
+Learning Management System
+CRM
+Customer Relationship Management
+Lead
+Prospective student not yet enrolled
+Student
+Enrolled learner
+Group / Class
+A scheduled cohort of students
+Level
+English proficiency level (A1–C2 / Beginner–Advanced)
+PII
+Personally Identifiable Information (phone, email, etc.)
+RBAC
+Role-Based Access Control
+UAT
+User Acceptance Testing
+KPi
+Key Performance indicator 
+3. System Overview
+3.1 Vision
+A single self-hosted platform that replaces all spreadsheets and disjointed tools, covering the full student lifecycle: marketing → lead capture → placement test → enrollment → payment → training → assessment → certificate.
+3.2 User Roles
+Super Admin (full control)
+Branch Manager
+Sales Agent
+Finance Officer
+Academic Coordinator
+Teacher / Trainer
+Student
+Moderator (chat oversight only)
+HR Officer
+Read-only Auditor
+3.3 High-Level Architecture (Recommended)
+Backend: REST or GraphQL API (Node.js / NestJS or Laravel — implementer’s choice, must be documented).
+Frontend: SPA (Next.js / React or Vue).
+Database: PostgreSQL (primary). Redis for cache / queues. S3-compatible object storage for files.
+Real-time: WebSocket (Socket.IO or similar) for live chat and notifications.
+Auth: JWT + refresh tokens; password hashing with Argon2 or bcrypt.
+3.4 Localization
+Full Arabic (Egyptian) UI with proper RTL.
+Full English UI with LTR.
+Per-user language preference.
+Date formats: dd/mm/yyyy + Hijri optional.
+Numerals: Western digits by default; Arabic-Indic optional.
+4. Functional Requirements (Master Checklist)
+Format: Each requirement is a checklist item. The implementer must mark each as Done with link to evidence (commit / screenshot / endpoint) before submitting for UAT.
+4.1 CRM — Student &amp; Lead Management
+Create / update / archive lead records (name, phone, email, source, level interest, notes).
+Convert lead to student enrollment.
+Manual lead assignment to sales agent.
+Auto-assignment rules (round-robin / by branch / by level).
+Lead pipeline stages (New → Contacted → Interested → Test Scheduled → Enrolled → Lost).
+Activity log per lead (calls, notes, follow-ups, status changes).
+Follow-up reminders with due dates.
+Tag system for segmentation.
+Lead / student search and filter (multi-criteria).
+Bulk import from Excel / CSV.
+Bulk export to Excel / CSV.
+Duplicate detection (by phone / email / national ID).
+Lead source reporting (which channel: walk-in, website form, referral, etc.).
+Public website lead form (only internal source — NO Facebook Ads / HubSpot / external CRM).
+Student profile: photo, contact, address, emergency contact, level history, payment history, attendance summary, certificates earned.
+4.2 Sales &amp; Marketing
+Sales agent dashboard (my leads, my conversions, my targets).
+Manager dashboard (team performance, pipeline value, conversion rates).
+Lead-to-student conversion KPI.
+Sales target setting per agent / month.
+Promotion / discount codes (percentage or fixed amount, expiry, usage limit).
+Referral tracking (student-refers-student with credit).
+Email-triggered sales workflows (in-app email only — no SMS / WhatsApp).
+In-app notifications for new leads / overdue follow-ups.
+4.3 Placement Test
+Schedule placement test slots (in-person and online).
+Self-booking by lead via public booking page.
+Assign examiner (teacher) to slot.
+Written test module: question bank, randomization, time limit, auto-scoring (multiple choice / fill-in / matching).
+Oral test module: form for examiner to score speaking against rubric (fluency, grammar, vocab, pronunciation).
+Auto-suggested level based on combined written + oral score.
+Examiner can override suggested level with justification.
+Test result emailed to lead (in-app email log only) + visible in their portal.
+Result history kept on student profile.
+4.4 Distribution &amp; Waitlists
+Waitlist per level / per branch.
+Auto-add new students to waitlist after placement.
+Manager view: see who’s waiting and for what.
+Reminder alerts when waitlist threshold reached (enough students to open a class).
+Drag-and-drop or bulk-assign students to a new group.
+Group capacity limits with hard stop on over-enrollment.
+Self-service group selection by student (from open groups matching their level).
+4.5 Training Management
+4.5.1 Course Catalog
+Define courses (name, level, duration in hours, syllabus, default price).
+Course pre-requisites.
+Course materials list (linked to inventory module).
+4.5.2 Group / Class Scheduling
+Create group: course, level, branch, schedule (days + times), classroom (physical) OR virtual room (Zoom / OnMeet).
+Assign primary teacher and substitute.
+Assign students from waitlist or directly.
+Conflict detection: teacher double-booking, classroom double-booking, student double-booking.
+Calendar view (day / week / month) per teacher / per classroom / per branch.
+Cancel / reschedule single session with auto-notify all students.
+4.5.3 Attendance
+Manual attendance by teacher (web + mobile).
+Automated attendance tracking 
+Self check-in by student via QR card / unique code.
+Attendance status: Present, Absent, Late, Excused.
+Attendance reports per student / per group / per teacher.
+Absence threshold alerts (e.g., 3 absences → auto-flag).
+4.5.4 Hybrid Support
+Mark a session as in-person, online, or hybrid.
+Auto-create Zoom or OnMeet link when session is created (see Section 5).
+Recording link storage on session record.
+4.6 LMS — Learning Management
+Per-group content area (folders, files, videos, audios, links).
+Lesson structure: modules → lessons → resources.
+Assignment creation (text, file upload, due date, max grade).
+Assignment submission by student.
+Teacher grading + written feedback per submission.
+Quiz / test builder (MCQ, true/false, short answer, matching, ordering).
+Question bank reusable across quizzes.
+Quiz auto-grading for objective questions; manual for subjective.
+Time-limited quizzes.
+Result release control (instant vs after teacher review).
+Gradebook per group with weighted categories (attendance %, assignments %, midterm %, final %).
+Student progress dashboard (completed lessons, pending assignments, scores).
+Teacher → student feedback / evaluation form (per term).
+Student → teacher / course evaluation survey (per term).
+Resource access control (visible only to enrolled students of that group).
+Download protection: PDF watermarking with student name where applicable.
+4.7 Live Chat
+Note: This is the single most sensitive module. Implementation must follow Section 6 in full.
+4.7.1 Core Chat Features
+One-to-one chat: Student ↔ Teacher (within an enrolled group only).
+Group chat: per-class / per-group room with all students + teacher.
+Teacher announcement channel (read-only for students).
+Message types: text, emoji, image, file (with size limit).
+Read receipts.
+Typing indicators.
+Online / offline presence.
+Message search within a conversation.
+Edit own message within 5 minutes (edits visible in audit log).
+Delete own message (soft delete — message retained in audit log, replaced by "[deleted]" in UI).
+Push / in-app notifications for new messages.
+Mute / unmute conversation.
+4.7.2 Monitoring &amp; Compliance (MANDATORY)
+All messages are logged immutably in an audit table accessible only to Moderator and Super Admin.
+Phone-number detection &amp; blocking — see Section 6.1.
+Email detection &amp; blocking — see Section 6.2.
+Obfuscation detection (Arabic numerals, spelled-out digits, "at"/"dot", spaces between characters, homoglyphs) — see Section 6.3.
+Auto-action on detection: block send + show user warning + log attempt to moderator queue.
+Moderator dashboard: live feed of flagged messages, ability to suspend a user from chat, ability to view full conversation history.
+Strike system: 1st violation → warning, 2nd → 24h chat ban, 3rd → permanent chat ban + escalate to admin.
+Image / file scanning: OCR images on upload to detect phone / email in screenshots; scan PDF text content.
+Voice notes: blocked by default in v1 (deferred — too complex to monitor without AI; revisit later).
+External link policy: links to known social / messenger domains (wa.me, t.me, m.me, instagram.com, facebook.com, telegram.org, signal, viber, etc.) are blocked.
+Audit export: moderator can export full chat log of any user / group as PDF or CSV for incident review.
+4.8 Finance &amp; Payments
+Course pricing per level / per branch / per term.
+Invoice generation on enrollment.
+Discount application (manual or via promo code).
+Installment plans (configurable: number of installments, due dates).
+Installment reminder notifications (in-app + email only).
+Late payment flagging.
+Manual payment recording (cash, bank transfer).
+EasyKash online payment (only online gateway — see Section 5.3).
+Receipt PDF generation with academy branding.
+Refund handling with reason code.
+Per-branch finance separation (each branch sees its own ledger; admin sees consolidated).
+Daily / monthly / yearly revenue reports.
+Outstanding receivables report (who owes what).
+e-invoice integration,Mada / Fawry / Sadad.
+4.9 Certificates
+Certificate template designer (drag-drop canvas with placeholders: student name, course, level, dates, signature, seal, QR code).
+Multiple templates per course.
+Auto-issue on course completion + passing grade threshold.
+Manual issue with admin approval.
+PDF generation.
+Unique verification code per certificate.
+Public verification page (no login): enter code → see "valid" + course / student name + issue date.
+Digital seal / signature (visual, not crypto-signed in v1).
+Bulk certificate issuance for an entire group.
+Certificate downloadable from student portal.
+Email notification on issue (in-app email only).
+4.10 HR Management
+Employee records (teachers + admin staff): personal info, contact, contract dates, salary, role.
+Document attachments (contracts, IDs, certificates).
+Teacher availability schedule (which days / times they can teach).
+Substitute teacher pool.
+Leave requests with manager approval.
+Hourly-rate vs fixed-salary support.
+Teacher payout calculation based on taught hours per month.
+Payroll export (Excel) — not auto bank transfer.
+4.11 Activities Management
+Schedule extracurricular activities (movie nights, conversation clubs, trips, contests).
+Open registration to specific levels / groups / all students.
+Capacity limits.
+Optional fee per activity (flows through Finance module).
+Attendance tracking.
+Photo gallery per activity.
+4.12 Inventory (Training Materials)
+Item catalog (books, workbooks, branded merchandise).
+Stock tracking per branch.
+Issue items to students (with optional cost).
+Low-stock alerts.
+Stock adjustment with reason.
+Inventory valuation report.
+4.13 Knowledge Base
+Internal wiki for staff (policies, SOPs, onboarding, training scripts).
+Categories and tags.
+Search.
+Versioning of articles.
+Permissions per category (some articles staff-only, some role-restricted).
+4.14 Public Website
+Marketing landing page (hero, courses, testimonials, contact).
+Course catalog page (publicly visible course list with prices).
+Lead capture form (saves directly to internal CRM — no external CRM).
+Placement test booking page (self-service).
+Online registration flow → invoice → EasyKash checkout.
+Certificate verification page.
+Blog (optional — if budget allows).
+SEO basics (meta tags, sitemap.xml, robots.txt, OpenGraph).
+Analytics: server-side page view counter (no Google Analytics / Meta Pixel — keep clean).
+4.15 Branch Management
+Create / edit branches (name, address, phone, classrooms count).
+Per-branch user scoping (sales agent at branch X cannot see branch Y leads).
+Per-branch financial separation.
+Consolidated cross-branch reports for HQ.
+4.16 Roles &amp; Permissions (RBAC)
+Granular permissions per module per role (view / create / edit / delete / approve).
+Predefined role templates (Super Admin, Branch Manager, Sales, Finance, Teacher, Student, Moderator, HR, Auditor).
+Custom role creation.
+Permission audit log (who changed what).
+4.17 Reports &amp; Analytics
+Sales funnel report.
+Lead source ROI report.
+Group fill-rate report.
+Teacher utilization report.
+Student progress / completion report.
+Revenue report (by branch / course / period).
+Outstanding payments report.
+Attendance report.
+Custom date ranges + export to Excel / PDF.
+4.18 Notifications
+In-app notification center (bell icon with unread count).
+Email notifications (transactional only, via SMTP — academy’s own mailbox).
+Notification preferences per user.
+Out of scope: No SMS, no WhatsApp, no native push notifications.
+4.19 Mobile Access
+Fully responsive web app (works on phone browser).
+PWA (installable, offline read of cached content).
+Native mobile app: deferred to Phase 2 (not part of this scope).
+5. Whitelisted Integrations
+Only the three integrations below are permitted. Any other integration requires written approval from Samir.
+5.1 Zoom
+OAuth or API-key based connection (academy’s Zoom Pro / Business account).
+Auto-create meeting when an online session is scheduled.
+Pull meeting link, password, and recording URL into session record.
+Auto-end / auto-cleanup meetings.
+Webhook to receive recording-ready events and attach to session.
+5.2 OnMeet
+Same feature parity as Zoom integration (meeting creation, link retrieval, recording link).
+Configurable per-group: choose Zoom or OnMeet as default.
+Document API endpoints used (Hassan to confirm OnMeet API availability before implementation).
+5.3 EasyKash
+Checkout redirect for online payments.
+Webhook for payment confirmation → auto-update invoice status.
+Refund API support if available; otherwise manual refund flow with status tracking.
+Test sandbox first, then production credentials.
+Full transaction log retained for reconciliation.
+6. Live Chat — Detailed Compliance Specification
+Why this section exists: The academy must prevent students and teachers from exchanging private contact info to bypass the platform. Detection must be robust against common evasion tricks.
+6.1 Phone-Number Detection
+Block / flag any message matching:
+Egyptian mobile patterns: 010xxxxxxxx, 011xxxxxxxx, 012xxxxxxxx, 015xxxxxxxx (11 digits).
+International format: +20 1x xxxx xxxx, 0020..., 00201...
+Any 10–15 consecutive digit sequence.
+Digits separated by spaces, dots, dashes, parentheses: 010 1234 5678, 010-1234-5678, (010) 1234.5678.
+Arabic-Indic numerals: ٠١٠١٢٣٤٥٦٧٨.
+Spelled-out digits in Arabic or English: "صفر واحد صفر…", "zero one zero…", "0 1 0 1 2 3".
+Mixed-script (e.g., O1O using letter O instead of digit 0, 1l0 using lowercase L for 1).
+WhatsApp-style links: wa.me/..., api.whatsapp.com/send?phone=...
+6.2 Email Detection
+Standard email regex: [a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}.
+Obfuscated: name [at] domain [dot] com, name(at)domain(dot)com, name AT domain DOT com.
+Arabic obfuscation: "الإيميل بتاعي اسمه عند جيميل نقطة كوم".
+Mixed: name@domain dot com, name at domain.com.
+Spaces inside emails: n a m e @ g m a i l . c o m.
+6.3 Other Contact-Sharing Patterns
+Social-media handles: @username followed by mention of Instagram / Telegram / TikTok / Snapchat.
+Phrases like "كلمني بره", "ابعتلي على الواتس", "DM me", "text me", "call me at", "my number is", "رقمي هو".
+Links to external messengers (block domain list — see 4.7.2).
+QR codes in images (OCR + QR decode → if it contains phone / email / URL → block).
+6.4 Detection Engine Behavior
+Run detection BEFORE the message is persisted and broadcast.
+On detection: reject the send, return error to sender’s UI: "Sharing personal contact info is not allowed. This attempt has been logged."
+Log every blocked attempt (sender, recipient, full original message, matched rule, timestamp) in chat_violations table.
+Send moderator notification for every block.
+Configurable severity per rule (block vs warn vs flag-only) — admin-tunable.
+6.5 Moderator Tools
+Live moderator dashboard with violation feed.
+Search violations by user / by date / by rule.
+Open full conversation around a violation (with N messages before / after for context).
+Apply manual action: warn, mute (timed), ban from chat, escalate to admin.
+Whitelist false positives (e.g., a course code that looks like a phone).
+Strike counter visible per user.
+6.6 Privacy &amp; Legal
+Display chat policy notice on first login: chats are monitored, contact-info exchange prohibited.
+Consent checkbox required before chat enabled.
+Retention policy: chats retained for X months (X to be set by Samir; default 24 months), then archived.
+GDPR-style data export on student request (in-app self-service).
+7. Non-Functional Requirements
+7.1 Performance
+Page load (P95) ≤ 2 s on a 10 Mbps connection.
+API response (P95) ≤ 500 ms.
+Chat message delivery (P95) ≤ 300 ms within same datacenter.
+Support 500 concurrent users in v1; architecture must scale to 5,000.
+7.2 Security
+HTTPS-only (HSTS).
+Argon2 / bcrypt password hashing.
+JWT short-lived access token + refresh token.
+Rate limiting on login, password reset, public forms.
+OWASP Top 10 hardening (parameterized queries, output encoding, CSRF on state-changing routes, etc.).
+Audit log for all sensitive actions.
+File upload validation (size, MIME, extension, antivirus optional).
+Two-factor auth for Super Admin and Finance roles.
+Backups: daily DB + weekly full; 30-day retention minimum.
+Secrets via environment variables, not in code.
+7.3 Privacy
+Student PII encrypted at rest (column-level for sensitive fields).
+Role-based access — sales agent cannot see another branch’s students.
+Data export &amp; deletion request flow.
+7.4 Usability
+Consistent design system across all modules.
+Empty states with helpful guidance.
+Accessible: keyboard navigation, ARIA labels, sufficient color contrast.
+Inline validation on forms.
+Loading skeletons, no full-page reloads.
+7.5 Reliability
+Uptime target: 99.5% monthly.
+Graceful degradation if Zoom / OnMeet / EasyKash is down (queue + retry).
+Daily automated DB backup with successful-restore test monthly.
+7.6 Localization
+All UI strings in i18n files (ar.json, en.json) — no hard-coded strings.
+RTL / LTR layout switching.
+Date / time / currency localized.
+7.7 Browser Support
+Latest 2 versions of Chrome, Edge, Firefox, Safari.
+Mobile Safari + Chrome on iOS / Android.
+8. High-Level Data Model (Reference)
+This is a reference list, not exhaustive. Hassan to provide a complete ER diagram in Phase 0.
+Entity
+Key Fields
+User
+id, email, phone, password_hash, role, branch_id, language, status
+Branch
+id, name, address, phone
+Lead
+id, name, phone, email, source, status, assigned_to, branch_id
+Student
+id, user_id, level, status, enrollment_date, branch_id
+Course
+id, name, level, duration_hours, default_price
+Group
+id, course_id, teacher_id, branch_id, schedule, capacity, mode, zoom_link, onmeet_link
+Enrollment
+id, student_id, group_id, status, total_fee, discount
+Session
+id, group_id, date, start, end, classroom_id, attendance_locked
+Attendance
+id, session_id, student_id, status
+Assignment
+id, group_id, title, due_at, max_grade
+Submission
+id, assignment_id, student_id, content, grade, feedback
+Quiz
+id, group_id, settings, questions[]
+QuizAttempt
+id, quiz_id, student_id, answers, score
+Invoice
+id, enrollment_id, amount, status, due_date
+Payment
+id, invoice_id, amount, method, reference, paid_at
+Installment
+id, invoice_id, amount, due_date, status
+Certificate
+id, student_id, course_id, code, issued_at, pdf_url
+InventoryItem
+id, name, branch_id, qty, unit_cost
+StockMove
+id, item_id, type, qty, reason, ref
+Activity
+id, name, date, capacity, fee
+KbArticle
+id, title, category, body, version, visibility
+ChatRoom
+id, type (1on1/group/announcement), group_id, members[]
+ChatMessage
+id, room_id, sender_id, body, type, edited_at, deleted_at
+ChatViolation
+id, message_id, sender_id, rule_matched, action_taken, moderator_id, resolved_at
+AuditLog
+id, actor_id, action, target_type, target_id, before, after, ip, ua, at
+9. Deliverables Checklist for Hassan
+9.1 Code &amp; Repos
+Backend repo (private) with README, env.example, Docker Compose for local dev.
+Frontend repo (private) with README and build instructions.
+Mobile-friendly PWA enabled.
+All code in clean Git history with meaningful commits.
+Branch strategy: main (prod), develop, feature branches.
+9.2 Documentation
+API documentation (OpenAPI / Swagger) auto-generated and live.
+Database ER diagram (PNG + source).
+Deployment guide (step-by-step) for Ubuntu Server.
+Admin user manual (PDF) — Arabic.
+Teacher user manual (PDF) — Arabic.
+Student user manual (PDF) — Arabic.
+Backup &amp; restore procedure.
+9.3 Testing
+Unit tests for critical modules (auth, finance, chat detection engine) — minimum 60% coverage on those modules.
+Integration tests for Zoom / OnMeet / EasyKash flows (using sandboxes).
+End-to-end tests for top 10 user journeys.
+Test report PDF.
+9.4 Deployment
+Initial deployment to staging.
+UAT signed off by Samir on staging.
+Production deployment.
+Post-go-live monitoring for 2 weeks (warranty period).
+9.5 Knowledge Transfer
+Two training sessions (online, recorded): one for admins / staff, one for teachers.
+One technical handover session for whoever maintains the server post-launch.
+9.6 Source &amp; IP
+All code, designs, and documentation become property of Speak Up Academy on final payment.
+Hassan retains no rights to resell or redistribute the codebase.
+10. Acceptance Criteria
+The project is accepted when:
+All checklist items in Sections 4 and 5 are demonstrably working on production.
+All deliverables in Section 9 are submitted.
+UAT sign-off from Samir is in writing (email or signed PDF).
+No critical (P1) or high (P2) bugs open at the time of sign-off.
+Live Chat compliance test: 50 sample evasion messages tested (provided by Samir) — minimum 95% block rate.
+Performance: 100 concurrent users load test passes within NFR 7.1 limits.
+Security: vulnerability scan (OWASP ZAP or similar) clean of high-severity findings.
+Backup / restore drill executed successfully once with Samir present.
+11. Suggested Phases &amp; Milestones
+Phase
+Scope
+Suggested Duration
+Phase 0
+Discovery, design wireframes, schema review with Samir
+2 weeks
+Phase 1
+Auth, RBAC, branches, CRM, Sales, public website + lead capture
+4 weeks
+Phase 2
+Placement test, distribution, TMS scheduling, attendance, Zoom + OnMeet integration
+4 weeks
+Phase 3
+LMS (content, assignments, quizzes, gradebook), certificates
+4 weeks
+Phase 4
+Finance + EasyKash + reports, HR, activities, inventory, KB
+4 weeks
+Phase 5
+Live Chat + monitoring engine (highest-risk module)
+3 weeks
+Phase 6
+UAT, fixes, deployment, training, warranty
+3 weeks
+Total
+~24 weeks
+Note: Hassan to provide his own estimate and timeline before contract signing. The above is a reference, not a binding schedule.
+12. Risks &amp; Mitigations
+Risk
+Mitigation
+Live chat detection evasion
+Iterative tuning + moderator queue + strike system
+OnMeet API limitations
+Hassan to validate API availability in Phase 0; fallback = Zoom only
+EasyKash downtime
+Manual payment fallback always available
+Scope creep
+Any change requires written CR (Change Request) with cost / time impact
+Data loss
+Daily backups + monthly restore drill
+13. Out-of-Scope (Reaffirmed)
+The following are explicitly excluded from this engagement:
+Any AI / ML feature (pronunciation grading, AI tutor, AI essay grading, voice-to-text scoring, etc.).
+WhatsApp Business API or any WhatsApp integration.
+SMS gateway integration (Twilio, Mocean, Egyptian SMS providers, etc.).
+Facebook / Meta Ads Lead form integration.
+HubSpot, Salesforce, Zoho, or any external CRM sync.
+Mada / Sadad / Fawry / Paymob / any payment gateway except EasyKash.
+E-Invoicing (ZATCA / ETA) integration.
+Call center / VoIP integration.
+Native iOS / Android apps (Phase 2 future work, separate contract).
+Video proctoring during exams (deferred).
+If any of the above is needed later, it will be a separate change request with separate pricing.
+14. Sign-off
+By signing below, both parties confirm acceptance of this Software Requirements Specification as the agreed scope of work.
+Party
+Name
+Signature
+Date
+Academy Owner
+Mostafa Salama
+Project Manager
+Ahmed Farouk
+Implementer
+Hassan Youssif
+— End of Document — Version 1.0 —

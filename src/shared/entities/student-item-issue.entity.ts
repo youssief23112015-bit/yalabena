@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Student } from './student.entity';
 import { InventoryItem } from './inventory-item.entity';
-import { Branch } from './branch.entity';
 import { User } from './user.entity';
 import { ItemCondition } from '../../common/enums/item-condition.enum';
 
@@ -23,13 +22,6 @@ export class StudentItemIssue {
   @ManyToOne(() => InventoryItem, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'item_id' })
   item: InventoryItem;
-
-  @Column({ type: 'uuid' })
-  branch_id: string;
-
-  @ManyToOne(() => Branch, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'branch_id' })
-  branch: Branch;
 
   @Column({ type: 'int', default: 1 })
   quantity: number;

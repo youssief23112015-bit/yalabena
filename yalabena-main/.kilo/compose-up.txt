@@ -1,0 +1,23 @@
+﻿docker : unable to get image 'yalabena-main-app': error during connect: Get "ht
+tp://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/images/yalabena-main-app/j
+son": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file 
+specified.
+At line:1 char:44
++ ... \WinDows\Desktop\yalabena-main; docker compose up -d app 2>&1 | Out-F ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (unable to get i...file specified. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+docker : error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxE
+ngine/v1.51/containers/json?filters=%7B%22label%22%3A%7B%22com.docker.compose.c
+onfig-hash%22%3Atrue%2C%22com.docker.compose.oneoff%3DFalse%22%3Atrue%2C%22com.
+docker.compose.project%3Dyalabena-main%22%3Atrue%7D%7D": open 
+//./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+At line:1 char:147
++ ... mpose-up.txt; Start-Sleep -Seconds 12; docker compose ps 2>&1 | Out-F ...
++                                            ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (error during co...file specified. 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

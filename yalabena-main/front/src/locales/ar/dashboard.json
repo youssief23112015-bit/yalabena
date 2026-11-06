@@ -1,0 +1,54 @@
+{
+  "title": "لوحة القيادة",
+  "subtitle": "نظرة عامة على المؤشرات الرئيسية عبر الأكاديمية.",
+  "greeting": "أهلاً بك مرة أخرى، {{name}}",
+  "lastUpdated": "آخر تحديث في {{time}}",
+  "refresh": "تحديث",
+  "period": "الفترة",
+  "today": "اليوم",
+  "last7d": "آخر 7 أيام",
+  "last30d": "آخر 30 يوماً",
+  "thisMonth": "هذا الشهر",
+  "thisQuarter": "هذا الربع",
+  "thisYear": "هذه السنة",
+  "custom": "نطاق مخصص",
+  "from": "من",
+  "to": "إلى",
+  "branch": "الفرع",
+  "allBranches": "جميع الفروع",
+  "selectBranch": "اختر فرعاً",
+  "branchOnly": "بيانات الفرع مقيدة بفرعك الخاص.",
+  "noData": "لا توجد بيانات متاحة",
+  "loadError": "تعذر تحميل بيانات لوحة القيادة.",
+  "retry": "محاولة مرة أخرى",
+  "kpi": {
+    "value": "القيمة",
+    "previous": "السابق",
+    "change": "التغيير"
+  },
+  "trend": {
+    "up": "ارتفاع {{pct}}%",
+    "down": "انخفاض {{pct}}%",
+    "noChange": "بدون تغيير"
+  },
+  "alert": {
+    "info": "معلومة",
+    "warning": "تحذير",
+    "critical": "رجيج",
+    "dismiss": "تجاهل"
+  },
+  "sections": {
+    "revenue": "الإيرادات",
+    "students": "الطلاب",
+    "groups": "المجموعات",
+    "sessions": "الحصص",
+    "attendance": "الحضور",
+    "leads": "العملاء المحتملين",
+    "employees": "الموظفون",
+    "payroll": "المرتبات"
+  },
+  "actions": {
+    "viewAll": "عرض الكل",
+    "deepLink": "افتح {target}"
+  }
+}

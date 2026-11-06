@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -23,6 +23,25 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [challenge, setChallenge] = useState<TwoFactorChallenge | null>(null);
   const [totpCode, setTotpCode] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+  // Debounce guard against rapid repeated login attempts (brute-force / spam).
+  const lastSubmitAt = useRef(0);
+  // Track rate-limit cooldown so submit stays disabled after a 429.
+  const [rateLimitedUntil, setRateLimitedUntil] = useState(0);
+
+  // Show a clear toast when the session was invalidated server-side (401 from
+  // password change / expired token / logout) and the user was redirected here.
+  useEffect(() => {
+    if (sessionStorage.getItem("auth:401") === "true") {
+      sessionStorage.removeItem("auth:401");
+      toast({
+        title: t("auth.sessionExpired"),
+        description: t("auth.sessionExpiredDescription", "Please log in again."),
+      });
+    }
+  }, [toast, t]);
+
+  const isRateLimited = () => Date.now() < rateLimitedUntil;
 
   const {
     register,
@@ -33,6 +52,12 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginForm) => {
+    const now = Date.now();
+    if (now - lastSubmitAt.current < 1000) return; // ignore rapid re-submits
+    lastSubmitAt.current = now;
+
+    if (isRateLimited()) return; // respect 429 cooldown
+
     setIsSubmitting(true);
     try {
       const res = await authApi.login({
@@ -46,7 +71,9 @@ export default function LoginPage() {
         return;
       }
 
-      setAuth(res.user, res.access_token, res.refresh_token);
+      // sessionStorage by default (cleared on tab/browser close); localStorage
+      // only when "Remember Me" is checked.
+      setAuth(res.user, res.access_token, res.refresh_token, rememberMe);
 
       toast({
         title: t("auth.loginSuccess"),
@@ -55,6 +82,21 @@ export default function LoginPage() {
 
       navigate("/dashboard");
     } catch (err: any) {
+      const statusCode = err?.statusCode ?? err?.response?.status;
+      if (statusCode === 429) {
+        // Rate limited: cooldown the submit button and show a friendly warning.
+        const retryAfter = err?.retry_after ?? err?.response?.data?.retry_after ?? 60;
+        const cooldownMs = Math.min(Number(retryAfter) * 1000 || 60000, 300000);
+        setRateLimitedUntil(Date.now() + cooldownMs);
+        toast({
+          variant: "destructive",
+          title: t("auth.rateLimited"),
+          description: t("auth.rateLimitedDescription", "Too many attempts. Please try again later."),
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      // Generic message — never reveals whether the email exists (account enumeration protection).
       toast({
         variant: "destructive",
         title: t("auth.invalidCredentials"),
@@ -194,12 +236,25 @@ export default function LoginPage() {
                   <p className="text-xs text-muted-foreground">
                     {t("auth.passwordComplexity")}
                   </p>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      id="remember-me"
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="remember-me" className="text-sm text-foreground cursor-pointer select-none">
+                      {t("auth.rememberMe", "Remember me")}
+                    </Label>
+                  </div>
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full font-semibold transition-all duration-200 active:scale-95"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isRateLimited()}
                 >
                   {isSubmitting ? t("common.loading") : t("auth.login")}
                 </Button>

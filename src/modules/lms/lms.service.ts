@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PDFDocument, rgb, StandardFonts, degrees } from 'pdf-lib';
 import * as fs from 'fs';
+import { join } from 'path';
 
 import { LmsModule as LmsModuleEntity } from '../../shared/entities/lms-module.entity';
 import { LmsLesson } from '../../shared/entities/lms-lesson.entity';
@@ -271,12 +272,29 @@ export class LmsService {
     return this.resourceRepo.save(resource);
   }
 
+  async deleteResource(id: string, userId: string): Promise<void> {
+    const resource = await this.resourceRepo.findOne({ where: { id } });
+    if (!resource) throw new NotFoundException('Resource not found');
+    // Delete physical file from disk if it exists.
+    // file_url is stored as a URL path (e.g. /lms/uploads/lms/abc.pdf).
+    if (resource.file_url) {
+      const filePath = join(process.cwd(), resource.file_url.replace(/^\//, ''));
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+    await this.resourceRepo.delete(id);
+  }
+
   async getResourceForDownload(
     id: string,
   ): Promise<{ title: string; fileBuffer: Buffer }> {
     const resource = await this.resourceRepo.findOne({ where: { id } });
     if (!resource) throw new NotFoundException('Resource not found');
-    const fileBuffer = fs.readFileSync(resource.file_url);
+    // file_url is stored as a URL path (e.g. /uploads/lms/abc.pdf); resolve it
+    // to an absolute filesystem path relative to the project working directory.
+    const filePath = join(process.cwd(), resource.file_url.replace(/^\//, ''));
+    const fileBuffer = fs.readFileSync(filePath);
     return { title: resource.name, fileBuffer };
   }
 

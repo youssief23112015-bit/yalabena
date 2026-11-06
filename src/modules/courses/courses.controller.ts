@@ -160,30 +160,4 @@ export class CoursesController {
     return this.service.removeMaterial(id, materialId);
   }
 
-  // ==================== Branch Pricing Endpoints ====================
-
-  @Get(':id/branch-pricing')
-  @ApiOperation({ summary: 'Per-branch price overrides for a course' })
-  @ApiParam({ name: 'id', description: 'Course UUID' })
-  listBranchPricing(@Param('id') id: string) {
-    return this.service.listBranchPricing(id);
-  }
-
-  @Post(':id/branch-pricing')
-  @Roles('super_admin', 'academic', 'branch_manager')
-  @ApiOperation({ summary: 'Create or update a branch price override' })
-  @ApiParam({ name: 'id', description: 'Course UUID' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['branch_id', 'price'],
-      properties: {
-        branch_id: { type: 'string', format: 'uuid' },
-        price: { type: 'number', example: 1500 },
-      },
-    },
-  })
-  setBranchPricing(@Param('id') id: string, @Body() body: { branch_id: string; price: number }) {
-    return this.service.setBranchPricing(id, body);
-  }
 }

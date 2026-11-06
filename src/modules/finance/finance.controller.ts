@@ -70,7 +70,7 @@ export class FinanceController {
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
-    return this.service.listPayments(user, { invoice_id, branch_id, from, to });
+    return this.service.listPayments(user, { invoice_id,  from, to });
   }
 
   @Get('payments/:id')
@@ -113,7 +113,7 @@ export class FinanceController {
   @Get('refunds')
   @Roles('super_admin', 'finance', 'branch_manager')
   listRefunds(@CurrentUser() user: AuthUser, @Query('status') status?: string, @Query('branch_id') branch_id?: string) {
-    return this.service.listRefunds(user, { status, branch_id });
+    return this.service.listRefunds(user, { status });
   }
 
   @Post('refunds/:id/decision')

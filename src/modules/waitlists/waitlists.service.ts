@@ -25,7 +25,6 @@ export class WaitlistsService {
     const query = this.repo.createQueryBuilder('waitlist')
       .leftJoinAndSelect('waitlist.student', 'student')
       .leftJoinAndSelect('student.user', 'user')
-      .leftJoinAndSelect('waitlist.branch', 'branch')
       .leftJoinAndSelect('waitlist.course', 'course')
       .orderBy('waitlist.priority', 'DESC')
       .addOrderBy('waitlist.created_at', 'ASC');

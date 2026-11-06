@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Req, Headers, HttpCode, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Body, Req, Headers, UnauthorizedException, Logger } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -40,7 +40,6 @@ export class IntegrationsController {
 
   @Public()
   @Post('easykash/webhook')
-  @HttpCode(200)
   @ApiOperation({ summary: 'EasyKash payment confirmation webhook' })
   async easykashWebhook(
     @Req() req: any,
@@ -48,7 +47,7 @@ export class IntegrationsController {
   ) {
     const rawBody: string = typeof req.rawBody === 'string' ? req.rawBody : JSON.stringify(req.body ?? {});
     if (!this.easykash.verifyWebhookSignature(rawBody, signature)) {
-      return { received: false, error: 'invalid signature' };
+      throw new UnauthorizedException('Invalid EasyKash webhook signature');
     }
     return this.easykash.handleWebhook(req.body ?? JSON.parse(rawBody));
   }
@@ -57,11 +56,10 @@ export class IntegrationsController {
 
   @Public()
   @Post('zoom/webhook')
-  @HttpCode(200)
   @ApiOperation({ summary: 'Zoom events webhook (URL validation + recording.completed)' })
   async zoomWebhook(@Body() body: any, @Headers('authorization') auth: string) {
     if (!this.zoom.verifyWebhook(auth)) {
-      return { status: 'unauthorized' };
+      throw new UnauthorizedException('Invalid Zoom webhook authorization');
     }
 
     // URL validation challenge

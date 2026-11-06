@@ -1,0 +1,6 @@
+﻿
+> speakup-frontend@1.0.0 build
+> tsc -b && vite build
+
+src/components/chat/BroadcastModal.tsx(82,9): error TS2322: Type '"success"' is not assignable to type '"error" | "info" | "violation"'.
+build-exit=2

@@ -1,0 +1,191 @@
+﻿src\common\utils\auth-user.ts:3: * The academy is 100% online — no branch scoping exists anymore.
+src\database\seeds\default-academy.seed.ts:4: * Default course / teacher / group bootstrap (no branches — the academy
+src\database\seeds\role-permission.seed.ts:8: branch_manager: [
+src\database\seeds\role.seed.ts:8: { name: 'Branch Manager', slug: 'branch_manager', description: 'Day-to-day branch oversight', is_system: true },
+src\modules\activities\activities.controller.ts:34: @Roles('super_admin', 'branch_manager', 'finance', 'sales')
+src\modules\activities\activities.controller.ts:46: @Roles('super_admin', 'branch_manager', 'sales', 'academic', 'student')
+src\modules\activities\activities.controller.ts:57: @Roles('super_admin', 'branch_manager', 'teacher')
+src\modules\activities\activities.controller.ts:70: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\activities\activities.controller.ts:79: @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\activities\activities.controller.ts:91: @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\activities\activities.controller.ts:101: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\activities\activities.controller.ts:114: @Roles('super_admin', 'branch_manager')
+src\modules\activities\activities.controller.ts:124: @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'sales', 'student')
+src\modules\activities\activities.controller.ts:141: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\activities\activities.controller.ts:149: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\activities\activities.controller.ts:164: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\activities\activities.service.spec.ts:30: const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'], branchId: null };
+src\modules\activities\activities.service.spec.ts:34: roles: ['branch_manager'],
+src\modules\activities\activities.service.spec.ts:35: branchId: 'branch-1',
+src\modules\activities\activities.service.spec.ts:41: branch_id: 'branch-1',
+src\modules\activities\activities.service.spec.ts:57: branch_id: 'branch-1',
+src\modules\activities\activities.service.spec.ts:100: const dto: any = { title: 'Trip', branch_id: 'branch-1', type: ActivityEventType.TRIP, date: '2026-10-01', capacity: 10 };
+src\modules\activities\activities.service.spec.ts:202: const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'], branchId: 'branch-1' };
+src\modules\activities\activities.service.ts:36: 'branch_manager',
+src\modules\attendance\attendance.controller.ts:46: @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\attendance\attendance.controller.ts:67: @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\attendance\attendance.controller.ts:80: @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\attendance\attendance.controller.ts:93: @Roles('super_admin', 'teacher', 'academic', 'branch_manager')
+src\modules\auth\auth.service.spec.ts:36: branch_id: 'b-1',
+src\modules\certificates\certificates.controller.ts:17: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\certificates\certificates.controller.ts:23: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\certificates\certificates.controller.ts:29: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\certificates\certificates.controller.ts:36: @Roles('super_admin', 'branch_manager', 'academic') // admin-level only => "manual issue with approval"
+src\modules\certificates\certificates.controller.ts:42: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\certificates\certificates.controller.ts:48: @Roles('super_admin', 'branch_manager')
+src\modules\certificates\certificates.controller.ts:55: @Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher')
+src\modules\certificates\certificates.controller.ts:77: @Roles('super_admin', 'branch_manager', 'academic', 'finance', 'teacher', 'student')
+src\modules\certificates\certificates.controller.ts:83: @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\certificates\certificates.service.spec.ts:25: const studentUser = { id: 'user-9', userId: 'user-9', roles: ['student'], branchId: 'branch-1' };
+src\modules\certificates\certificates.service.spec.ts:26: const admin = { id: 'user-1', userId: 'user-1', roles: ['super_admin'], branchId: null };
+src\modules\certificates\certificates.service.spec.ts:34: student: { id: 'stu-1', user_id: 'user-9', branch_id: 'branch-1', user: { id: 'user-9' } },
+src\modules\certificates\certificates.service.spec.ts:90: it('lets a student read their own certificate even when branch scoping would fail', async () => {
+src\modules\certificates\certificates.service.spec.ts:104: it('lets staff read any certificate (no branch scoping in a 100% online academy)', async () => {
+src\modules\certificates\certificates.service.spec.ts:109: const manager = { id: 'user-2', userId: 'user-2', roles: ['branch_manager'] };
+src\modules\certificates\certificates.service.spec.ts:116: student: { id: 'stu-2', user_id: 'user-99', branch_id: 'branch-9' },
+src\modules\certificates\certificates.service.ts:193: 'branch_manager',
+src\modules\chat\chat.controller.ts:175: @Roles('super_admin', 'academic', 'teacher', 'branch_manager')
+src\modules\classrooms\classrooms.controller.ts:14: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\classrooms\classrooms.controller.ts:34: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\classrooms\classrooms.controller.ts:41: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\classrooms\classrooms.controller.ts:51: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\classrooms\classrooms.controller.ts:71: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\courses\courses.controller.ts:15: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts:55: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts:78: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts:90: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts:113: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts:136: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\courses\courses.controller.ts:155: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\enrollments\enrollments.controller.ts:15: @Roles('super_admin', 'branch_manager', 'sales', 'finance')
+src\modules\enrollments\enrollments.controller.ts:39: @Roles('super_admin', 'branch_manager', 'sales', 'finance', 'academic')
+src\modules\enrollments\enrollments.controller.ts:50: @Roles('super_admin', 'branch_manager', 'sales', 'finance', 'academic')
+src\modules\enrollments\enrollments.controller.ts:56: @Roles('super_admin', 'branch_manager', 'finance')
+src\modules\enrollments\enrollments.controller.ts:70: @Roles('super_admin', 'branch_manager', 'sales', 'finance')
+src\modules\enrollments\enrollments.controller.ts:77: @Roles('super_admin', 'branch_manager', 'sales', 'finance')
+src\modules\enrollments\enrollments.controller.ts:87: @Roles('super_admin', 'branch_manager', 'finance')
+src\modules\enrollments\enrollments.service.spec.ts:32: const admin = { id: 'admin-1', roles: ['branch_manager'], branchId: 'br-1' };
+src\modules\enrollments\enrollments.service.spec.ts:40: branch_id: 'br-1',
+src\modules\enrollments\enrollments.service.spec.ts:47: branch_id: 'br-1',
+src\modules\enrollments\enrollments.service.ts:164: * Admin / Branch Manager dashboard for review — no invoice is generated
+src\modules\enrollments\enrollments.service.ts:270: * Admin / Branch Manager approval (Business Rule 2). A PENDING request is
+src\modules\finance\finance.controller.ts:21: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:27: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:33: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:40: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:46: @Roles('super_admin', 'finance', 'branch_manager', 'sales')
+src\modules\finance\finance.controller.ts:52: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:59: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:65: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:76: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:82: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:113: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:132: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.controller.ts:142: @Roles('super_admin', 'finance', 'branch_manager')
+src\modules\finance\finance.service.spec.ts:40: branch_id: 'b-1',
+src\modules\finance\finance.service.spec.ts:235: applicable_branches: null,
+src\modules\finance\finance.service.spec.ts:276: it('allows any staff member to read an invoice (no branch scoping online)', async () => {
+src\modules\finance\finance.service.spec.ts:278: const res = await service.getInvoice('inv-1', { roles: ['branch_manager'] });
+src\modules\finance\finance.service.ts:211: // branch/course scoping) and its discount replaces the manual one.
+src\modules\groups\groups.controller.ts:19: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:28: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts:39: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts:70: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts:86: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\groups\groups.controller.ts:96: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:107: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:117: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:125: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:138: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:155: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.controller.ts:168: @Roles('super_admin', 'academic', 'branch_manager')
+src\modules\groups\groups.service.spec.ts:48: const admin = { id: 'admin-1', roles: ['branch_manager'], branchId: 'b-1' };
+src\modules\groups\groups.service.spec.ts:55: branch_id: 'b-1',
+src\modules\hr\hr.controller.ts:40: @Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts:47: @Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts:142: @Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts:156: @Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.controller.ts:163: @Roles('super_admin', 'hr', 'branch_manager')
+src\modules\hr\hr.service.spec.ts:38: const MGR_A: HrActor = { userId: 'u-mgrA', roles: ['branch_manager'] };
+src\modules\hr\hr.service.spec.ts:39: const MGR_B: HrActor = { userId: 'u-mgrB', roles: ['branch_manager'] };
+src\modules\integrations\integrations.controller.ts:29: @Roles('super_admin', 'branch_manager')
+src\modules\inventory\inventory.controller.ts:15: //   READ   - super_admin, branch_manager, sales, finance, auditor
+src\modules\inventory\inventory.controller.ts:16: //   MANAGE - super_admin, branch_manager   (catalog, receive, adjust)
+src\modules\inventory\inventory.controller.ts:17: //   ISSUE  - super_admin, branch_manager, sales
+src\modules\inventory\inventory.controller.ts:18: const READ = ['super_admin', 'branch_manager', 'sales', 'finance', 'auditor'] as const;
+src\modules\inventory\inventory.controller.ts:19: const MANAGE = ['super_admin', 'branch_manager'] as const;
+src\modules\inventory\inventory.controller.ts:20: const ISSUE = ['super_admin', 'branch_manager', 'sales'] as const;
+src\modules\kb\kb.controller.ts:14: @Roles('super_admin', 'hr', 'branch_manager')
+src\modules\kb\kb.controller.ts:33: @Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+src\modules\kb\kb.controller.ts:41: @Roles('super_admin', 'hr', 'branch_manager', 'teacher')
+src\modules\kb\kb.controller.ts:61: @Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+src\modules\kb\kb.controller.ts:69: @Roles('super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance')
+src\modules\kb\kb.controller.ts:79: @Roles('super_admin', 'hr', 'branch_manager', 'teacher')
+src\modules\leads\leads.controller.ts:22: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:29: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:36: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:43: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:50: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:57: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:66: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:73: @Roles('super_admin', 'branch_manager')
+src\modules\leads\leads.controller.ts:83: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:92: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:99: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:106: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:113: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:120: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:127: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\leads\leads.controller.ts:134: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\notifications\dto\broadcast-notification.dto.ts:48: *  - Admin/Branch Manager: any target_type.
+src\modules\notifications\notifications.controller.ts:61: @Roles('super_admin', 'branch_manager', 'admin', 'hr', 'academic', 'teacher')
+src\modules\notifications\notifications.service.ts:33: 'branch_manager',
+src\modules\placement-tests\placement-tests.controller.ts:50: @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\placement-tests\placement-tests.controller.ts:73: @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\placement-tests\placement-tests.controller.ts:81: @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\placement-tests\placement-tests.controller.ts:119: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\placement-tests\placement-tests.controller.ts:142: @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\placement-tests\placement-tests.controller.ts:166: @Roles('super_admin', 'branch_manager', 'academic', 'teacher', 'student')
+src\modules\placement-tests\placement-tests.service.spec.ts:53: branch_id: 'b-1',
+src\modules\placement-tests\placement-tests.service.spec.ts:65: branch_id: 'b-1',
+src\modules\placement-tests\placement-tests.service.ts:434: ['super_admin', 'admin', 'academic', 'teacher', 'branch_manager'].includes(r),
+src\modules\public\public.service.spec.ts:188: id: 's-1', branch_id: 'b-1', examiner_id: 'exam-1',
+src\modules\public\public.service.spec.ts:276: { id: 'lead-7', status: LeadStatus.TEST_SCHEDULED, email: dto.email, branch_id: 'b-1' },
+src\modules\reports\reports.controller.ts:14: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\reports\reports.controller.ts:24: @Roles('super_admin', 'branch_manager', 'sales')
+src\modules\reports\reports.controller.ts:34: @Roles('super_admin', 'branch_manager', 'academic')
+src\modules\reports\reports.controller.ts:41: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\reports\reports.controller.ts:50: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\reports\reports.controller.ts:57: @Roles('super_admin', 'branch_manager', 'finance')
+src\modules\reports\reports.controller.ts:67: @Roles('super_admin', 'branch_manager', 'finance')
+src\modules\reports\reports.controller.ts:74: @Roles('super_admin', 'branch_manager', 'academic', 'teacher')
+src\modules\roles\roles.controller.ts:13: @Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.controller.ts:21: @Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.controller.ts:28: @Roles('super_admin', 'branch_manager')
+src\modules\roles\roles.controller.ts:35: @Roles('super_admin', 'branch_manager')
+src\modules\sessions\sessions.controller.ts:19: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:43: @Roles('super_admin', 'academic', 'branch_manager', 'teacher', 'student')
+src\modules\sessions\sessions.controller.ts:57: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:67: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:77: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:99: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:111: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:121: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:132: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:143: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.controller.ts:166: @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
+src\modules\sessions\sessions.service.ts:231: ['super_admin', 'academic', 'branch_manager', 'teacher'].includes(role),
+src\modules\users\users.controller.ts:37: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts:46: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts:55: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts:90: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts:108: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts:120: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\users\users.controller.ts:132: @Roles('super_admin', 'branch_manager', 'hr')
+src\modules\waitlists\waitlists.controller.ts:15: @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\waitlists\waitlists.controller.ts:29: @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\waitlists\waitlists.controller.ts:37: @Roles('super_admin', 'branch_manager', 'sales', 'academic')
+src\modules\waitlists\waitlists.controller.ts:44: @Roles('super_admin', 'branch_manager', 'academic', 'sales')
+src\modules\waitlists\waitlists.controller.ts:55: @Roles('super_admin', 'branch_manager', 'academic', 'sales')
+src\modules\waitlists\waitlists.controller.ts:62: @Roles('super_admin', 'branch_manager', 'academic', 'sales')
+src\shared\entities\inventory-item.entity.ts:8: * the table has NO branch scoping (single global stock pool in `stock_levels`)

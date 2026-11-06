@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { inventoryApi, type InventoryItem } from "@/api/inventory";
 import { studentsApi } from "@/api/students";
-import type { Branch } from "@/types";
 
 export type StockMode = "receive" | "adjust" | "transfer" | "issue";
 
@@ -17,17 +16,13 @@ const TITLE_KEYS: Record<StockMode, string> = {
 interface Props {
   mode: StockMode | null;
   item: InventoryItem | null;
-  branches: Branch[];
-  defaultBranchId?: string;
   onClose: () => void;
 }
 
-export function StockActionDialog({ mode, item, branches, defaultBranchId, onClose }: Props) {
+export function StockActionDialog({ mode, item, onClose }: Props) {
   const { t } = useTranslation("inventory");
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [branch, setBranch] = useState("");
-  const [toBranch, setToBranch] = useState("");
   const [qty, setQty] = useState("1");
   const [unitCost, setUnitCost] = useState("");
   const [reason, setReason] = useState("");
@@ -38,10 +33,10 @@ export function StockActionDialog({ mode, item, branches, defaultBranchId, onClo
 
   useEffect(() => {
     if (!mode) return;
-    setBranch(defaultBranchId ?? ""); setToBranch(""); setQty(mode === "adjust" ? "" : "1");
+    setQty(mode === "adjust" ? "" : "1");
     setUnitCost(""); setReason(""); setStudent(""); setStudentFilter(""); setError("");
     setCharge(mode === "issue" && item ? String(item.sale_price) : "");
-  }, [mode, item, defaultBranchId]);
+  }, [mode, item]);
 
   const { data: students } = useQuery({
     queryKey: ["students", "for-inventory"],
@@ -62,25 +57,23 @@ export function StockActionDialog({ mode, item, branches, defaultBranchId, onClo
       const n = Number(qty);
       if (!Number.isInteger(n) || n === 0) throw new Error(t("errQty"));
       if (mode !== "adjust" && n < 0) throw new Error(t("errQtyPos"));
-      if (!branch) throw new Error(t("errBranch"));
       if (mode === "receive") {
         const c = unitCost === "" ? undefined : Number(unitCost);
         if (c !== undefined && !(c >= 0)) throw new Error(t("errCostNeg"));
-        return inventoryApi.receive(item.id, { branch_id: branch, quantity: n, unit_cost: c, reason: reason.trim() || undefined });
+        return inventoryApi.receive(item.id, { quantity: n, unit_cost: c, reason: reason.trim() || undefined });
       }
       if (mode === "adjust") {
         if (!reason.trim()) throw new Error(t("errReasonAdj"));
-        return inventoryApi.adjust(item.id, { branch_id: branch, quantity: n, reason: reason.trim() });
+        return inventoryApi.adjust(item.id, { quantity: n, reason: reason.trim() });
       }
       if (mode === "transfer") {
-        if (!toBranch) throw new Error(t("errDest"));
-        if (toBranch === branch) throw new Error(t("errSame"));
-        return inventoryApi.transfer(item.id, { from_branch_id: branch, to_branch_id: toBranch, quantity: n, reason: reason.trim() || undefined });
+        if (!reason.trim()) throw new Error(t("errReasonAdj"));
+        return inventoryApi.transfer(item.id, { quantity: n, reason: reason.trim() || undefined });
       }
       if (!student) throw new Error(t("errStudent"));
       const cost = charge === "" ? undefined : Number(charge);
       if (cost !== undefined && !(cost >= 0)) throw new Error(t("errChargeNeg"));
-      return inventoryApi.issue({ item_id: item.id, student_id: student, branch_id: branch, quantity: n, cost });
+      return inventoryApi.issue({ item_id: item.id, student_id: student, quantity: n, cost });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventory"] });
@@ -106,8 +99,6 @@ export function StockActionDialog({ mode, item, branches, defaultBranchId, onClo
         <h2 className="text-lg font-semibold">{t(TITLE_KEYS[mode])}</h2>
         <p className="text-sm text-muted-foreground">{item.name}{item.sku ? ` · ${item.sku}` : ""}</p>
         <div className="mt-4 space-y-3">
-          {branchSelect(mode === "transfer" ? t("fromBranch") : t("branch"), branch, setBranch)}
-          {mode === "transfer" && branchSelect(t("toBranch"), toBranch, setToBranch)}
           {mode === "issue" && (
             <>
               <label className="block text-sm">{t("colStudent")}
@@ -142,7 +133,6 @@ export function StockActionDialog({ mode, item, branches, defaultBranchId, onClo
             </label>
           )}
         </div>
-        {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={run.isPending}>{t("cancel")}</Button>
           <Button onClick={() => { setError(""); run.mutate(); }} disabled={run.isPending}>{run.isPending ? t("saving") : t("confirm")}</Button>

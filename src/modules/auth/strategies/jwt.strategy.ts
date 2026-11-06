@@ -13,6 +13,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   tv?: number;
+  pwd?: number;
 }
 
 @Injectable()
@@ -45,7 +46,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User is inactive');
     }
 
-    // 3. جلب الأدوَار والصلاحيات ديناميكياً من جدول userRoleRepo
+    // 3. Session invalidation on password change: any JWT issued before the
+    //    user's last password change is rejected, forcing re-login and
+    //    invalidating all active access + refresh sessions.
+    const pwdChangedAt = user.password_changed_at ? user.password_changed_at.getTime() : 0;
+    if (payload.pwd !== undefined && payload.pwd < pwdChangedAt) {
+      throw new UnauthorizedException('Token issued before password change. Please log in again.');
+    }
+
+    // 4. جلب الأدوَار والصلاحيات ديناميكياً من جدول userRoleRepo
     const userRoles = await this.userRoleRepo.find({
       where: { user_id: user.id },
       relations: { role: { permissions: true } },

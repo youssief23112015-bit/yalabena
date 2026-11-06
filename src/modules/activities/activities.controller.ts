@@ -71,7 +71,6 @@ export class ActivitiesController {
   @ApiOperation({ summary: 'Schedule a new extracurricular activity (SRS 4.11)' })
   @ApiBody({ type: CreateActivityDto })
   @ApiResponse({ status: 201, description: 'Activity created successfully.' })
-  @ApiResponse({ status: 403, description: 'Cross-branch creation denied.' })
   create(@Body() dto: CreateActivityDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user);
   }
@@ -82,7 +81,6 @@ export class ActivitiesController {
   @ApiQuery({ name: 'type', required: false, description: 'movie_night | conversation_club | trip | contest | workshop | other' })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'level', required: false, description: 'e.g. B1 — includes open-to-all activities' })
-  @ApiQuery({ name: 'branch_id', required: false, description: 'UUID branch filter' })
   @ApiQuery({ name: 'search', required: false })
   @ApiResponse({ status: 200, description: 'Returns activities list with registered_count.' })
   findAll(@Query() query: ActivityQueryDto, @CurrentUser() user: AuthUser) {

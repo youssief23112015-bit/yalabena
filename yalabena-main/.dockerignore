@@ -1,0 +1,25 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.*
+dist
+coverage
+.nyc_output
+.vscode
+.idea
+*.log
+uploads
+# Not needed to build/run the backend image (front has its own build context)
+front
+**/node_modules
+.kilo
+.patch-backups
+database
+docs
+tsc
+*.rar
+*.docx
+*.xml
+*.txt

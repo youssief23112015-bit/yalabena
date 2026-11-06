@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { usersApi } from "@/api/users";
-import { branchesApi } from "@/api/branches";
 import { rolesApi } from "@/api/roles";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import type { User, Branch, Role } from "@/types";
+import type { User, Role } from "@/types";
 import {
   Plus, X, Pencil, Trash2, Search, Filter, KeyRound,
   UserCheck, UserX
@@ -28,7 +27,6 @@ const createUserSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   phone: z.string().optional(),
-  branch_id: z.string().optional(),
   role_id: z.string().optional(),
   status: z.string().optional(),
 });
@@ -38,7 +36,6 @@ const updateUserSchema = z.object({
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email"),
   phone: z.string().optional(),
-  branch_id: z.string().optional(),
   role_id: z.string().optional(),
   status: z.string().optional(),
 });
@@ -66,10 +63,9 @@ export default function UsersPage() {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordUserId, setPasswordUserId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filterBranchId, setFilterBranchId] = useState("");
   const [filterRoleId, setFilterRoleId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
-  const [appliedFilters, setAppliedFilters] = useState({ search: "", branchId: "", roleId: "", status: "" });
+  const [appliedFilters, setAppliedFilters] = useState({ search: "", roleId: "", status: "" });
 
   const {
     data: users,
@@ -81,13 +77,11 @@ export default function UsersPage() {
     queryKey: ["users", appliedFilters],
     queryFn: () => usersApi.findAll({
       search: appliedFilters.search || undefined,
-      branchId: appliedFilters.branchId || undefined,
       roleId: appliedFilters.roleId || undefined,
       status: appliedFilters.status || undefined,
     }),
   });
 
-  const { data: branches } = useQuery({ queryKey: ["branches"], queryFn: branchesApi.findAll });
   const { data: roles } = useQuery({ queryKey: ["roles"], queryFn: rolesApi.findAll });
 
   const createMutation = useMutation({
@@ -207,7 +201,6 @@ export default function UsersPage() {
     setUpdateValue("last_name", user.last_name);
     setUpdateValue("email", user.email);
     setUpdateValue("phone", user.phone || "");
-    setUpdateValue("branch_id", user.branch_id || "");
     setUpdateValue("role_id", user.role_id || "");
     setUpdateValue("status", user.status || "active");
   };
@@ -219,15 +212,14 @@ export default function UsersPage() {
   };
 
   const handleSearch = () => {
-    setAppliedFilters({ search, branchId: filterBranchId, roleId: filterRoleId, status: filterStatus });
+    setAppliedFilters({ search, roleId: filterRoleId, status: filterStatus });
   };
 
   const handleClear = () => {
     setSearch("");
-    setFilterBranchId("");
     setFilterRoleId("");
     setFilterStatus("");
-    setAppliedFilters({ search: "", branchId: "", roleId: "", status: "" });
+    setAppliedFilters({ search: "", roleId: "", status: "" });
   };
 
   const columns = [
@@ -251,11 +243,6 @@ export default function UsersPage() {
       key: "role",
       header: "Role",
       render: (row: User) => <Badge variant="outline" className="text-[10px]">{row.role || "—"}</Badge>,
-    },
-    {
-      key: "branch",
-      header: "Branch",
-      render: (row: User) => <span className="text-xs text-muted-foreground">{row.branch_id || "—"}</span>,
     },
     {
       key: "status",
@@ -307,13 +294,6 @@ export default function UsersPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Name, email, phone..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" onKeyDown={(e) => e.key === "Enter" && handleSearch()} />
           </div>
-        </div>
-        <div className="w-40">
-          <Label className="text-xs mb-1 block">Branch</Label>
-          <select value={filterBranchId} onChange={(e) => setFilterBranchId(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-            <option value="">All</option>
-            {branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
         </div>
         <div className="w-40">
           <Label className="text-xs mb-1 block">Role</Label>
@@ -373,13 +353,6 @@ export default function UsersPage() {
                   <select {...(editingId ? registerUpdate("role_id") : registerCreate("role_id"))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     <option value="">Select role</option>
                     {roles?.map((r: Role) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Branch</Label>
-                  <select {...(editingId ? registerUpdate("branch_id") : registerCreate("branch_id"))} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                    <option value="">Select branch</option>
-                    {branches?.map((b: Branch) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-2">

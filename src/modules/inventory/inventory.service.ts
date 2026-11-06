@@ -227,8 +227,7 @@ export class InventoryItemsService {
       sale_price: Number(item.sale_price),
       total_quantity,
       stock: stock.map((s) => ({
-        branch_id: s.branch_id,
-        branch_name: s.branch?.name ?? null,
+
         quantity: s.quantity,
         last_counted_at: s.last_counted_at,
       })),
@@ -305,7 +304,7 @@ export class InventoryItemsService {
       [itemId, branchId],
     );
     const stock = await manager.findOne(StockLevel, {
-      where: { item_id: itemId, branch_id: branchId },
+      where: { item_id: itemId},
       lock: { mode: 'pessimistic_write' },
     });
     if (!stock) throw new NotFoundException('Stock record could not be created (check the branch id)');
@@ -571,8 +570,7 @@ export class InventoryItemsService {
         where: { id: issueId },
         lock: { mode: 'pessimistic_write' },
       });
-      if (!issue) throw new NotFoundException(`Issue record with ID ${issueId} not found`);
-      this.assertBranchAccess(actor, issue.branch_id);
+      
       if (issue.returned_at) throw new BadRequestException('This item has already been returned.');
 
       issue.returned_at = new Date();
@@ -582,7 +580,7 @@ export class InventoryItemsService {
       if (cond === ItemCondition.GOOD) {
         await this.applyMove(manager, {
           itemId: issue.item_id,
-          branchId: issue.branch_id,
+          branchId: null,
           type: StockMoveType.RETURN,
           quantity: issue.quantity,
           reason: `returned by student ${issue.student_id}`,

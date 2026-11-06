@@ -1,0 +1,18 @@
+﻿login admin: 200 token=yes roles=["super_admin"]
+consent GET: 200 {"success":true,"data":{"accepted":false,"accepted_at":null,"policy_version":null},"timestamp":"2026-10-10T17:18:11.543Z","path":"/api/v1/chat/consent"}
+consent POST: 201 {"success":true,"data":{"accepted":true,"accepted_at":"2026-10-10T17:18:11.599Z","policy_version":"1.0"},"timestamp":"2026-10-10T17:18:11.674Z","path":"/api/v1/chat/consent"}
+rooms GET: 200 count=1 sample=[{"id":"79d5f270-a873-4c0e-b33a-4030cd651cd1","type":"group","group_id":"fe652f07-65d3-586c-a5c3-b3ecaeeda736","name":"Seed Groups ΓÇö Group Chat","topic":null,"is_archived":false,"archived_at":null,"created_by":"d3995993-c92b-5696-b5eb-f7f09a1031e4","created_at":"2026-10-09T07:45:13.869Z","updated_at
+room detail: 200 members=2
+messages: 200 shape={"data":[],"total":0}
+[admin] socket connected id=DRKVb6JfLKFkdbecAAAA
+join_room ack: {"success":true,"room_id":"79d5f270-a873-4c0e-b33a-4030cd651cd1"}
+send_message ack: {"success":true,"message":{"id":"fd7c7c46-ce5f-4c74-ad04-530f3868ca14","room_id":"79d5f270-a873-4c0e-b33a-4030cd651cd1","sender_id":"f54bc944-43f9-5b09-8a79-979d2186bc31","body":"E2E hello 2026-10-10T17:18:12.345Z","type":"text","file_url":null,"file_size":null,"file_name":null,"reply_to_id":null,"edited_at":null,"edited_count":0,"deleted_at":null,"is_flagged":false,"flag_reason":null,"created_at":"2026-10-10T17:18:12.339Z","sender":{"id":"f54bc944-43f9-5b09-8a79-979d2186bc31","email":"test.admin@speakup.test","phone":"+201111000001","password_hash":"$2a$10$bTsV3ESDHdjJBo8Jv3hEoOxDBzTgGXBap5q2O9el/5jgwtJd2UcuS","first_name":"Test","last_name":"Admin","avatar_url":null,"language":"en","branch_id":"66fc3021-8661-503f-b5c8-cea9e67629e6","status":"active","email_verified_at":"2026-10-08T19:34:09.751Z","phone_verified_at":"2026-10-08T19:34:09.751Z","two_factor_enabled":false,"two_factor_secret":null,"last_login_at":"2026-10-10T17:18:10.888Z","last_login_ip":null,"chat_policy_accepted_at":"2026-10-08T19:34:09.751Z","created_at":"2026-10-08T19:34:09.751Z","updated_at":"2026-10-10T17:18:10.916Z"}}}
+new_message received: {"id":"fd7c7c46-ce5f-4c74-ad04-530f3868ca14","room_id":"79d5f270-a873-4c0e-b33a-4030cd651cd1","sender_id":"f54bc944-43f9-5b09-8a79-979d2186bc31","body":"E2E hello 2026-10-10T17:18:12.345Z","type":"tex
+[admin] EVENT chat_error {"success":false,"error":"Internal server error","code":500}
+violation ack: {"success":false,"error":"Internal server error","code":500}
+typing emitted (no crash = ok)
+upload: 400 {"success":false,"statusCode":400,"message":"File type not allowed: text/plain","timestamp":"2026-10-10T17:18:12.575Z","path":"/api/v1/chat/upload"}
+upload url via data.url (MessageComposer): UNDEFINED (BUG)
+REST send: 404 {"success":false,"statusCode":404,"message":"Cannot POST /api/v1/messages","timestamp":"2026-10-10T17:18:12.614Z","path":"/api/v1/messages"}
+violations: 404 {"success":false,"statusCode":404,"message":"Cannot GET /api/v1/violations?limit=5","timestamp":"2026-10-10T17:18:12.637Z","path":"/api/v1/violations?limit=5"}
+[admin] disconnected: io client disconnect

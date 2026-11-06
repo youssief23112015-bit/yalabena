@@ -1,0 +1,15 @@
+﻿node.exe : PASS src/modules/sessions/sessions.service.spec.ts (59.62 s)
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS src/module...ec.ts (59.62 s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS src/modules/sessions/scheduling.service.spec.ts (59.983 s)
+PASS src/modules/groups/groups.service.spec.ts (60.635 s)
+PASS src/common/utils/recurring-schedule.util.spec.ts
+
+Test Suites: 4 passed, 4 total
+Tests:       69 passed, 69 total
+Snapshots:   0 total
+Time:        63.967 s, estimated 76 s

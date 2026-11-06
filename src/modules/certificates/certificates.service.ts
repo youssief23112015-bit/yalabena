@@ -13,7 +13,7 @@ import { GroupStudent } from '../../shared/entities/group-student.entity';
 import { GradebookCategory } from '../../shared/entities/gradebook-category.entity';
 import { GradebookEntry } from '../../shared/entities/gradebook-entry.entity';
 import { Setting } from '../../shared/entities/setting.entity';
-import { AuthUser, effectiveBranchFilter } from '../../common/utils/branch-scope';
+import { AuthUser, isSuperAdmin } from '../../common/utils/branch-scope';
 import { buildPdf, resolveUploadPath } from '../../common/utils/pdf.helper';
 import { CreateCertificateDto } from './dto/create-certificate.dto';
 import { CreateTemplateDto } from './dto/create-template.dto';
@@ -184,8 +184,6 @@ export class CertificatesService {
     if (query.course_id) qb.andWhere('c.course_id = :cid', { cid: query.course_id });
     if (query.group_id) qb.andWhere('c.group_id = :gid', { gid: query.group_id });
     if (query.status) qb.andWhere('c.status = :st', { st: query.status });
-    const branchFilter = effectiveBranchFilter(user, query.branch_id);
-    if (branchFilter) qb.andWhere('st.branch_id = :b', { b: branchFilter });
     return qb.take(300).getMany();
   }
 
@@ -233,23 +231,18 @@ export class CertificatesService {
       .getMany();
   }
 
-  async getOne(id: string, user: AuthUser) {
+  async getOne(id: string, user: AuthUser): Promise<Certificate> {
     const c = await this.certs.findOne({
       where: { id },
       relations: ['student', 'student.user', 'course', 'group', 'template'],
     });
     if (!c) throw new NotFoundException('Certificate not found');
-    // Self-service students may only ever read their own certificates —
-    // checked before the branch filter because a student's own branch can
-    // legitimately be null while the certificate still belongs to them.
+
     if (this.isSelfServiceStudent(user)) {
       if (c.student?.user_id !== this.actorId(user)) {
         throw new NotFoundException('Certificate not found');
       }
-      return c;
     }
-    const branchFilter = effectiveBranchFilter(user);
-    if (branchFilter && c.student?.branch_id !== branchFilter) throw new NotFoundException('Certificate not found');
     return c;
   }
 

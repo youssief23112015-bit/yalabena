@@ -30,9 +30,6 @@ export class Invoice {
   @JoinColumn({ name: 'student_id' })
   student: Student;
 
-  @Column({ type: 'uuid', nullable: true })
-  branch_id?: string | null;
-
   @Column({ type: 'decimal', precision: 12, scale: 2 })
   subtotal: number;
 

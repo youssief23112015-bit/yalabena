@@ -18,7 +18,7 @@ export interface PlacementContact {
   last_name: string;
   phone?: string | null;
   email?: string | null;
-  branch_id?: string | null;
+  branch_id?: string | null;  // Plain optional property, no foreign key relation
   level_interest?: string | null;
   source: LeadSource;
 }

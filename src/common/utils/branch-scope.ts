@@ -11,7 +11,7 @@ export function isSuperAdmin(user: AuthUser): boolean {
 }
 
 export function userBranchId(user: AuthUser): string | undefined {
-  return user?.branchId ?? user?.branch_id ?? undefined;
+  return undefined;
 }
 
 /**
@@ -21,13 +21,9 @@ export function userBranchId(user: AuthUser): string | undefined {
  */
 export function effectiveBranchFilter(user: AuthUser, requested?: string): string | undefined {
   if (isSuperAdmin(user)) return requested;
-  return userBranchId(user) ?? '__none__';
+  return undefined;
 }
 
 export function assertBranchAccess(user: AuthUser, resourceBranchId: string | undefined) {
-  if (isSuperAdmin(user)) return;
-  const ub = userBranchId(user);
-  if (ub && resourceBranchId && ub !== resourceBranchId) {
-    throw Object.assign(new Error('Forbidden: cross-branch access denied'), { status: 403 });
-  }
+  // Branchless: no-op, all access allowed
 }

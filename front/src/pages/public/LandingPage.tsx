@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PublicLayout } from "@/components/public/PublicLayout";
 import { LeadCaptureForm } from "@/components/public/LeadCaptureForm";
 import { fetchPublicCourses, fetchPublicTestimonials } from "@/api/public";
+import { useAuthStore } from "@/store/authStore";
 import type { Course } from "@/types";
 
 const LEVEL_COLORS: Record<string, string> = {
@@ -22,6 +23,7 @@ const LEVEL_COLORS: Record<string, string> = {
 
 export default function LandingPage() {
   const { t } = useTranslation("common");
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const { data: courses, isLoading: coursesLoading } = useQuery({
     queryKey: ["public-courses"],
@@ -58,12 +60,21 @@ export default function LandingPage() {
             </div>
             
             <div className="flex items-center gap-3">
-              <Button asChild variant="outline" size="sm" className="gap-2 font-semibold shadow-sm">
-                <Link to="/login">
-                  <LogIn className="h-4 w-4" />
-                  {t("auth.login", "Login")}
-                </Link>
-              </Button>
+              {!isAuthenticated ? (
+                <Button asChild variant="outline" size="sm" className="gap-2 font-semibold shadow-sm">
+                  <Link to="/login">
+                    <LogIn className="h-4 w-4" />
+                    {t("auth.login", "Login")}
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild size="sm" className="gap-2 font-semibold shadow-sm">
+                  <Link to="/dashboard">
+                    <ArrowRight className="h-4 w-4" />
+                    {t("app.goToDashboard", "Go to Dashboard")}
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
 
@@ -84,20 +95,22 @@ export default function LandingPage() {
               </p>
               
               {/* Single Main CTA Action Section */}
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Button asChild size="lg" className="px-8 py-6 text-base shadow-lg transition-all hover:scale-105 active:scale-95">
-                  <Link to="/register">
-                    {t("public.hero.ctaRegister", "Register Now")}
-                    <ArrowRight className="ml-2 h-4 w-4 rtl:ml-0 rtl:mr-2 rtl:rotate-180" />
-                  </Link>
-                </Button>
-                
-                <Button asChild variant="outline" size="lg" className="px-8 py-6 text-base border-border/80">
-                  <Link to="/placement-booking">
-                    {t("public.hero.ctaTest", "Book Free Placement Test")}
-                  </Link>
-                </Button>
-              </div>
+              {!isAuthenticated && (
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <Button asChild size="lg" className="px-8 py-6 text-base shadow-lg transition-all hover:scale-105 active:scale-95">
+                    <Link to="/register">
+                      {t("public.hero.ctaRegister", "Register Now")}
+                      <ArrowRight className="ml-2 h-4 w-4 rtl:ml-0 rtl:mr-2 rtl:rotate-180" />
+                    </Link>
+                  </Button>
+                  
+                  <Button asChild variant="outline" size="lg" className="px-8 py-6 text-base border-border/80">
+                    <Link to="/placement-booking">
+                      {t("public.hero.ctaTest", "Book Free Placement Test")}
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Right Side: Professional Photo */}
@@ -215,18 +228,22 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Lead capture */}
-      <section className="bg-primary/5 py-16">
-        <div className="container mx-auto max-w-2xl px-4">
-          <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold">{t("public.leadForm.title", "Get Started Today")}</h2>
-            <p className="mt-2 text-muted-foreground">
-              {t("public.leadForm.subtitle", "Leave your details and our team will contact you within 24 hours.")}
-            </p>
-          </div>
-          <LeadCaptureForm />
-        </div>
-      </section>
+      {!isAuthenticated && (
+        <>
+          {/* Lead capture */}
+          <section className="bg-primary/5 py-16">
+            <div className="container mx-auto max-w-2xl px-4">
+              <div className="mb-8 text-center">
+                <h2 className="text-3xl font-bold">{t("public.leadForm.title", "Get Started Today")}</h2>
+                <p className="mt-2 text-muted-foreground">
+                  {t("public.leadForm.subtitle", "Leave your details and our team will contact you within 24 hours.")}
+                </p>
+              </div>
+              <LeadCaptureForm />
+            </div>
+          </section>
+        </>
+      )}
     </PublicLayout>
   );
 }

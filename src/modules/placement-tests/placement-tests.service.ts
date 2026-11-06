@@ -78,12 +78,7 @@ export class PlacementTestsService {
           if (!data.examiner_id && slot.examiner_id) {
             data.examiner_id = slot.examiner_id;
           }
-          if (!data.branch_id && slot.branch_id) {
-            data.branch_id = slot.branch_id;
-          }
-          if (!data.scheduled_at && slot.date) {
-            data.scheduled_at = slot.date;
-          }
+          data.scheduled_at = slot.date;
         }
       } catch {
         // في حال فشل جلب الـ slot
@@ -99,7 +94,6 @@ export class PlacementTestsService {
     const saved = await this.repo.save(test);
 
     // Business Rule 2 — staff-created bookings advance the lead pipeline
-    // (TEST_SCHEDULED) so sales/academic see the booking as well.
     if (saved.lead_id) {
       try {
         const lead = await this.leadRepo.findOne({ where: { id: saved.lead_id } });
@@ -147,8 +141,6 @@ export class PlacementTestsService {
   async update(id: string, data: Partial<PlacementTest>): Promise<PlacementTest> {
     const test = await this.findOne(id);
 
-    // The admin UI historically sends `assigned_level`/`scheduled_date` —
-    // map them onto real columns (they were previously dropped silently).
     const payload: Record<string, unknown> = { ...data };
     const assigned = (data as any).assigned_level;
     if (!data.final_level && assigned) {
@@ -174,14 +166,12 @@ export class PlacementTestsService {
 
     Object.assign(test, payload);
 
-    // Derive the suggested level from the recorded degree (scoring matrix).
     const pct = this.combinedPercentage(test);
     if (pct !== null && !test.suggested_level) {
       const derived = levelFromScorePercentage(pct);
       if (derived) test.suggested_level = derived;
     }
 
-    // Completing without an explicit level falls back to the derived one.
     const completed = String(test.status).toLowerCase() === 'completed';
     if (completed && !test.final_level) {
       test.final_level = test.suggested_level ?? null;
@@ -194,8 +184,6 @@ export class PlacementTestsService {
 
     const saved = await this.repo.save(test);
 
-    // Business Rule 2: push the degree + evaluated level onto the Lead, and
-    // onto Student.current_level when the test targets a registered student.
     const level = saved.final_level ?? saved.suggested_level ?? null;
     const hasScore =
       (saved.written_score !== null && saved.written_score !== undefined) ||
@@ -213,11 +201,6 @@ export class PlacementTestsService {
     return saved;
   }
 
-  /**
-   * Examiner evaluation (checklist: PATCH /placement-tests/:id/evaluate).
-   * Defaults to COMPLETED so the standard grading action finalizes the test,
-   * derives any missing level from the score matrix, and syncs Lead/Student.
-   */
   async evaluate(id: string, dto: EvaluateTestDto): Promise<PlacementTest> {
     const patch: Record<string, unknown> = {};
     if (dto.written_score !== undefined) patch.written_score = dto.written_score;
@@ -228,12 +211,6 @@ export class PlacementTestsService {
     return this.update(id, patch as Partial<PlacementTest>);
   }
 
-  /**
-   * Authenticated student self-booking (POST /placement-tests/book).
-   * Reserves a seat, schedules the test at the slot start, upserts the
-   * Lead pipeline record by the account's phone/email (Business Rule 2),
-   * and keeps the test target on student_id (chk_pt_target).
-   */
   async bookForStudent(user: AuthUser, dto: BookTestDto) {
     const student = await this.studentRepo.findOne({
       where: { user_id: user?.id ?? user?.userId },
@@ -266,8 +243,6 @@ export class PlacementTestsService {
       throw new ConflictException('You already have an active placement test');
     }
 
-    // Business Rule 2 — the booking advances/creates the Lead pipeline
-    // record (deduped by the account's phone OR email).
     const contact = student.user;
     if (contact?.phone || contact?.email) {
       await upsertLeadForPlacement(this.leadRepo as any, {
@@ -275,7 +250,6 @@ export class PlacementTestsService {
         last_name: contact.last_name ?? '',
         phone: contact.phone,
         email: contact.email,
-        branch_id: student.branch_id,
         level_interest: student.current_level,
         source: LeadSource.WEBSITE,
       });
@@ -292,8 +266,6 @@ export class PlacementTestsService {
       }),
     );
 
-    // Reserve the seat (mirrors the public booking flow; matches the
-    // pre-insert snapshot the DB trigger also bumps).
     slot.booked_count += 1;
     if (slot.booked_count >= slot.capacity) slot.status = SlotStatus.FULL;
     await this.slotRepo.save(slot);
@@ -301,7 +273,6 @@ export class PlacementTestsService {
     return this.findOne(test.id);
   }
 
-  /** The logged-in student's own tests: schedule + scores + result level. */
   async findMy(user: AuthUser): Promise<PlacementTest[]> {
     const student = await this.studentRepo.findOne({
       where: { user_id: user?.id ?? user?.userId },
@@ -309,22 +280,11 @@ export class PlacementTestsService {
     if (!student) return [];
     return this.repo.find({
       where: { student_id: student.id },
-      relations: ['slot', 'slot.branch', 'slot.examiner', 'examiner'],
+      relations: ['slot', 'slot.examiner', 'examiner'],
       order: { scheduled_at: 'DESC' },
     });
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // PUBLIC ONBOARDING — instant guest placement flow (no login required)
-  // ═══════════════════════════════════════════════════════════════════
-
-  /**
-   * Path A — "Take Instant Online Test Now" (POST /public/placement-bookings/instant).
-   * Upserts the Lead (deduped by phone/email → status TEST_SCHEDULED), then
-   * resumes the guest's still-open session or creates a lead-only
-   * PlacementTest (no slot/examiner) and returns its id for a password-free
-   * redirect to /placement-test?testId={testId}.
-   */
   async bookInstant(
     dto: InstantPlacementBookingDto,
   ): Promise<{ success: true; testId: string; leadId: string }> {
@@ -341,8 +301,6 @@ export class PlacementTestsService {
       source: LeadSource.WEBSITE,
     });
 
-    // Frictionless resume: an open session (not yet submitted) is reused
-    // instead of stacking duplicate tests for the same guest.
     const active = await this.repo.findOne({
       where: { lead_id: lead.id, status: In([TestStatus.SCHEDULED, TestStatus.IN_PROGRESS]) },
       order: { created_at: 'DESC' },
@@ -359,10 +317,6 @@ export class PlacementTestsService {
     return { success: true, testId: test.id, leadId: lead.id };
   }
 
-  /**
-   * A guest-usable session: lead-targeted AND never a registered student's
-   * test (student sessions must go through the ownership-checked routes).
-   */
   private async assertGuestSession(id: string): Promise<PlacementTest> {
     const test = await this.findOne(id);
     if (!test.lead_id || test.student_id) {
@@ -371,11 +325,6 @@ export class PlacementTestsService {
     return test;
   }
 
-  /**
-   * GET /public/placement-tests/:id — validates the testId capability link
-   * and returns the (already known to the guest) session + result so the
-   * page can short-circuit straight to the completion screen on a reload.
-   */
   async getGuestSession(id: string) {
     const test = await this.assertGuestSession(id);
     const completed = String(test.status).toLowerCase() === TestStatus.COMPLETED;
@@ -397,14 +346,11 @@ export class PlacementTestsService {
     };
   }
 
-  /** POST /public/placement-tests/:id/paper — the player's question paper. */
   async getGuestPaper(
     id: string,
     body: { level?: string; count?: number; categories?: string[]; seed?: number },
   ) {
     await this.assertGuestSession(id);
-    // No user context → assertCanAccessTest early-returns; possession of the
-    // unguessable testId is the authorization.
     return this.generateWrittenPaper(id, {
       level: body?.level ?? 'A1',
       count: body?.count,
@@ -413,11 +359,6 @@ export class PlacementTestsService {
     });
   }
 
-  /**
-   * POST /public/placement-tests/:id/submit — auto-scores the session and
-   * finalizes BOTH the test (COMPLETED) and the Lead (score + CEFR level +
-   * status TEST_COMPLETED via the 'final' phase sync).
-   */
   async submitGuest(id: string, dto: SubmitWrittenDto) {
     await this.assertGuestSession(id);
     return this.submitWritten(id, dto, undefined, {
@@ -426,11 +367,6 @@ export class PlacementTestsService {
     });
   }
 
-  /**
-   * Students may only take THEIR OWN tests (paper generation + submission).
-   * Staff roles keep unrestricted access; callers without a user context
-   * (legacy internal calls) are unaffected.
-   */
   private async assertCanAccessTest(testId: string, user?: AuthUser): Promise<void> {
     if (!user) return;
     const roles = (user.roles ?? []).map((r) => String(r).toLowerCase());
@@ -449,7 +385,6 @@ export class PlacementTestsService {
     }
   }
 
-  /** Combined written/oral degree as a 0–100 percentage, or null. */
   private combinedPercentage(test: PlacementTest): number | null {
     const wMax = Number(test.written_max) || 100;
     const oMax = Number(test.oral_max) || 100;
@@ -467,12 +402,6 @@ export class PlacementTestsService {
     return null;
   }
 
-  /**
-   * Sync a placement result onto the matching Lead (Business Rule 2).
-   * Lead-linked tests update that lead directly; student-linked tests
-   * resolve the lead by the account's phone/email, creating it when absent.
-   * Failures are logged and never break grading.
-   */
   private async syncResultToLead(
     test: PlacementTest,
     patch: { score?: number | null; level?: string | null; phase: 'written' | 'final' },
@@ -493,7 +422,6 @@ export class PlacementTestsService {
             last_name: u.last_name ?? '',
             phone: u.phone,
             email: u.email,
-            branch_id: student?.branch_id,
             level_interest: patch.level ?? student?.current_level,
             source: LeadSource.WEBSITE,
           });
@@ -509,14 +437,12 @@ export class PlacementTestsService {
     }
   }
 
-  /** Mirror the evaluated CEFR level onto Student.current_level. */
   private async syncStudentLevel(studentId: string, level: string): Promise<void> {
     if (!isCefrLevel(level)) return;
     const student = await this.studentRepo.findOne({ where: { id: studentId } });
     if (!student || student.current_level === level) return;
     await this.studentRepo.save({ ...student, current_level: level });
   }
-
 
   async generateWrittenPaper(
     testId: string,
@@ -564,9 +490,7 @@ export class PlacementTestsService {
     dto: SubmitWrittenDto,
     user?: AuthUser,
     opts?: {
-      /** Lead pipeline phase for the result sync (default: 'written' → INTERESTED). */
       leadPhase?: 'written' | 'final';
-      /** Single-session guest tests: finalize the test itself (default: false → awaiting oral). */
       completeTest?: boolean;
     },
   ) {
@@ -627,12 +551,8 @@ export class PlacementTestsService {
         : 0;
     const percentage = possible > 0 ? Math.round((earned / possible) * 100) : 0;
 
-    // Derive the recommended CEFR level from the degree (scoring matrix) and
-    // persist it: suggested = derived, final = examiner-overridable fallback.
     const suggestedLevel = test.suggested_level ?? levelFromScorePercentage(percentage);
     const finalLevel = test.final_level ?? suggestedLevel ?? null;
-    // Guest single-session tests finish on written submission; staff tests
-    // keep waiting for the examiner's oral assessment (IN_PROGRESS).
     const nextStatus = opts?.completeTest ? TestStatus.COMPLETED : TestStatus.IN_PROGRESS;
 
     await this.repo.manager.transaction(async (manager) => {
@@ -661,15 +581,11 @@ export class PlacementTestsService {
       );
     });
 
-    // Reflect the persisted values for the syncs below + the response.
     test.written_score = writtenScore;
     test.status = nextStatus;
     if (suggestedLevel) test.suggested_level = suggestedLevel;
     if (finalLevel) test.final_level = finalLevel;
 
-    // Business Rule 2 — written auto-score results flow to the Lead
-    // ('written' → INTERESTED; guest 'final' → TEST_COMPLETED) and onto
-    // Student.current_level.
     await this.syncResultToLead(test, {
       score: percentage,
       level: finalLevel,
@@ -687,7 +603,6 @@ export class PlacementTestsService {
       possiblePoints: possible,
       percentage,
       results,
-      // The player's result card reads level ?? suggested_level ?? final_level.
       level: finalLevel,
       suggested_level: suggestedLevel,
       final_level: finalLevel,
@@ -726,7 +641,7 @@ export class PlacementTestsService {
       return { isCorrect: false, score: 0 };
     }
 
-    switch (question.type) {
+   switch (question.type) {
       case QuestionType.MCQ: {
         const ok = String(answer).trim().toLowerCase() === String(correct).trim().toLowerCase();
         return { isCorrect: ok, score: ok ? pts : 0 };

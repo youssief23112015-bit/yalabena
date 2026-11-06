@@ -1,4 +1,3 @@
-import React from "react";
 import { useTranslation } from "react-i18next";
 import { useDashboardFilters } from "@/hooks/useDashboardFilters";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +14,7 @@ const PERIODS: { value: import("@/hooks/useDashboardFilters").DashboardPeriod; l
 
 export function PeriodFilter() {
   const { t } = useTranslation("dashboard");
-  const { period, setFilters } = useDashboardFilters();
+  const { setFilters } = useDashboardFilters();
 
   return (
     <Select onValueChange={(v) => setFilters({ period: v as any })}>

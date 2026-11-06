@@ -174,7 +174,6 @@ describe('PublicService', () => {
       expect(qb.where).toHaveBeenCalledWith('slot.status = :status', { status: SlotStatus.OPEN });
       expect(out[0]).toEqual(expect.objectContaining({ remaining_capacity: 3 }));
       expect(out[0]).not.toHaveProperty('examiner_id');
-      expect(out[0].branch_id).toBe('b-1');
     });
   });
 

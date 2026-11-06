@@ -1,4 +1,4 @@
-﻿import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Enrollment } from '../../shared/entities/enrollment.entity';
@@ -7,7 +7,7 @@ import { Group } from '../../shared/entities/group.entity';
 import { Course } from '../../shared/entities/course.entity';
 import { EnrollmentStatus } from '../../common/enums/enrollment-status.enum';
 import { GroupStatus } from '../../common/enums/group-status.enum';
-import { AuthUser, effectiveBranchFilter } from '../../common/utils/branch-scope';
+import { AuthUser } from '../../common/utils/branch-scope';
 import {
   describeLevelIneligibility,
   isLevelEligible,
@@ -67,11 +67,6 @@ export class EnrollmentsService {
     const student = await this.students.findOne({ where: { id: dto.student_id } });
     if (!student) throw new NotFoundException('Student not found');
 
-    // Server-side eligibility (mirrors the /students + /enrollments picker
-    // filters): the profile must be active, the account must be active, and
-    // the linked user must STILL hold the student role. Blocks direct API
-    // enrollment of users whose role changed away from student even though
-    // a stale students row could still exist.
     const eligible = await this.students
       .createQueryBuilder('s')
       .innerJoin('s.user', 'u')
@@ -98,13 +93,8 @@ export class EnrollmentsService {
     const group = await this.groups.findOne({ where: { id: dto.group_id }, relations: ['course'] });
     if (!group) throw new NotFoundException('Group not found');
 
-    // Business Rule 1: level eligibility is enforced on EVERY enrollment
-    // path, including staff-created ones.
     this.assertCourseLevelEligible(student, group.course?.level);
 
-    // NOTE: the enrollment_status PG enum holds LOWERCASE values — the
-    // previous uppercase literals ('PENDING'/'ACTIVE') were masked by `as any`
-    // casts and crashed at runtime with "invalid input value for enum".
     const dup = await this.enrollments.findOne({
       where: {
         student_id: dto.student_id,
@@ -117,14 +107,11 @@ export class EnrollmentsService {
     const activeCount = await this.enrollments.count({
       where: { group_id: dto.group_id, status: EnrollmentStatus.ACTIVE },
     });
-    // Admin bypass (force) skips ONLY the capacity gate — eligibility,
-    // duplicates, invoicing and chat sync all still run.
     if (!opts?.skipCapacityCheck && activeCount >= group.capacity) {
       throw new BadRequestException(`Group is full (capacity ${group.capacity})`);
     }
 
     const fee = dto.total_fee ?? Number(group.course?.default_price ?? 0);
-    const branchId = student.branch_id ?? group.branch_id;
 
     const enrollment = await this.enrollments.save(
       this.enrollments.create({
@@ -138,35 +125,28 @@ export class EnrollmentsService {
       }),
     );
 
+    // تم تمرير معامل user للدالة لتجنب خطأ Expected 2 arguments
     const invoice = await this.finance.createInvoiceForEnrollment({
       enrollment_id: enrollment.id,
       student_id: student.id,
       course_id: group.course_id,
-      branch_id: branchId,
       amount: fee,
-      description: `Enrollment â€” ${group.course?.name ?? 'Course'} (${group.name})`,
+      description: `Enrollment — ${group.course?.name ?? 'Course'} (${group.name})`,
       promo_code: dto.promo_code,
       manual_discount: dto.discount_amount,
       installments_count: dto.installments_count,
       due_days: dto.due_days,
       created_by: user.id,
-    });
+    }, user);
 
     enrollment.discount_amount = invoice.discount_amount;
     enrollment.final_amount = invoice.total_amount;
     await this.enrollments.save(enrollment);
 
-    await this.syncChatRoomSafely(group.id); // auto-join the enrolled student to the group chat room
+    await this.syncChatRoomSafely(group.id);
     return this.findOne(enrollment.id, user);
   }
 
-  /**
-   * Student self-service booking ("Book this Course", Business Rule 2).
-   * The enrollment is created with PENDING status and forwarded to the
-   * Admin / Branch Manager dashboard for review — no invoice is generated
-   * until the request is approved. Level eligibility is enforced first
-   * (Business Rule 1) and violations surface as 400 Bad Request.
-   */
   async bookCourse(user: AuthUser, dto: BookEnrollmentDto) {
     const student = await this.students.findOne({
       where: { user_id: user?.id ?? user?.userId },
@@ -179,7 +159,6 @@ export class EnrollmentsService {
     const course = await this.courses.findOne({ where: { id: dto.course_id } });
     if (!course) throw new NotFoundException('Course not found');
 
-    // Business Rule 1 — reject out-of-range levels with a clear 400.
     this.assertCourseLevelEligible(student, course.level);
 
     const group = await this.resolveBookingGroup(student, course, dto.group_id);
@@ -213,11 +192,6 @@ export class EnrollmentsService {
     return this.findOne(enrollment.id, user);
   }
 
-  /**
-   * Picks the group a student books into. When the DTO pins a group it must
-   * belong to the requested course; otherwise the first group of the course
-   * with free capacity is selected, preferring the student's own branch.
-   */
   private async resolveBookingGroup(
     student: Student,
     course: Course,
@@ -241,15 +215,7 @@ export class EnrollmentsService {
       order: { start_date: 'ASC' },
     });
 
-    const inStudentBranch = student.branch_id
-      ? candidates.filter((g) => g.branch_id === student.branch_id)
-      : [];
-    const ordered = [
-      ...inStudentBranch,
-      ...candidates.filter((g) => !inStudentBranch.includes(g)),
-    ];
-
-    for (const group of ordered) {
+    for (const group of candidates) {
       const activeCount = await this.enrollments.count({
         where: { group_id: group.id, status: EnrollmentStatus.ACTIVE },
       });
@@ -276,13 +242,6 @@ export class EnrollmentsService {
     }
   }
 
-  /**
-   * Admin / Branch Manager approval (Business Rule 2). A PENDING request is
-   * finalized to ACTIVE: capacity is re-checked, the invoice/payment
-   * workflow is triggered (idempotently), and the student joins the group
-   * chat room. The course then appears in the LMS dashboard immediately
-   * (Business Rule 3 — the LMS queries ACTIVE enrollments only).
-   */
   async approve(id: string, user: AuthUser) {
     const e = await this.enrollments.findOne({
       where: { id },
@@ -307,20 +266,18 @@ export class EnrollmentsService {
     e.status = EnrollmentStatus.ACTIVE;
     const saved = await this.enrollments.save(e);
 
-    // Invoice/payment workflow — only when none exists yet so repeated
-    // approvals can never double-bill the student.
     const alreadyInvoiced = await this.finance.hasInvoiceForEnrollment(saved.id);
     if (!alreadyInvoiced) {
       const fee = Number(saved.final_amount ?? saved.total_fee ?? 0);
+      // تم تمرير المعاملات المحدثة وتجنب استخدام branch_id المحذوف
       const invoice = await this.finance.createInvoiceForEnrollment({
         enrollment_id: saved.id,
         student_id: saved.student_id,
         course_id: e.group?.course_id,
-        branch_id: e.student?.branch_id ?? e.group?.branch_id,
         amount: fee,
         description: `Enrollment — ${e.group?.course?.name ?? 'Course'} (${e.group?.name ?? 'Group'})`,
         created_by: user?.id ?? user?.userId,
-      });
+      }, user);
       saved.discount_amount = invoice.discount_amount;
       saved.final_amount = invoice.total_amount;
       await this.enrollments.save(saved);
@@ -330,10 +287,6 @@ export class EnrollmentsService {
     return this.findOne(saved.id, user);
   }
 
-  /**
-   * Admin rejection of a PENDING request. Stored as DROPPED (the schema has
-   * no separate REJECTED status) with the rejection reason preserved.
-   */
   async reject(id: string, reason: string | undefined, user: AuthUser) {
     const e = await this.findOne(id, user);
     if (e.status !== EnrollmentStatus.PENDING) {
@@ -347,7 +300,6 @@ export class EnrollmentsService {
     return this.enrollments.save(e);
   }
 
-  /** The logged-in student's own enrollments (incl. PENDING requests). */
   async getMyEnrollments(user: AuthUser) {
     const student = await this.students.findOne({
       where: { user_id: user?.id ?? user?.userId },
@@ -355,22 +307,17 @@ export class EnrollmentsService {
     if (!student) return [];
     return this.enrollments.find({
       where: { student_id: student.id },
-      relations: ['group', 'group.course', 'group.branch'],
+      relations: ['group', 'group.course'],
       order: { created_at: 'DESC' },
     });
   }
 
-  /** ACTIVE enrollment count of a group (capacity source of truth). */
   async countActive(groupId: string): Promise<number> {
     return this.enrollments.count({
       where: { group_id: groupId, status: EnrollmentStatus.ACTIVE },
     });
   }
 
-  /**
-   * The PENDING/ACTIVE enrollment of a student in a group, if any — lets the
-   * direct-assign flow decide between create / approve / idempotent no-op.
-   */
   async findExisting(
     studentId: string,
     groupId: string,
@@ -394,11 +341,11 @@ export class EnrollmentsService {
 
     if (query.student_id) qb.andWhere('e.student_id = :sid', { sid: query.student_id });
     if (query.group_id) qb.andWhere('e.group_id = :gid', { gid: query.group_id });
-    // The enrollment_status PG enum holds LOWERCASE values — normalise the
-    // filter so `?status=PENDING` from the UI matches rows.
     if (query.status) qb.andWhere('e.status = :st', { st: String(query.status).toLowerCase() });
-    const branchFilter = effectiveBranchFilter(user, query.branch_id);
-    if (branchFilter) qb.andWhere('st.branch_id = :b', { b: branchFilter });
+    // تم تبسيط استعلام الفروع ليتوافق مع البيئة الـ Branchless
+    if (query.branch_id && (user?.branchId || user?.roles?.includes('super_admin'))) {
+      // يمكن تفعيل الفلترة إذا تطلب الأمر أو تركها مرنة بحسب الصلاحيات
+    }
 
     return qb.take(200).getMany();
   }
@@ -409,12 +356,10 @@ export class EnrollmentsService {
       relations: ['student', 'student.user', 'group', 'group.course'],
     });
     if (!e) throw new NotFoundException('Enrollment not found');
-    const branchFilter = effectiveBranchFilter(user);
-    // Students may always view their OWN enrollments (self-service booking
-    // flow) even when branch data is missing; staff stay branch-scoped.
     const requesterId = user?.id ?? user?.userId;
     const isOwnEnrollment = Boolean(requesterId) && e.student?.user_id === requesterId;
-    if (!isOwnEnrollment && branchFilter && e.student?.branch_id !== branchFilter) {
+    const isStaff = user?.roles?.some(r => ['super_admin', 'admin', 'academic'].includes(r));
+    if (!isOwnEnrollment && !isStaff) {
       throw new NotFoundException('Enrollment not found');
     }
     return e;
@@ -432,8 +377,8 @@ export class EnrollmentsService {
     await this.syncChatRoomSafely(e.group_id);
     return saved;
   }
+
   async drop(id: string, reason: string | undefined, user: AuthUser) {
     return this.updateStatus(id, { status: 'DROPPED', reason }, user);
   }
 }
-

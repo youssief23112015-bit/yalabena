@@ -16,10 +16,8 @@ export class ReportsController {
   salesFunnel(
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.salesFunnel(branchId, new Date(from), new Date(to));
+    return this.service.salesFunnel(new Date(from), new Date(to));
   }
 
   @Get('lead-source-roi')
@@ -28,18 +26,15 @@ export class ReportsController {
   leadSourceRoi(
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.leadSourceRoi(branchId, new Date(from), new Date(to));
+    return this.service.leadSourceRoi(new Date(from), new Date(to));
   }
 
   @Get('group-fill-rate')
   @Roles('super_admin', 'branch_manager', 'academic')
   @ApiOperation({ summary: 'Group fill rate' })
-  groupFillRate(@CurrentUser() user: any) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.groupFillRate(branchId);
+  groupFillRate() {
+    return this.service.groupFillRate();
   }
 
   @Get('teacher-utilization')
@@ -47,10 +42,8 @@ export class ReportsController {
   @ApiOperation({ summary: 'Teacher utilization' })
   teacherUtilization(
     @Query('month') month: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.teacherUtilization(branchId, month);
+    return this.service.teacherUtilization(month);
   }
 
   @Get('student-progress')
@@ -66,18 +59,15 @@ export class ReportsController {
   revenue(
     @Query('from') from: string,
     @Query('to') to: string,
-    @CurrentUser() user: any,
   ) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.revenueByPeriod(branchId, new Date(from), new Date(to));
+    return this.service.revenueByPeriod(new Date(from), new Date(to));
   }
 
   @Get('outstanding-payments')
   @Roles('super_admin', 'branch_manager', 'finance')
   @ApiOperation({ summary: 'Outstanding payments' })
-  outstandingPayments(@CurrentUser() user: any) {
-    const branchId = user.roles?.includes('super_admin') ? null : user.branchId;
-    return this.service.outstandingPayments(branchId);
+  outstandingPayments() {
+    return this.service.outstandingPayments();
   }
 
   @Get('attendance')

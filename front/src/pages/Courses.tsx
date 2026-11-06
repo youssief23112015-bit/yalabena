@@ -18,8 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { Course } from "@/types";
 import {
-  Plus, X, Pencil, Trash2, Eye, ChevronLeft, BookOpen,
-  Minus
+  Plus, X, Pencil, Trash2, Eye, ChevronLeft, BookOpen,   Minus
 } from "lucide-react";
 
 const courseStatuses = ["active", "inactive", "archived"];
@@ -51,26 +50,6 @@ export default function CoursesPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [prereqSearch, setPrereqSearch] = useState("");
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    reset,
-    formState: { errors },
-  } = useForm<CourseForm>({
-    resolver: zodResolver(courseSchema),
-    defaultValues: {
-      status: "active",
-    },
-  });
-
-  const closeForm = () => {
-    setShowForm(false);
-    setEditingId(null);
-    reset();
-  };
-
   const {
     data: courses,
     isLoading,
@@ -152,6 +131,23 @@ export default function CoursesPage() {
       toast({ variant: "destructive", title: "Error", description: err.message });
     },
   });
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<CourseForm>({
+    resolver: zodResolver(courseSchema),
+    defaultValues: { status: "active" },
+  });
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    reset();
+  };
 
   const onSubmit = (data: CourseForm) => {
     const dto: Partial<Course> = {
@@ -274,6 +270,7 @@ export default function CoursesPage() {
             <TabsTrigger value="syllabus">Syllabus</TabsTrigger>
             <TabsTrigger value="prerequisites">Prerequisites ({selectedCourse.prerequisites?.length ?? 0})</TabsTrigger>
             <TabsTrigger value="materials">Materials ({courseMaterials?.length ?? 0})</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="syllabus" className="space-y-4">
@@ -288,6 +285,7 @@ export default function CoursesPage() {
           </TabsContent>
 
           <TabsContent value="prerequisites" className="space-y-4">
+            {/* Add Prerequisite */}
             <Card>
               <CardHeader><CardTitle className="text-base">Add Prerequisite</CardTitle></CardHeader>
               <CardContent className="space-y-3">
@@ -312,6 +310,7 @@ export default function CoursesPage() {
               </CardContent>
             </Card>
 
+            {/* Current Prerequisites */}
             <div className="space-y-2">
               <h3 className="text-sm font-medium">Current Prerequisites</h3>
               {selectedCourse.prerequisites && selectedCourse.prerequisites.length > 0 ? (
@@ -353,6 +352,8 @@ export default function CoursesPage() {
               <div className="text-center py-8 text-muted-foreground">No materials linked to this course.</div>
             )}
           </TabsContent>
+
+
         </Tabs>
       </div>
     );

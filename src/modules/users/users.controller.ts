@@ -23,7 +23,6 @@ import {
 interface AuthUser {
   userId: string;
   email: string;
-  branchId: string;
   roles: string[];
   permissions: string[];
 }
@@ -35,15 +34,13 @@ export class UsersController {
   constructor(private readonly service: UsersService) {}
 
   /**
-   * Branch-scoped rule: super_admin can create users in ANY branch.
-   * branch_manager / hr can only create users inside their OWN branch.
+   * Create a new user (branchless: any staff member may create an account).
    */
   @Post()
   @Roles('super_admin', 'branch_manager', 'hr')
   @Permissions('users:create')
   @ApiOperation({ summary: 'Create a new user' })
   @ApiResponse({ status: 201, description: 'User created successfully.' })
-  @ApiResponse({ status: 403, description: 'Forbidden: cross-branch creation.' })
   async create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user.userId);
   }
@@ -54,10 +51,6 @@ export class UsersController {
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({ status: 200, description: 'Return all users.' })
   async findAll(@CurrentUser() user: AuthUser) {
-    // Non-super-admins see only their own branch's users.
-    if (!user.roles.includes('super_admin')) {
-      return this.service.findAll({ branchId: user.branchId });
-    }
     return this.service.findAll();
   }
 

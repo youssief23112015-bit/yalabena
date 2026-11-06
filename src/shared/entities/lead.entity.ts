@@ -54,9 +54,6 @@ export class Lead {
   assigned_agent: User;
 
   @Column({ type: 'uuid', nullable: true })
-  branch_id: string;
-
-  @Column({ type: 'uuid', nullable: true })
   converted_to_student_id: string;
 
   @Column({ type: 'timestamptz', nullable: true })

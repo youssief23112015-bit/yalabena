@@ -14,17 +14,15 @@ export interface DashboardFilters {
   period: DashboardPeriod;
   from?: string;
   to?: string;
-  branch_id?: string;
 }
 
 export function useDashboardFilters() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const period = (searchParams.get("period") as DashboardPeriod) ?? "30d";
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;
-  const branch_id = searchParams.get("branch_id") || undefined;
 
   const setFilters = useCallback(
     (next: Partial<DashboardFilters>) => {
@@ -35,12 +33,10 @@ export function useDashboardFilters() {
       else params.delete("from");
       if (next.to != null) params.set("to", next.to);
       else params.delete("to");
-      if (next.branch_id != null) params.set("branch_id", next.branch_id);
-      else params.delete("branch_id");
       navigate(`?${params.toString()}`, { replace: true });
     },
     [navigate, searchParams],
   );
 
-  return { period, from, to, branch_id, setFilters };
+  return { period, from, to, setFilters };
 }

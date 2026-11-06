@@ -1,5 +1,3 @@
-import { useTranslation } from "react-i18next";
-
 /** Format a number using the current i18n locale. */
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat(undefined).format(value);

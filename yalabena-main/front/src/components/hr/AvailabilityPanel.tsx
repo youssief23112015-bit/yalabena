@@ -1,0 +1,14 @@
+﻿import { useEffect, useState } from "react";
+import { hrApi } from "@/api/hr";
+import type { TeacherAvailability } from "@/types/hr";
+import { Button } from "@/components/ui/button";
+const days=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+export function AvailabilityPanel({employeeId}:{employeeId:string}){
+ const [items,setItems]=useState<TeacherAvailability[]>([]);const[day,setDay]=useState(0);const[start,setStart]=useState("09:00");const[end,setEnd]=useState("17:00");const[available]=useState(true);const[note,setNote]=useState("");const[busy,setBusy]=useState(false);const[error,setError]=useState("");
+ async function load(){try{setItems(await hrApi.availability(employeeId))}catch(e){setError(e instanceof Error?e.message:"Unable to load availability")}}
+ useEffect(()=>{void load()},[employeeId]);
+ async function add(){setBusy(true);setError("");try{await hrApi.addAvailability({employee_id:employeeId,day_of_week:day,start_time:start,end_time:end,is_available:available,note});setNote("");await load()}catch(e){setError(e instanceof Error?e.message:"Unable to save")}finally{setBusy(false)}}
+ async function remove(id:string){try{await hrApi.deleteAvailability(id);await load()}catch(e){setError(e instanceof Error?e.message:"Unable to delete")}}
+ return <div className="space-y-4"><div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-5"><select className="rounded border bg-background p-2" value={day} onChange={e=>setDay(Number(e.target.value))}>{days.map((d,i)=><option key={d} value={i}>{d}</option>)}</select><input type="time" className="rounded border bg-background p-2" value={start} onChange={e=>setStart(e.target.value)}/><input type="time" className="rounded border bg-background p-2" value={end} onChange={e=>setEnd(e.target.value)}/><input className="rounded border bg-background p-2" placeholder="Note" value={note} onChange={e=>setNote(e.target.value)}/><Button disabled={busy} onClick={add}>Add slot</Button></div>{error&&<p className="text-sm text-destructive">{error}</p>}<div className="overflow-x-auto rounded border"><table className="w-full text-sm"><thead className="bg-muted"><tr><th className="p-3 text-left">Day</th><th className="p-3 text-left">Time</th><th className="p-3 text-left">Available</th><th className="p-3 text-left">Note</th><th/></tr></thead><tbody>{items.map(x=><tr key={x.id} className="border-t"><td className="p-3">{days[x.day_of_week]}</td><td className="p-3">{x.start_time}â€“{x.end_time}</td><td className="p-3">{x.is_available?"Yes":"No"}</td><td className="p-3">{x.note||"â€”"}</td><td className="p-3 text-right"><Button variant="ghost" size="sm" onClick={()=>remove(x.id)}>Delete</Button></td></tr>)}</tbody></table>{items.length===0&&<p className="p-6 text-center text-muted-foreground">No availability slots.</p>}</div></div>
+}
+

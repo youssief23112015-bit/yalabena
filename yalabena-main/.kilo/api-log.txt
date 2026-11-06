@@ -1,0 +1,25 @@
+﻿[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/activities/:id, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/activities/:id, DELETE} route[39m[38;5;3m +4ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/activities/:id/registrations, POST} route[39m[38;5;3m +4ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/activities/:id/attendance, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/activities/:id/attendance, POST} route[39m[38;5;3m +3ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/activities/:id/photos, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mKbController {/api/v1/kb}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/kb/categories, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/kb/categories, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/kb/articles, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/kb/articles, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/kb/articles/:id, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/kb/articles/:id, PUT} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mReportsController {/api/v1/reports}:[39m[38;5;3m +8ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/sales-funnel, GET} route[39m[38;5;3m +4ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/lead-source-roi, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/group-fill-rate, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/teacher-utilization, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/student-progress, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/revenue, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/outstanding-payments, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:11 AM [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/v1/reports/attendance, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 1  - [39m10/10/2026, 10:19:12 AM [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +40ms[39m
+≡ƒÜÇ API Base URL: http://localhost:3000/api/v1
+≡ƒôÜ Swagger UI:   http://localhost:3000/docs

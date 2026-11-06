@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { useChatToast } from "@/hooks/useChatToast";
-import { capturePublicLead, fetchPublicBranches } from "@/api/public";
+import { capturePublicLead } from "@/api/public";
 
 const schema = z.object({
   first_name: z.string().min(2, "First name is required"),
@@ -20,7 +20,6 @@ const schema = z.object({
   phone: z.string().min(8, "Valid phone number is required"),
   email: z.string().email().optional().or(z.literal("")),
   level_interest: z.string().optional(),
-  branch_id: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -30,11 +29,6 @@ export function LeadCaptureForm() {
   const { t } = useTranslation();
   const { pushToast } = useChatToast();
   const [submitted, setSubmitted] = useState(false);
-
-  const { data: branches } = useQuery({
-    queryKey: ["public-branches"],
-    queryFn: fetchPublicBranches,
-  });
 
   const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -58,7 +52,6 @@ export function LeadCaptureForm() {
       ...data,
       email: data.email || undefined,
       level_interest: data.level_interest || undefined,
-      branch_id: data.branch_id || undefined,
       notes: data.notes || undefined,
     });
   };
@@ -125,17 +118,7 @@ export function LeadCaptureForm() {
                 ))}
               </SelectContent>
             </Select>
-
-            <Select onValueChange={(val) => setValue("branch_id", val)}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("public.leadForm.branch", "Preferred Branch")} />
-              </SelectTrigger>
-              <SelectContent>
-                {(branches ?? []).map((b) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div></div>
           </div>
 
           <Textarea placeholder={t("public.leadForm.notes", "Any additional notes or questions?")} {...register("notes")} />

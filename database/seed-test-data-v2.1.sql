@@ -332,7 +332,7 @@ ON CONFLICT DO NOTHING;
 
 -- groups
 INSERT INTO groups (id,name,course_id,teacher_id,branch_id,capacity,start_date,end_date,status,mode) VALUES
-('fe652f07-65d3-586c-a5c3-b3ecaeeda736','Seed Groups','958e6b86-4e2e-5096-8e80-eb398a91350e','f54bc944-43f9-5b09-8a79-979d2186bc31','66fc3021-8661-503f-b5c8-cea9e67629e6',20,CURRENT_DATE,CURRENT_DATE+INTERVAL '60 days','upcoming','in_person')
+('fe652f07-65d3-586c-a5c3-b3ecaeeda736','Seed Groups','958e6b86-4e2e-5096-8e80-eb398a91350e','d3995993-c92b-5696-b5eb-f7f09a1031e4','66fc3021-8661-503f-b5c8-cea9e67629e6',20,CURRENT_DATE,CURRENT_DATE+INTERVAL '60 days','upcoming','in_person')
 ON CONFLICT DO NOTHING;
 
 
@@ -391,13 +391,13 @@ ON CONFLICT DO NOTHING;
 
 
 -- lms_modules
-INSERT INTO lms_modules (id,group_id,name,order,is_published) VALUES
+INSERT INTO lms_modules (id,group_id,name,"order",is_published) VALUES
 ('c30e63bc-a75f-53e8-b304-21c7f2640875','fe652f07-65d3-586c-a5c3-b3ecaeeda736','Seed Module',1,TRUE)
 ON CONFLICT DO NOTHING;
 
 
 -- lms_lessons
-INSERT INTO lms_lessons (id,module_id,name,order,type,duration_minutes,is_published,content) VALUES
+INSERT INTO lms_lessons (id,module_id,name,"order",type,duration_minutes,is_published,content) VALUES
 ('fad3d413-278b-51de-ad41-05ef90679599','c30e63bc-a75f-53e8-b304-21c7f2640875','Seed Lesson',1,'content',45,TRUE,'Seed lesson content')
 ON CONFLICT DO NOTHING;
 
@@ -427,7 +427,7 @@ ON CONFLICT DO NOTHING;
 
 
 -- quiz_questions
-INSERT INTO quiz_questions (id,quiz_id,question_text,type,correct_answer,order,options,points) VALUES
+INSERT INTO quiz_questions (id,quiz_id,question_text,type,correct_answer,"order",options,points) VALUES
 ('43234a08-e811-5e42-bb38-f090aaa0bccf','c0e8729c-aca8-5e4e-9f3a-c493539cb88a','Seed quiz question','mcq','"A"'::jsonb,1,'["A","B","C"]'::jsonb,1)
 ON CONFLICT DO NOTHING;
 
@@ -439,7 +439,7 @@ ON CONFLICT DO NOTHING;
 
 
 -- gradebook_categories
-INSERT INTO gradebook_categories (id,group_id,name,weight,order) VALUES
+INSERT INTO gradebook_categories (id,group_id,name,weight,"order") VALUES
 ('b757ba33-a688-543f-9166-7b06480ae6dc','fe652f07-65d3-586c-a5c3-b3ecaeeda736','Participation',30,1)
 ON CONFLICT DO NOTHING;
 
@@ -679,7 +679,7 @@ ON CONFLICT DO NOTHING;
 
 
 -- settings
-INSERT INTO settings (id,key,value,group,is_encrypted,description) VALUES
+INSERT INTO settings (id,key,value,"group",is_encrypted,description) VALUES
 ('4812b6c5-1fd3-575c-98d5-87249939f88b','seed_mode','true','development',FALSE,'Marks database as seeded for testing')
 ON CONFLICT DO NOTHING;
 

@@ -1,0 +1,545 @@
+import * as fs from 'fs';
+import PDFDocument from 'pdfkit';
+
+export interface PdfText {
+  text: string;
+  y?: number;
+  size?: number;
+  bold?: boolean;
+  color?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
+export async function buildPdf(opts: {
+  landscape?: boolean;
+  backgroundPath?: string | null;
+  texts: PdfText[];
+  width = 841.89;
+}): Promise<Buffer> {
+  const doc = new PDFDocument({
+    size: 'A4',
+    layout: opts.landscape ? 'landscape' : 'portrait',
+    margin: 40,
+    bufferPages: true,
+  });
+
+  const fontPath = process.env.CERT_FONT_PATH;
+  if (fontPath && fs.existsSync(fontPath)) {
+    doc.registerFont('app', fontPath);
+    doc.font('app');
+  } else if (opts.texts.some((t) => /[\u0600-\u06FF]/.test(t.text))) {
+    // eslint-disable-next-line no-console
+    console.warn('[pdf] Arabic text detected but CERT_FONT_PATH is not set — glyphs will be wrong.');
+  }
+
+  if (opts.backgroundPath && fs.existsSync(opts.backgroundPath)) {
+    try {
+      doc.image(opts.backgroundPath, 0, 0, { width: doc.page.width, height: doc.page.height });
+    } catch {
+      /* ignore broken background */
+    }
+  }
+
+  for (const t of opts.texts) {
+    doc
+      .fontSize(t.size ?? 14)
+      .fillColor(t.color ?? '#111111')
+      .text(t.text, 40, t.y, {
+        width: doc.page.width - 80,
+        align: t.align ?? 'center',
+        lineGap: 4,
+      });
+  }
+
+  const chunks: Buffer[] = [];
+  doc.on('data', (c) => chunks.push(c));
+  const done = new Promise<Buffer>((resolve) => doc.on('end', () => resolve(Buffer.concat(chunks))));
+  doc.end();
+  return done;
+}
+
+export function resolveUploadPath(url?: string | null): string | null {
+  if (!url) return null;
+  const p = url.startsWith('/') ? url.slice(1) : url;
+  const full = require('path').join(process.cwd(), p);
+  return fs.existsSync(full) ? full : null;
+}
+--------------------------------------------------------------------------------------------------------
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { Invoice } from '../../shared/entities/invoice.entity';
+import { InvoiceItem } from '../../shared/entities/invoice-item.entity';
+import { Payment } from '../../shared/entities/payment.entity';
+import { Installment } from '../../shared/entities/installment.entity';
+import { Refund } from '../../shared/entities/refund.entity';
+import { PromoCode } from '../../shared/entities/promo-code.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { InvoiceStatus } from '../../common/enums/invoice-status.enum';
+import { InstallmentStatus } from '../../common/enums/installment-status.enum';
+import { PaymentStatus } from '../../common/enums/payment-status.enum';
+import { PaymentMethod } from '../../common/enums/payment-method.enum';
+import { RefundStatus } from '../../common/enums/refund-status.enum';
+import { AuthUser, assertBranchAccess, effectiveBranchFilter, isSuperAdmin, userBranchId } from '../../common/utils/branch-scope';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreatePromoCodeDto } from './dto/create-promo-code.dto';
+import { CreateRefundDto } from './dto/create-refund.dto';
+import { QueryInvoiceDto } from './dto/query-invoice.dto';
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+@Injectable()
+export class FinanceService {
+  constructor(
+    @InjectRepository(Invoice) private readonly invoices: Repository<Invoice>,
+    @InjectRepository(InvoiceItem) private readonly invoiceItems: Repository<InvoiceItem>,
+    @InjectRepository(Payment) private readonly payments: Repository<Payment>,
+    @InjectRepository(Installment) private readonly installments: Repository<Installment>,
+    @InjectRepository(Refund) private readonly refunds: Repository<Refund>,
+    @InjectRepository(PromoCode) private readonly promoCodes: Repository<PromoCode>,
+    @InjectRepository(Student) private readonly students: Repository<Student>,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  private genNumber(prefix: string) {
+    const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    return `${prefix}-${d}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+  }
+
+  private addMonths(date: Date, months: number) {
+    const d = new Date(date);
+    d.setMonth(d.getMonth() + months);
+    return d;
+  }
+
+  // ---------- Promo codes ----------
+  async createPromo(dto: CreatePromoCodeDto, user: AuthUser) {
+    const exists = await this.promoCodes.findOne({ where: { code: dto.code.toUpperCase() } });
+    if (exists) throw new BadRequestException('Promo code already exists');
+    return this.promoCodes.save(
+      this.promoCodes.create({
+        code: dto.code.toUpperCase(),
+        type: dto.type as any,
+        value: dto.value,
+        max_discount: dto.max_discount ?? null,
+        expiry_date: dto.expiry_date,
+        usage_limit: dto.usage_limit ?? null,
+        applicable_courses: dto.applicable_courses ?? null,
+        applicable_branches: dto.applicable_branches ?? null,
+        created_by: user.id,
+      }),
+    );
+  }
+
+  async listPromos() {
+    return this.promoCodes.find({ order: { created_at: 'DESC' } });
+  }
+
+  async setPromoStatus(id: string, status: 'active' | 'inactive') {
+    const p = await this.promoCodes.findOne({ where: { id } });
+    if (!p) throw new NotFoundException('Promo code not found');
+    p.status = status;
+    return this.promoCodes.save(p);
+  }
+
+  private async validatePromo(code: string, courseId?: string, branchId?: string) {
+    const p = await this.promoCodes.findOne({ where: { code: code.toUpperCase() } });
+    if (!p || p.status !== 'active') throw new BadRequestException('Invalid promo code');
+    if (new Date(p.expiry_date) < new Date()) throw new BadRequestException('Promo code expired');
+    if (p.usage_limit != null && p.used_count >= p.usage_limit) throw new BadRequestException('Promo code usage limit reached');
+    if (p.applicable_courses?.length && courseId && !p.applicable_courses.includes(courseId))
+      throw new BadRequestException('Promo code not applicable to this course');
+    if (p.applicable_branches?.length && branchId && !p.applicable_branches.includes(branchId))
+      throw new BadRequestException('Promo code not applicable to this branch');
+    return p;
+  }
+
+  private promoDiscount(p: PromoCode, amount: number) {
+    let d = p.type === ('percentage' as any) ? (amount * Number(p.value)) / 100 : Number(p.value);
+    if (p.max_discount != null) d = Math.min(d, Number(p.max_discount));
+    return round2(Math.min(d, amount));
+  }
+
+  // ---------- Invoices ----------
+  async createInvoiceForEnrollment(a: {
+    enrollment_id: string; student_id: string; course_id: string; branch_id: string;
+    amount: number; description: string; promo_code?: string; manual_discount?: number;
+    installments_count?: number; due_days?: number; created_by: string;
+  }) {
+    let discount = a.manual_discount ?? 0;
+    let promo: PromoCode | null = null;
+    if (a.promo_code) {
+      promo = await this.validatePromo(a.promo_code, a.course_id, a.branch_id);
+      discount = this.promoDiscount(promo, a.amount);
+    }
+    const due = new Date();
+    due.setDate(due.getDate() + (a.due_days ?? 7));
+    const total = round2(a.amount - discount);
+
+    return this.dataSource.transaction(async (em) => {
+      const inv = await em.save(
+        em.create(Invoice, {
+          invoice_number: this.genNumber('INV'),
+          enrollment_id: a.enrollment_id,
+          student_id: a.student_id,
+          branch_id: a.branch_id,
+          subtotal: a.amount,
+          discount_amount: discount,
+          tax_amount: 0,
+          total_amount: total,
+          paid_amount: 0,
+          balance_due: total,
+          status: 'UNPAID' as InvoiceStatus,
+          due_date: due,
+          created_by: a.created_by,
+        }),
+      );
+      await em.save(
+        em.create(InvoiceItem, {
+          invoice_id: inv.id,
+          item_type: 'COURSE' as any,
+          course_id: a.course_id,
+          description: a.description,
+          quantity: 1,
+          unit_price: a.amount,
+          discount_amount: discount,
+          tax_amount: 0,
+          total_amount: total,
+        }),
+      );
+      await this.createInstallments(em, inv.id, total, a.installments_count ?? 1, due);
+      if (promo) {
+        promo.used_count += 1;
+        await em.save(promo);
+      }
+      return inv;
+    });
+  }
+
+  async createManualInvoice(dto: CreateInvoiceDto, user: AuthUser) {
+    const branchFilter = effectiveBranchFilter(user, dto.branch_id);
+    if (branchFilter && branchFilter !== dto.branch_id) {
+      throw new BadRequestException('Cannot create invoice outside your branch');
+    }
+    const subtotal = round2(dto.items.reduce((s, i) => s + i.quantity * i.unit_price, 0));
+    let discount = dto.discount_amount ?? 0;
+    let promo: PromoCode | null = null;
+    const courseId = dto.items.find((i) => i.course_id)?.course_id;
+    if (dto.promo_code) {
+      promo = await this.validatePromo(dto.promo_code, courseId, dto.branch_id);
+      discount = this.promoDiscount(promo, subtotal);
+    }
+    const total = round2(subtotal - discount);
+    const due = new Date();
+    due.setDate(due.getDate() + (dto.due_days ?? 7));
+
+    return this.dataSource.transaction(async (em) => {
+      const inv = await em.save(
+        em.create(Invoice, {
+          invoice_number: this.genNumber('INV'),
+          enrollment_id: dto.enrollment_id ?? null,
+          student_id: dto.student_id,
+          branch_id: dto.branch_id,
+          subtotal,
+          discount_amount: discount,
+          tax_amount: 0,
+          total_amount: total,
+          paid_amount: 0,
+          balance_due: total,
+          status: 'UNPAID' as InvoiceStatus,
+          due_date: due,
+          notes: dto.notes ?? null,
+          created_by: user.id,
+        }),
+      );
+      for (const item of dto.items) {
+        const lineTotal = round2(item.quantity * item.unit_price);
+        await em.save(
+          em.create(InvoiceItem, {
+            invoice_id: inv.id,
+            item_type: item.course_id ? ('COURSE' as any) : ('MISC' as any),
+            course_id: item.course_id ?? null,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total_amount: lineTotal,
+          }),
+        );
+      }
+      await this.createInstallments(em, inv.id, total, dto.installments_count ?? 1, due);
+      if (promo) {
+        promo.used_count += 1;
+        await em.save(promo);
+      }
+      return inv;
+    });
+  }
+
+  private async createInstallments(em: any, invoiceId: string, total: number, count: number, firstDue: Date) {
+    if (count <= 1) return;
+    const base = round2(total / count);
+    for (let i = 1; i <= count; i++) {
+      const amt = i === count ? round2(total - base * (count - 1)) : base;
+      await em.save(
+        em.create(Installment, {
+          invoice_id: invoiceId,
+          installment_number: i,
+          amount: amt,
+          due_date: this.addMonths(firstDue, i - 1),
+          paid_amount: 0,
+          status: 'PENDING' as InstallmentStatus,
+        }),
+      );
+    }
+  }
+
+  async listInvoices(dto: QueryInvoiceDto, user: AuthUser) {
+    const qb = this.invoices
+      .createQueryBuilder('i')
+      .leftJoinAndSelect('i.student', 'st')
+      .leftJoinAndSelect('st.user', 'stu')
+      .orderBy('i.created_at', 'DESC');
+    if (dto.student_id) qb.andWhere('i.student_id = :sid', { sid: dto.student_id });
+    if (dto.status) qb.andWhere('i.status = :s', { s: dto.status });
+    if (dto.from) qb.andWhere('i.created_at >= :f', { f: dto.from });
+    if (dto.to) qb.andWhere('i.created_at <= :t', { t: dto.to + ' 23:59:59' });
+    const branchFilter = effectiveBranchFilter(user, dto.branch_id);
+    if (branchFilter) qb.andWhere('i.branch_id = :b', { b: branchFilter });
+    return qb.take(300).getMany();
+  }
+
+  async getInvoice(id: string, user: AuthUser) {
+    const inv = await this.invoices.findOne({
+      where: { id },
+      relations: ['student', 'student.user', 'payments', 'installments', 'items'],
+    });
+    if (!inv) throw new NotFoundException('Invoice not found');
+    assertBranchAccess(user, inv.branch_id);
+    return inv;
+  }
+
+  private recalcInvoice(inv: Invoice) {
+    inv.paid_amount = round2(Number(inv.paid_amount));
+    inv.balance_due = round2(Number(inv.total_amount) - inv.paid_amount);
+    inv.status = inv.balance_due <= 0 ? ('PAID' as InvoiceStatus) : inv.paid_amount > 0 ? ('PARTIAL' as InvoiceStatus) : inv.status;
+    if (inv.status !== 'PAID' && inv.balance_due > 0 && inv.paid_amount === 0) inv.status = 'UNPAID' as InvoiceStatus;
+    return inv;
+  }
+
+  // ---------- Payments ----------
+  async recordPayment(dto: CreatePaymentDto, user: AuthUser) {
+    return this.dataSource.transaction(async (em) => {
+      const inv = await em.findOne(Invoice, { where: { id: dto.invoice_id } });
+      if (!inv) throw new NotFoundException('Invoice not found');
+      assertBranchAccess(user, inv.branch_id);
+      if (inv.status === ('CANCELLED' as InvoiceStatus)) throw new BadRequestException('Invoice is cancelled');
+      if (round2(dto.amount) > round2(Number(inv.balance_due))) {
+        throw new BadRequestException(`Amount exceeds balance due (${inv.balance_due})`);
+      }
+
+      const payment = await em.save(
+        em.create(Payment, {
+          invoice_id: inv.id,
+          amount: dto.amount,
+          method: dto.method as PaymentMethod,
+          reference: dto.reference ?? null,
+          paid_at: new Date(),
+          recorded_by: user.id,
+          status: 'COMPLETED' as PaymentStatus,
+          receipt_number: this.genNumber('RCP'),
+          notes: dto.notes ?? null,
+        }),
+      );
+
+      inv.paid_amount = round2(Number(inv.paid_amount) + dto.amount);
+      await em.save(this.recalcInvoice(inv));
+
+      // allocate oldest-first to installments
+      let remaining = dto.amount;
+      const pending = await em.find(Installment, {
+        where: { invoice_id: inv.id, status: 'PENDING' as InstallmentStatus },
+        order: { installment_number: 'ASC' },
+      });
+      for (const inst of pending) {
+        if (remaining <= 0) break;
+        const instBalance = round2(Number(inst.amount) - Number(inst.paid_amount));
+        const pay = Math.min(instBalance, remaining);
+        inst.paid_amount = round2(Number(inst.paid_amount) + pay);
+        if (inst.paid_amount >= Number(inst.amount)) {
+          inst.status = 'PAID' as InstallmentStatus;
+          inst.paid_at = new Date();
+        }
+        await em.save(inst);
+        remaining = round2(remaining - pay);
+      }
+
+      return { payment, invoice: await em.findOne(Invoice, { where: { id: inv.id } }) };
+    });
+  }
+
+  async listPayments(user: AuthUser, query: { invoice_id?: string; branch_id?: string; from?: string; to?: string }) {
+    const qb = this.payments
+      .createQueryBuilder('p')
+      .innerJoin('p.invoice', 'inv')
+      .leftJoinAndSelect('p.invoice', 'invoice')
+      .orderBy('p.paid_at', 'DESC');
+    if (query.invoice_id) qb.andWhere('p.invoice_id = :iid', { iid: query.invoice_id });
+    if (query.from) qb.andWhere('p.paid_at >= :f', { f: query.from });
+    if (query.to) qb.andWhere('p.paid_at <= :t', { t: query.to + ' 23:59:59' });
+    const branchFilter = effectiveBranchFilter(user, query.branch_id);
+    if (branchFilter) qb.andWhere('inv.branch_id = :b', { b: branchFilter });
+    return qb.take(300).getMany();
+  }
+
+  async getPayment(id: string, user: AuthUser) {
+    const p = await this.payments.findOne({ where: { id }, relations: ['invoice', 'invoice.student', 'invoice.student.user'] });
+    if (!p) throw new NotFoundException('Payment not found');
+    assertBranchAccess(user, p.invoice?.branch_id);
+    return p;
+  }
+
+  // ---------- Refunds ----------
+  async createRefund(dto: CreateRefundDto, user: AuthUser) {
+    const payment = await this.payments.findOne({ where: { id: dto.payment_id }, relations: ['invoice'] });
+    if (!payment) throw new NotFoundException('Payment not found');
+    assertBranchAccess(user, payment.invoice?.branch_id);
+    if (round2(dto.amount) > round2(Number(payment.amount))) {
+      throw new BadRequestException('Refund exceeds original payment amount');
+    }
+    const existing = await this.refunds.findOne({ where: { payment_id: dto.payment_id, status: 'PENDING' as RefundStatus } });
+    if (existing) throw new BadRequestException('A pending refund already exists for this payment');
+    return this.refunds.save(
+      this.refunds.create({
+        payment_id: payment.id,
+        invoice_id: payment.invoice_id,
+        amount: dto.amount,
+        reason_code: dto.reason_code as any,
+        reason_note: dto.reason_note ?? null,
+      }),
+    );
+  }
+
+  async decideRefund(id: string, action: 'approve' | 'reject', note: string | undefined, user: AuthUser) {
+    const r = await this.refunds.findOne({ where: { id }, relations: ['invoice'] });
+    if (!r) throw new NotFoundException('Refund not found');
+    assertBranchAccess(user, r.invoice?.branch_id);
+    if (r.status !== ('PENDING' as RefundStatus)) throw new BadRequestException('Refund is not pending');
+    r.status = (action === 'approve' ? 'APPROVED' : 'REJECTED') as RefundStatus;
+    r.approved_by = user.id;
+    r.approved_at = new Date();
+    r.approval_note = note ?? null;
+    return this.refunds.save(r);
+  }
+
+  async processRefund(id: string, user: AuthUser) {
+    return this.dataSource.transaction(async (em) => {
+      const r = await em.findOne(Refund, { where: { id }, relations: ['invoice'] });
+      if (!r) throw new NotFoundException('Refund not found');
+      assertBranchAccess(user, r.invoice?.branch_id);
+      if (r.status !== ('APPROVED' as RefundStatus)) throw new BadRequestException('Refund must be approved before processing');
+      r.status = 'PROCESSED' as RefundStatus;
+      r.processed_by = user.id;
+      r.processed_at = new Date();
+      await em.save(r);
+
+      const inv = r.invoice;
+      inv.paid_amount = round2(Math.max(0, Number(inv.paid_amount) - Number(r.amount)));
+      await em.save(this.recalcInvoice(inv));
+      return r;
+    });
+  }
+
+  async listRefunds(user: AuthUser, query: { status?: string; branch_id?: string }) {
+    const qb = this.refunds
+      .createQueryBuilder('r')
+      .innerJoin('r.invoice', 'inv')
+      .leftJoinAndSelect('r.payment', 'payment')
+      .orderBy('r.created_at', 'DESC');
+    if (query.status) qb.andWhere('r.status = :s', { s: query.status });
+    const branchFilter = effectiveBranchFilter(user, query.branch_id);
+    if (branchFilter) qb.andWhere('inv.branch_id = :b', { b: branchFilter });
+    return qb.take(300).getMany();
+  }
+
+  // ---------- Ledger & receivables ----------
+  async ledger(user: AuthUser, from?: string, to?: string, branch_id?: string) {
+    const branchFilter = effectiveBranchFilter(user, branch_id);
+    const range = (qb: any, col: string) => {
+      if (from) qb.andWhere(`${col} >= :f`, { f: from });
+      if (to) qb.andWhere(`${col} <= :t`, { t: to + ' 23:59:59' });
+      return qb;
+    };
+
+    const incomeQb = this.payments
+      .createQueryBuilder('p')
+      .select('inv.branch_id', 'branch_id')
+      .addSelect('SUM(p.amount)', 'income')
+      .innerJoin('p.invoice', 'inv')
+      .groupBy('inv.branch_id');
+    range(incomeQb, 'p.paid_at');
+    if (branchFilter) incomeQb.andWhere('inv.branch_id = :b', { b: branchFilter });
+
+    const expenseQb = this.refunds
+      .createQueryBuilder('r')
+      .select('inv.branch_id', 'branch_id')
+      .addSelect('SUM(r.amount)', 'expense')
+      .innerJoin('r.invoice', 'inv')
+      .where("r.status = 'PROCESSED'")
+      .groupBy('inv.branch_id');
+    range(expenseQb, 'r.processed_at');
+    if (branchFilter) expenseQb.andWhere('inv.branch_id = :b', { b: branchFilter });
+
+    const [income, expense] = await Promise.all([incomeQb.getRawMany(), expenseQb.getRawMany()]);
+    const map = new Map<string, { income: number; expense: number }>();
+    for (const row of income) map.set(row.branch_id, { income: Number(row.income), expense: 0 });
+    for (const row of expense) {
+      const cur = map.get(row.branch_id) ?? { income: 0, expense: 0 };
+      cur.expense = Number(row.expense);
+      map.set(row.branch_id, cur);
+    }
+    const branches = [...map.entries()].map(([bid, v]) => ({
+      branch_id: bid,
+      income: round2(v.income),
+      expense: round2(v.expense),
+      net: round2(v.income - v.expense),
+    }));
+
+    return {
+      from: from ?? null,
+      to: to ?? null,
+      scope: isSuperAdmin(user) && !branchFilter ? 'all_branches' : 'branch',
+      consolidated: branches,
+      totals: {
+        income: round2(branches.reduce((s, b) => s + b.income, 0)),
+        expense: round2(branches.reduce((s, b) => s + b.expense, 0)),
+        net: round2(branches.reduce((s, b) => s + b.net, 0)),
+      },
+    };
+  }
+
+  async receivables(user: AuthUser, branch_id?: string) {
+    const qb = this.invoices
+      .createQueryBuilder('i')
+      .leftJoinAndSelect('i.student', 'st')
+      .leftJoinAndSelect('st.user', 'u')
+      .where("i.status IN ('UNPAID','PARTIAL')")
+      .andWhere('i.balance_due > 0')
+      .orderBy('i.due_date', 'ASC');
+    const branchFilter = effectiveBranchFilter(user, branch_id);
+    if (branchFilter) qb.andWhere('i.branch_id = :b', { b: branchFilter });
+    const rows = await qb.getMany();
+    return rows.map((i) => ({
+      invoice_id: i.id,
+      invoice_number: i.invoice_number,
+      student: i.student?.user ? `${i.student.user.first_name} ${i.student.user.last_name}` : null,
+      total: i.total_amount,
+      paid: i.paid_amount,
+      balance_due: i.balance_due,
+      due_date: i.due_date,
+      overdue: new Date(i.due_date) < new Date(),
+      branch_id: i.branch_id,
+    }));
+  }
+}
+===============================================================================================================

@@ -1,43 +1,30 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { useAuthStore } from "@/store/authStore";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 
-// ✅ Request Interceptor: قراءة الـ Token من كائن speakup-auth
+// Request Interceptor: get token from centralized auth store
+// (localStorage first — "Remember Me", then sessionStorage — tab/browser close).
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const authData = localStorage.getItem("speakup-auth");
-
-    if (authData) {
-      try {
-        const parsed = JSON.parse(authData);
-        const token = parsed?.state?.accessToken;
-
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      } catch (error) {
-        console.error("Failed to parse auth token from speakup-auth:", error);
-      }
+    const token = useAuthStore.getState().getAccessToken();
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error),
 );
 
-// ✅ Response Interceptor: المعالجة والتوجيه عند انتهاء الجلسة (401)
+// Response Interceptor: clear all auth state on 401 (session expired / invalidated).
 api.interceptors.response.use(
   (res) => res,
   (error: AxiosError<{ message?: string }>) => {
     if (error.response?.status === 401) {
-      // مسح المفتاح الصحيح الخاص بـ Zustand للحالة
-      localStorage.removeItem("speakup-auth");
-      localStorage.removeItem("lms_token");
-      localStorage.removeItem("lms_user");
-
+      useAuthStore.getState().clearAuth();
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
       }
@@ -54,7 +41,7 @@ api.interceptors.response.use(
 
 /**
  * Downloads a protected file (resource download / watermarked PDF) using the
- * Bearer token from speakup-auth via the configured axios instance.
+ * Bearer token from the centralized auth store.
  */
 export async function downloadProtected(path: string, filename?: string) {
   const res = await api.get(path, { responseType: "blob" });

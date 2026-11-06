@@ -1,0 +1,288 @@
+﻿ M .dockerignore
+ M .kilo/api-build.txt
+ M .kilo/api-build2.txt
+ M .kilo/api-errors.txt
+ M .kilo/api-log.txt
+ M .kilo/api-tail.txt
+ M .kilo/build-api.txt
+ M .kilo/build-front.txt
+ M .kilo/chat-test.txt
+ M .kilo/chat-test2.txt
+ M .kilo/chat-tree.txt
+ M .kilo/compose-files.txt
+ M .kilo/compose-ls.txt
+ M .kilo/compose-up.txt
+ M .kilo/containers.txt
+ M .kilo/diag.txt
+ M .kilo/diag2.txt
+ M .kilo/dockerignore.txt
+ M .kilo/dockerps-now.txt
+ M .kilo/done-markers.txt
+ M .kilo/e2e-exists.txt
+ M .kilo/e2ecount.txt
+ M .kilo/env-check.txt
+ M .kilo/fe-ports.txt
+ M .kilo/fe-run.txt
+ M .kilo/fe-runinfo.txt
+ M .kilo/fefiles.txt
+ M .kilo/fepages.txt
+ M .kilo/fetodos.txt
+ M .kilo/final-markers.txt
+ M .kilo/front-build.txt
+ M .kilo/front-build2.txt
+ M .kilo/front-build4.txt
+ M .kilo/front-prog.txt
+ M .kilo/front-tail.txt
+ M .kilo/front-tree.txt
+ M .kilo/front-tsc.txt
+ M .kilo/front-tsc2.txt
+ M .kilo/front-tsc3.txt
+ M .kilo/front-tsc4.txt
+ M .kilo/front-tsc5.txt
+ M .kilo/front-tsc7.txt
+ M .kilo/frontdirs.txt
+ M .kilo/gitstatus.txt
+ M .kilo/hc2.txt
+ M .kilo/healthcheck.txt
+ M .kilo/hr-routes.txt
+ M .kilo/images.txt
+ M .kilo/images2.txt
+ M .kilo/img3.txt
+ M .kilo/img4.txt
+ M .kilo/img5.txt
+ M .kilo/imgcheck.txt
+ M .kilo/inspect-api.txt
+ M .kilo/inspect-front.txt
+ M .kilo/leads-svc.txt
+ M .kilo/modules.txt
+ M .kilo/net.txt
+ M .kilo/netinfo.txt
+ M .kilo/pagecount.txt
+ M .kilo/patch04.txt
+ M .kilo/pgprobe-out.txt
+ M .kilo/pgprobe-out2.txt
+ M .kilo/pgprobe.mjs
+ M .kilo/probe.txt
+ M .kilo/procs.txt
+ M .kilo/ps3.txt
+ M .kilo/ps5.txt
+ M .kilo/ps6.txt
+ M .kilo/ps7.txt
+ M .kilo/ps8.txt
+ M .kilo/ps9.txt
+ M .kilo/psall.txt
+ M .kilo/speccount.txt
+ M 04_chat_violations_nullable_message_id.sql
+ M be-tsc.txt
+ M database/backups/speakup_tms_20261008_223220.sql
+ M database/backups/speakup_tms_20261008_223351.sql
+ M database/speakup_tms_full_schema.sql
+ M front/chat-e2e-run.txt
+ M front/chat-e2e.mjs
+ M front/docker-compose.yml
+ M front/fe-tsc.txt
+ M front/src/App.tsx
+ M front/src/api/auth.ts
+ M front/src/api/certificates.ts
+ M front/src/api/client.ts
+ M front/src/api/enrollments.ts
+ M front/src/api/finance.ts
+ M front/src/api/groups.ts
+ M front/src/api/notifications.ts
+ M front/src/api/placementAdmin.ts
+ M front/src/api/public.ts
+ M front/src/api/students.ts
+ M front/src/components/chat/BroadcastModal.tsx
+ M front/src/components/chat/MembersPanel.tsx
+ M front/src/components/common/DataTable.tsx
+ M front/src/components/common/PageWrapper.tsx
+ M front/src/components/common/RequireRoles.tsx
+ M front/src/components/hr/AvailabilityPanel.tsx
+ M front/src/components/hr/LeaveDecisionDialog.tsx
+ M front/src/components/hr/LeaveRequestDialog.tsx
+ M front/src/components/hr/TerminateDialog.tsx
+ M front/src/components/layout/Sidebar.tsx
+ M front/src/components/public/LeadCaptureForm.tsx
+ M front/src/components/public/PublicLayout.tsx
+ M front/src/components/ui/avatar.tsx
+ M front/src/components/ui/badge.tsx
+ M front/src/components/ui/button.tsx
+ M front/src/components/ui/card.tsx
+ M front/src/components/ui/confirm-dialog.tsx
+ M front/src/components/ui/dialog.tsx
+ M front/src/components/ui/input.tsx
+ M front/src/components/ui/label.tsx
+ M front/src/components/ui/select.tsx
+ M front/src/components/ui/separator.tsx
+ M front/src/components/ui/skeleton-card.tsx
+ M front/src/components/ui/skeleton.tsx
+ M front/src/components/ui/switch.tsx
+ M front/src/components/ui/tabs.tsx
+ M front/src/components/ui/textarea.tsx
+ M front/src/components/ui/toast.tsx
+ M front/src/components/ui/toaster.tsx
+ M front/src/components/ui/tooltip.tsx
+ M front/src/hooks/use-lms.ts
+ M front/src/index.css
+ M front/src/lib/utils.ts
+ M front/src/locales/ar/common.json
+ M front/src/locales/en/common.json
+ M front/src/main.tsx
+ M front/src/pages/Dashboard.tsx
+ M front/src/pages/Enrollments.tsx
+ M front/src/pages/Groups.tsx
+ M front/src/pages/Leads.tsx
+ M front/src/pages/Lms.tsx
+ M front/src/pages/Login.tsx
+ M front/src/pages/NotFound.tsx
+ M front/src/pages/Notifications.tsx
+ M front/src/pages/PlacementTestPage.tsx
+ M front/src/pages/PlacementTests.tsx
+ M front/src/pages/Register.tsx
+ M front/src/pages/Sessions.tsx
+ M front/src/pages/Students.tsx
+ M front/src/pages/hr/EmployeesPage.tsx
+ M front/src/pages/hr/HrLayout.tsx
+ M front/src/pages/hr/LeavesPage.tsx
+ M front/src/pages/instructor/QuestionBankPage.tsx
+ M front/src/pages/public/BlogPage.tsx
+ M front/src/pages/public/BlogPostPage.tsx
+ M front/src/pages/public/CourseDetailPage.tsx
+ M front/src/pages/public/LandingPage.tsx
+ M front/src/pages/public/PlacementBookingPage.tsx
+ M front/src/pages/public/RegisterOnlinePage.tsx
+ M front/src/pages/public/VerifyCertificatePage.tsx
+ M front/src/pages/student/CoursePage.tsx
+ M front/src/routes/ProtectedRoute.tsx
+ M front/src/services/placement.api.ts
+ M front/src/types/index.ts
+ M front/tailwind.config.js
+ M front/tsconfig.tsbuildinfo
+ M package-lock.json
+ M package.json
+ M scripts/audit-api-links.js
+ M src/app.module.ts
+ M src/common/enums/lead-status.enum.ts
+ M src/common/filters/http-exception.filter.ts
+ M src/database/database.module.ts
+ M src/database/migrations/1789000000000-CreateChatTables.ts
+ M src/database/migrations/1791000000000-AddCourseBranchPricing.ts
+ M src/database/migrations/1791000001000-AddLmsLessonProgress.ts
+ M src/main.ts
+ M src/modules/audit/audit.service.spec.ts
+ M src/modules/audit/audit.service.ts
+ M src/modules/auth/auth.controller.ts
+ M src/modules/auth/auth.module.ts
+ M src/modules/auth/auth.service.spec.ts
+ M src/modules/auth/auth.service.ts
+ M src/modules/branches/dto/update-branch.dto.ts
+ M src/modules/certificates/certificates.controller.ts
+ M src/modules/certificates/certificates.service.ts
+ M src/modules/chat/utils/public-user.ts
+ M src/modules/dashboard/dashboard.controller.ts
+ M src/modules/dashboard/dashboard.module.ts
+ M src/modules/dashboard/dashboard.service.ts
+ M src/modules/enrollments/enrollments.controller.ts
+ M src/modules/enrollments/enrollments.service.ts
+ M src/modules/finance/finance.module.ts
+ M src/modules/finance/finance.service.spec.ts
+ M src/modules/finance/finance.service.ts
+ M src/modules/groups/dto/create-group.dto.ts
+ M src/modules/groups/groups.controller.ts
+ M src/modules/groups/groups.module.ts
+ M src/modules/groups/groups.service.ts
+ M src/modules/integrations/integrations.module.ts
+ M src/modules/lms/lms.controller.ts
+ M src/modules/lms/lms.service.ts
+ M src/modules/notifications/dto/broadcast-notification.dto.ts
+ M src/modules/notifications/notifications.controller.ts
+ M src/modules/notifications/notifications.module.ts
+ M src/modules/notifications/notifications.service.ts
+ M src/modules/pdf/pdf.service.ts
+ M src/modules/placement-tests/placement-tests.controller.ts
+ M src/modules/placement-tests/placement-tests.module.ts
+ M src/modules/placement-tests/placement-tests.service.ts
+ M src/modules/public/dto/public-lead.dto.ts
+ M src/modules/public/dto/public-placement-booking.dto.ts
+ M src/modules/public/dto/public-registration.dto.ts
+ M src/modules/public/public.controller.ts
+ M src/modules/public/public.module.ts
+ M src/modules/public/public.service.spec.ts
+ M src/modules/public/public.service.ts
+ M src/modules/sessions/sessions.controller.ts
+ M src/modules/sessions/sessions.module.ts
+ M src/modules/sessions/sessions.service.spec.ts
+ M src/modules/sessions/sessions.service.ts
+ M src/modules/sessions/sessions.service.ts.before-attendance-query-fix-2
+ M src/modules/students/dto/student-query.dto.ts
+ M src/modules/students/students.controller.ts
+ M src/modules/students/students.service.ts
+ M src/modules/users/dto/update-user.dto.ts
+ M src/modules/users/users.module.ts
+ M src/modules/users/users.service.ts
+ M src/shared/entities/audit-log.entity.ts
+ M src/shared/entities/course-branch-pricing.entity.ts
+ M src/shared/entities/invoice.entity.ts
+ M src/shared/entities/lead.entity.ts
+ M src/shared/entities/lms-lesson-progress.entity.ts
+ M src/shared/entities/placement-test.entity.ts
+ M srs_extracted.txt
+ M srs_text.txt
+ M verify-be-tsc.txt
+?? .kilo/zip-diff-list.txt
+?? _gitstate.txt
+?? front/src/api/lms.ts
+?? front/src/app/
+?? front/src/components/common/BranchSelector.tsx
+?? front/src/components/common/DateRangePicker.tsx
+?? front/src/components/notifications/
+?? front/src/lib/auth-context.tsx
+?? front/src/lib/authSchema.ts
+?? front/src/lib/levels.ts
+?? front/src/lib/providers.tsx
+?? front/src/lib/sessions.ts
+?? front/src/lib/socialAuth.ts
+?? front/src/lib/timezone.ts
+?? front/src/locales/ar/auth_english.txt
+?? front/src/locales/ar/auth_temp.json
+?? front/src/pages/Activities.tsx
+?? front/src/pages/AuthCallbackPage.tsx
+?? front/src/pages/Forbidden.tsx
+?? front/src/pages/ForgotPasswordPage.tsx
+?? front/src/pages/ResetPasswordPage.tsx
+?? front/src/pages/dashboards/
+?? front/src/pages/finance/
+?? front/src/pages/student/MyCertificates.tsx
+?? front/tree.txt
+?? front/tsc-out.txt
+?? src/common/utils/level.util.spec.ts
+?? src/common/utils/level.util.ts
+?? src/common/utils/math.util.ts
+?? src/common/utils/placement-lead.util.ts
+?? src/common/utils/recurring-schedule.util.spec.ts
+?? src/common/utils/recurring-schedule.util.ts
+?? src/database/migrations/1790000002000-BackfillStudentsForRegisteredUsers.ts
+?? src/database/migrations/1792000000000-InvoiceEnrollmentIdNullable.ts
+?? src/database/migrations/1793000000000-PlacementLeadIntegration.ts
+?? src/database/migrations/1794000000000-PlacementTestGuestSession.ts
+?? src/database/migrations/1795000000000-SessionOccurrenceUniqueIndex.ts
+?? src/modules/auth/dto/password-reset.dto.ts
+?? src/modules/certificates/certificates.service.spec.ts
+?? src/modules/enrollments/dto/book-enrollment.dto.ts
+?? src/modules/enrollments/enrollments.service.spec.ts
+?? src/modules/finance/dto/easykash-webhook.dto.ts
+?? src/modules/finance/easykash.service.ts
+?? src/modules/finance/promo-code.service.ts
+?? src/modules/groups/dto/add-student.dto.ts
+?? src/modules/groups/dto/assign-teacher.dto.ts
+?? src/modules/groups/dto/reschedule-group.dto.ts
+?? src/modules/groups/groups.service.spec.ts
+?? src/modules/integrations/dto/
+?? src/modules/integrations/payments.controller.ts
+?? src/modules/notifications/notifications.service.spec.ts
+?? src/modules/placement-tests/dto/evaluate-test.dto.ts
+?? src/modules/placement-tests/dto/instant-placement-booking.dto.ts
+?? src/modules/placement-tests/placement-tests.service.spec.ts
+?? src/modules/sessions/scheduling.service.spec.ts
+?? src/modules/sessions/scheduling.service.ts
+?? src/shared/entities/reset-token.entity.ts

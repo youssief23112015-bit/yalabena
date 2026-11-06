@@ -8,9 +8,6 @@ export class TestSlot {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid', nullable: true })
-  branch_id?: string | null;
-
   @Column({ type: 'uuid' })
   examiner_id: string;
 

@@ -41,7 +41,7 @@ function addRefreshSubscriber(callback: (token: string) => void) {
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = useAuthStore.getState().accessToken;
+    const token = useAuthStore.getState().getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -71,6 +71,9 @@ apiClient.interceptors.response.use(
       const refreshToken = useAuthStore.getState().refreshToken;
 
       if (!refreshToken) {
+        // Session expired / invalid token: clear everything and redirect to login.
+        // Mark the 401 so the login page can show a "session expired" toast.
+        sessionStorage.setItem("auth:401", "true");
         useAuthStore.getState().clearAuth();
         window.location.href = "/login";
         return Promise.reject(error);
@@ -92,11 +95,8 @@ apiClient.interceptors.response.use(
         const res = await authApi.refresh(refreshToken);
         const { access_token, refresh_token: new_refresh_token, user } = res;
 
-        useAuthStore.getState().setAuth(user, access_token, new_refresh_token);
-
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", new_refresh_token);
-        localStorage.setItem("user", JSON.stringify(user));
+        const rememberMe = useAuthStore.getState().rememberMe;
+        useAuthStore.getState().setAuth(user, access_token, new_refresh_token, rememberMe);
 
         onTokenRefreshed(access_token);
         isRefreshing = false;
@@ -106,6 +106,8 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         isRefreshing = false;
         refreshSubscribers = [];
+        // Refresh failed: session invalid. Mark 401 and redirect to login.
+        sessionStorage.setItem("auth:401", "true");
         useAuthStore.getState().clearAuth();
         window.location.href = "/login";
         return Promise.reject(refreshError);

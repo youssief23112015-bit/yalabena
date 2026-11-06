@@ -6,7 +6,6 @@ import { AdminMetricService } from './admin-metric.service';
 import { Lead } from '../../../shared/entities/lead.entity';
 import { Student } from '../../../shared/entities/student.entity';
 import { Course } from '../../../shared/entities/course.entity';
-import { Branch } from '../../../shared/entities/branch.entity';
 import { Group } from '../../../shared/entities/group.entity';
 import { Session } from '../../../shared/entities/session.entity';
 import { Invoice } from '../../../shared/entities/invoice.entity';
@@ -46,7 +45,6 @@ function providers(): any[] {
     { provide: getRepositoryToken(Lead), useValue: createMockRepo() },
     { provide: getRepositoryToken(Student), useValue: createMockRepo() },
     { provide: getRepositoryToken(Course), useValue: createMockRepo() },
-    { provide: getRepositoryToken(Branch), useValue: createMockRepo() },
     { provide: getRepositoryToken(Group), useValue: createMockRepo() },
     { provide: getRepositoryToken(Session), useValue: createMockRepo() },
     { provide: getRepositoryToken(Invoice), useValue: createMockRepo() },

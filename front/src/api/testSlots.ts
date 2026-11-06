@@ -2,7 +2,6 @@ import apiClient from "./client";
 
 export interface TestSlot {
   id: string;
-  branch_id: string;
   examiner_id: string;
   date: string;
   start_time: string;
@@ -11,7 +10,6 @@ export interface TestSlot {
   capacity?: number;
   booked_count?: number;
   status?: string;
-  branch?: any;
   examiner?: any;
   created_at?: string;
 }

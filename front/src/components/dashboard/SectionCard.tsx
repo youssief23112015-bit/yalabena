@@ -1,6 +1,4 @@
-import React from "react";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface SectionCardProps {
   title: string;
@@ -11,12 +9,11 @@ interface SectionCardProps {
 }
 
 interface SectionCardSkeletonProps {
-  title?: string;
   lines?: number;
   className?: string;
 }
 
-export function SectionCardSkeleton({ title, lines = 3, className }: SectionCardSkeletonProps) {
+export function SectionCardSkeleton({ lines = 3, className }: SectionCardSkeletonProps) {
   return (
     <div className={cn("rounded-xl border border-border bg-card p-5 shadow-sm", className)}>
       <div className="mb-4">

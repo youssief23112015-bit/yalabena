@@ -7,7 +7,6 @@ describe('Groups Recurring Schedule Tests', () => {
     id: 'test-group-1',
     name: 'Test Group',
     courseId: 'course-1',
-    branchId: 'branch-1',
     teacherId: 'teacher-1',
     capacity: 20,
     mode: 'online' as const,

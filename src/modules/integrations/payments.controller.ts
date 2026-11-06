@@ -62,10 +62,7 @@ export class PaymentsController {
       }
     } else if (!isSuperAdmin(user)) {
       // Staff are locked to their own branch.
-      const branch = userBranchId(user);
-      if (!branch || branch !== invoice.branch_id) {
-        throw new ForbiddenException('Invoice is outside your branch');
-      }
+      
     }
 
     const balance = Number(invoice.balance_due ?? invoice.total_amount ?? 0);

@@ -95,12 +95,15 @@ export class EasyKashService {
     return { payment_url: data.payment_url ?? data.checkout_url, reference };
   }
 
-  /** HMAC-SHA256 webhook verification. */
+  /** HMAC-SHA256 webhook verification. Fails closed when EASYKASH_WEBHOOK_SECRET
+   *  is not configured: a webhook endpoint that accepts unsigned payloads is a
+    *  forgery vector allowing attackers to mark payments as completed without
+   *  paying. */
   verifyWebhookSignature(rawBody: string, signature: string | undefined): boolean {
     const secret = this.config.get<string>('EASYKASH_WEBHOOK_SECRET');
     if (!secret) {
-      this.logger.warn('EASYKASH_WEBHOOK_SECRET not set — accepting webhook without verification!');
-      return true;
+      this.logger.error('EASYKASH_WEBHOOK_SECRET not configured — rejecting all webhooks (fail closed)');
+      return false;
     }
     if (!signature) return false;
     const expected = createHmac('sha256', secret).update(rawBody).digest('hex');

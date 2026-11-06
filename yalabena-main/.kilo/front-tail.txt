@@ -1,0 +1,4 @@
+﻿#15 naming to docker.io/library/speakup-frontend:local 0.1s done
+#15 unpacking to docker.io/library/speakup-frontend:local
+#15 unpacking to docker.io/library/speakup-frontend:local 1.6s done
+#15 DONE 20.2s

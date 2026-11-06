@@ -16,39 +16,6 @@ export interface RosterResponse {
   attendances: any[];
 }
 
-export interface AttendanceFilter {
-  sessionId?: string;
-  groupId?: string;
-  from?: string;
-  to?: string;
-}
-
-export interface AttendanceRecord {
-  id: string;
-  student_id: string;
-  student?: {
-    id: string;
-    student_number: string;
-    user?: {
-      first_name?: string;
-      last_name?: string;
-    };
-  };
-  session?: {
-    id: string;
-    title?: string;
-    topic?: string;
-    date?: string;
-    group?: {
-      id: string;
-      name: string;
-    };
-  };
-  status: AttendanceStatus;
-  check_in_time?: string;
-  check_in_method?: string;
-}
-
 export const attendanceApi = {
   getRoster: async (sessionId: string): Promise<RosterResponse> => {
     const { data } = await apiClient.get<RosterResponse>(`/attendances/sessions/${sessionId}/roster`);
@@ -74,24 +41,6 @@ export const attendanceApi = {
     const { data } = await apiClient.get<{ code: string }>(`/attendances/sessions/${sessionId}/check-in-code`);
     return data;
   },
-  /** Student joins a session via Zoom — backend auto-marks attendance as present. */
-  joinZoom: async (sessionId: string): Promise<any> => {
-    const { data } = await apiClient.post(`/attendances/sessions/${sessionId}/join-zoom`);
-    return data;
-  },
-  /** List attendance records with optional session/date filters (role-scoped server-side). */
-  listAttendance: async (filter: AttendanceFilter): Promise<AttendanceRecord[]> => {
-    const { data } = await apiClient.get<AttendanceRecord[]>("/attendances", { params: filter });
-    return data;
-  },
-  /** Export filtered attendance records as CSV. */
-  exportAttendance: async (filter: AttendanceFilter): Promise<Blob> => {
-    const { data } = await apiClient.get("/attendances/export", {
-      params: filter,
-      responseType: "blob",
-    });
-    return data;
-  },
   studentReport: async (studentId: string, from?: string, to?: string): Promise<any> => {
     const { data } = await apiClient.get(`/attendances/students/${studentId}/report`, { params: { from, to } });
     return data;
@@ -103,5 +52,21 @@ export const attendanceApi = {
   absenceAlerts: async (threshold = 3, group_id?: string): Promise<{ threshold: number; flagged: { student_id: string; absences: number }[] }> => {
     const { data } = await apiClient.get(`/attendances/alerts/absences`, { params: { threshold, group_id } });
     return data;
+  },
+
+  history: async (params: {
+    group_id?: string; session_id?: string; student_id?: string;
+    from?: string; to?: string;
+  }): Promise<{ total: number; records: any[] }> => {
+    const { data } = await apiClient.get(`/attendances/history`, { params });
+    return data;
+  },
+
+  exportHistory: async (params: {
+    group_id?: string; session_id?: string; student_id?: string;
+    from?: string; to?: string;
+  }): Promise<Blob> => {
+    const { data } = await apiClient.get(`/attendances/history/export`, { params, responseType: "blob" });
+    return data as Blob;
   },
 };

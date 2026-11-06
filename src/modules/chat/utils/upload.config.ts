@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import type { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer-options.interface';
@@ -19,6 +19,20 @@ const ALLOWED_MIME_TYPES = new Set([
   'audio/mpeg', 'audio/wav', // classroom recordings; NOT the 'voice' message type from CHAT-BE-06
 ]);
 
+// Derive the stored extension from the VALIDATED mimetype — NEVER trust the
+// client-supplied filename extension (prevents .php/.html masquerading as an image).
+const MIME_TO_EXT: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'application/pdf': '.pdf',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'audio/mpeg': '.mp3',
+  'audio/wav': '.wav',
+};
+
 function ensureUploadDir() {
   if (!existsSync(CHAT_UPLOAD_DIR)) mkdirSync(CHAT_UPLOAD_DIR, { recursive: true });
 }
@@ -31,7 +45,8 @@ export const chatUploadMulterOptions: MulterOptions = {
       cb(null, CHAT_UPLOAD_DIR);
     },
     filename: (_req, file, cb) => {
-      const safeExt = extname(file.originalname).toLowerCase();
+      // Extension derived from validated mimetype, not client-controlled originalname
+      const safeExt = MIME_TO_EXT[file.mimetype] || '.bin';
       cb(null, `${randomUUID()}${safeExt}`);
     },
   }),

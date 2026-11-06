@@ -31,14 +31,12 @@ export class GroupsController {
 
   @Get()
   @Roles('super_admin', 'academic', 'branch_manager', 'teacher')
-  @ApiOperation({ summary: 'Get all groups with optional branch or course filters' })
-  @ApiQuery({ name: 'branchId', required: false })
+  @ApiOperation({ summary: 'Get all groups with optional course filter' })
   @ApiQuery({ name: 'courseId', required: false })
   async findAll(
-    @Query('branchId') branchId?: string,
     @Query('courseId') courseId?: string,
   ) {
-    return this.service.findAll({ branchId, courseId });
+    return this.service.findAll({ courseId });
   }
 
   // STATIC ROUTES MUST COME BEFORE :id PARAMETER ROUTE
@@ -80,15 +78,13 @@ export class GroupsController {
   @ApiQuery({ name: 'date', required: true })
   @ApiQuery({ name: 'teacherId', required: false })
   @ApiQuery({ name: 'classroomId', required: false })
-  @ApiQuery({ name: 'branchId', required: false })
   async getCalendar(
     @Query('view') view: 'day' | 'week' | 'month',
     @Query('date') date: string,
     @Query('teacherId') teacherId?: string,
     @Query('classroomId') classroomId?: string,
-    @Query('branchId') branchId?: string,
   ) {
-    return this.service.getCalendar({ view, date, teacherId, classroomId, branchId });
+    return this.service.getCalendar({ view, date, teacherId, classroomId });
   }
 
   @Get(':id')

@@ -1,0 +1,73 @@
+Yalabena backend changes (Stages A-G)
+Base commit : 8d3d2a9 (original clone)
+Head commit : 2398630
+Generated   : 2026-09-23T23:03:55.000Z
+
+Copy each file over the same relative path in your project.
+Deleted files (remove these if present):
+  (none)
+
+Changed / new files (63):
+  - .env.example
+  - .gitignore
+  - README.md
+  - jest.config.cov.js
+  - package-lock.json
+  - package.json
+  - scripts/chat-compliance-check.js
+  - scripts/pdf-smoke.js
+  - src/app.module.ts
+  - src/common/utils/upload-url.ts
+  - src/database/migrations/1790000000000-AddSessionOnmeetJoinUrl.ts
+  - src/database/migrations/1790000001000-AuditLogTargetIdNullable.ts
+  - src/main.ts
+  - src/modules/activities/activities.service.ts
+  - src/modules/audit/audit.controller.ts
+  - src/modules/audit/audit.interceptor.ts
+  - src/modules/audit/audit.module.ts
+  - src/modules/audit/audit.service.spec.ts
+  - src/modules/audit/audit.service.ts
+  - src/modules/auth/auth.controller.ts
+  - src/modules/auth/auth.service.spec.ts
+  - src/modules/auth/auth.service.ts
+  - src/modules/auth/dto/two-factor.dto.ts
+  - src/modules/certificates/certificates.controller.ts
+  - src/modules/certificates/certificates.module.ts
+  - src/modules/certificates/certificates.service.ts
+  - src/modules/chat/chat.compliance.spec.ts
+  - src/modules/chat/chat.controller.ts
+  - src/modules/chat/chat.gateway.ts
+  - src/modules/chat/chat.module.ts
+  - src/modules/chat/chat.service.spec.ts
+  - src/modules/chat/chat.service.ts
+  - src/modules/chat/utils/normalize-chat.ts
+  - src/modules/files/files.controller.ts
+  - src/modules/files/files.module.ts
+  - src/modules/files/files.service.ts
+  - src/modules/finance/finance.controller.ts
+  - src/modules/finance/finance.module.ts
+  - src/modules/finance/finance.service.spec.ts
+  - src/modules/finance/finance.service.ts
+  - src/modules/hr/hr.module.ts
+  - src/modules/hr/hr.service.ts
+  - src/modules/notifications/dto/broadcast-notification.dto.ts
+  - src/modules/notifications/dto/update-preferences.dto.ts
+  - src/modules/notifications/notifications.controller.ts
+  - src/modules/notifications/notifications.gateway.ts
+  - src/modules/notifications/notifications.module.ts
+  - src/modules/notifications/notifications.service.ts
+  - src/modules/pdf/pdf.module.ts
+  - src/modules/pdf/pdf.service.ts
+  - src/modules/public/dto/book-placement.dto.ts
+  - src/modules/public/dto/capture-lead.dto.ts
+  - src/modules/public/dto/track-page-view.dto.ts
+  - src/modules/public/public.controller.ts
+  - src/modules/public/public.module.ts
+  - src/modules/public/public.service.spec.ts
+  - src/modules/public/public.service.ts
+  - src/modules/sessions/sessions.controller.ts
+  - src/modules/sessions/sessions.module.ts
+  - src/modules/sessions/sessions.service.spec.ts
+  - src/modules/sessions/sessions.service.ts
+  - src/shared/entities/audit-log.entity.ts
+  - src/shared/entities/session.entity.ts

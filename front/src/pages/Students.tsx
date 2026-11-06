@@ -223,7 +223,8 @@ export default function StudentsPage() {
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
-/* =========================================================
+
+  /* =========================================================
      ASSIGN TO GROUP (direct manual enrollment, Business Rule 2)
   ========================================================= */
 
@@ -519,7 +520,6 @@ export default function StudentsPage() {
       student.profile?.date_of_birth || "",
     );
 
-
     setValue(
       "status",
       student.status || "active",
@@ -621,7 +621,6 @@ export default function StudentsPage() {
         </Badge>
       ),
     },
-
 
     {
       key: "status",
@@ -920,7 +919,6 @@ export default function StudentsPage() {
                       )}
                     />
                   </div>
-
 
                   <div className="space-y-2">
                     <Label>
@@ -1235,7 +1233,6 @@ export default function StudentsPage() {
                       {selectedStudent.profile
                         ?.address || "—"}
                     </span>
-
                   </div>
                 </CardContent>
               </Card>
@@ -1309,7 +1306,6 @@ export default function StudentsPage() {
                                   ?.name
                               }
                             </p>
-
                           </div>
 
                           <Badge>
@@ -1874,7 +1870,6 @@ export default function StudentsPage() {
             />
           </div>
         </div>
-
 
         <div className="w-full space-y-2 md:w-40">
           <label className="text-sm font-medium">
