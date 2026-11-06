@@ -95,27 +95,37 @@ export class LmsService {
   async findGroupsForUser(userId: string, roles: string[] = []): Promise<Group[]> {
     const normalizedRoles = (roles || []).map((r) => String(r).toLowerCase());
 
-    const isAdminOrStaff = normalizedRoles.some((role) =>
-      ['super_admin', 'admin', 'academic', 'teacher', 'instructor'].includes(role),
+    const isAdminOrAcademic = normalizedRoles.some((role) =>
+      ['super_admin', 'admin', 'academic'].includes(role),
     );
 
-    if (isAdminOrStaff) {
+    if (isAdminOrAcademic) {
       return this.groupRepo.find({
         relations: ['course', 'teacher', 'schedules'],
         order: { created_at: 'DESC' },
       });
     }
 
+    // Teachers (and substitutes) only see groups they are assigned to instruct.
+    if (normalizedRoles.includes('teacher') || normalizedRoles.includes('instructor')) {
+      return this.groupRepo.find({
+        where: [
+          { teacher_id: userId },
+          { substitute_teacher_id: userId },
+        ],
+        relations: ['course', 'teacher', 'schedules'],
+        order: { created_at: 'DESC' },
+      });
+    }
+
+    // Students only see groups linked to their ACTIVE enrollments.
     const student = await this.studentRepo.findOne({
       where: { user_id: userId },
     });
 
-    // Students WITHOUT a profile see nothing — falling back to "all groups"
-    // would leak every cohort to any authenticated user missing a row.
+    // Students WITHOUT a profile see nothing.
     if (!student) return [];
 
-    // Business Rule 3: LMS visibility is driven strictly by ACTIVE
-    // enrollments — PENDING requests stay hidden until an admin approves.
     const enrollments = await this.enrollmentRepo.find({
       where: {
         student_id: student.id,
@@ -130,39 +140,57 @@ export class LmsService {
   }
 
   /**
-   * Data-level authorization for LMS curriculum endpoints.
-   * - super_admin / academic: full access to every group.
+   * Boolean group-access check used by read endpoints so unassigned users
+   * receive an empty result instead of a 403.
+   * - super_admin / academic: full access.
    * - teacher: only groups they instruct (teacher_id or substitute_teacher_id).
-   * - student / other: no additional restriction here (enrollment scoping is
-   *   enforced upstream by findGroupsForUser / EnrollmentGuard).
+   * - student: only groups they have an ACTIVE enrollment for.
+   */
+  async canAccessGroup(
+    userId: string,
+    roles: string[] = [],
+    groupId: string,
+  ): Promise<boolean> {
+    const normalizedRoles = (roles || []).map((r) => String(r).toLowerCase());
+
+    const isAdminOrAcademic = normalizedRoles.some((role) =>
+      ['super_admin', 'admin', 'academic'].includes(role),
+    );
+    if (isAdminOrAcademic) return true;
+
+    if (normalizedRoles.includes('teacher')) {
+      const group = await this.groupRepo.findOne({ where: { id: groupId } });
+      if (!group) return false;
+      return (
+        group.teacher_id === userId ||
+        group.substitute_teacher_id === userId
+      );
+    }
+
+    // Student: must have an ACTIVE enrollment for this group.
+    const student = await this.studentRepo.findOne({ where: { user_id: userId } });
+    if (!student) return false;
+    const enrollment = await this.enrollmentRepo.findOne({
+      where: { student_id: student.id, group_id: groupId, status: EnrollmentStatus.ACTIVE },
+    });
+    return Boolean(enrollment);
+  }
+
+  /**
+   * Strict group-access check used by mutation endpoints (delete/update).
+   * Throws ForbiddenException when the user is not associated with the group.
    */
   async assertGroupAccess(
     userId: string,
     roles: string[] = [],
     groupId: string,
   ): Promise<void> {
-    const normalizedRoles = (roles || []).map((r) => String(r).toLowerCase());
-
-    const isAdminOrStaff = normalizedRoles.some((role) =>
-      ['super_admin', 'admin', 'academic'].includes(role),
-    );
-    if (isAdminOrStaff) return;
-
-    if (normalizedRoles.includes('teacher')) {
+    const ok = await this.canAccessGroup(userId, roles, groupId);
+    if (!ok) {
       const group = await this.groupRepo.findOne({ where: { id: groupId } });
       if (!group) throw new NotFoundException('Group not found');
-      if (
-        group.teacher_id !== userId &&
-        group.substitute_teacher_id !== userId
-      ) {
-        throw new ForbiddenException(
-          'You are not assigned to teach this group',
-        );
-      }
-      return;
+      throw new ForbiddenException('You are not assigned to teach this group');
     }
-
-    return;
   }
 
   private unlinkResourceFile(resource: LmsResource): void {
@@ -240,7 +268,8 @@ export class LmsService {
     userId: string,
     roles: string[] = [],
   ): Promise<LmsModuleEntity[]> {
-    await this.assertGroupAccess(userId, roles, groupId);
+    const hasAccess = await this.canAccessGroup(userId, roles, groupId);
+    if (!hasAccess) return [];
     return this.moduleRepo.find({
       where: { group_id: groupId },
       relations: ['lessons', 'lessons.resources'],
@@ -307,8 +336,9 @@ export class LmsService {
     roles: string[] = [],
   ): Promise<LmsLesson[]> {
     const module = await this.moduleRepo.findOne({ where: { id: moduleId } });
-    if (!module) throw new NotFoundException('Module not found');
-    await this.assertGroupAccess(userId, roles, module.group_id);
+    if (!module) return [];
+    const hasAccess = await this.canAccessGroup(userId, roles, module.group_id);
+    if (!hasAccess) return [];
     return this.lessonRepo.find({
       where: { module_id: moduleId },
       relations: ['resources'],

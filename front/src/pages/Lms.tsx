@@ -343,10 +343,11 @@ export default function LmsPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const rawRes = await apiFetch<any>('/lms/my-courses');
-        const items = ensureArray<any>(rawRes);
-        // Accept both { group, enrollment } envelopes and plain Group rows.
-        const fetchedGroups = items
+        const rawRes = await apiFetch<any>('/lms/groups');
+        // GET /lms/groups returns only the groups the current user is
+        // assigned to (teachers: instructed groups; students: enrolled groups;
+        // admins/academic: all groups) — so unassigned groups never reach the UI.
+        const fetchedGroups = ensureArray<any>(rawRes)
           .map((item: any) => (item?.group ?? item))
           .filter((g: any) => Boolean(g?.id))
           .map(mapGroupToView);
