@@ -65,23 +65,13 @@ const navItems: NavItem[] = [
   { to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "branch_manager", "academic", "finance", "teacher"] },
   { to: "/lms", label: "nav.lms", icon: BookMarked, roles: ["super_admin", "academic", "teacher", "student"] },
   { to: "/instructor/question-bank", label: "nav.questionBank", icon: HelpCircle, roles: ["academic", "teacher"] },
-  { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr", "branch_manager", "teacher", "finance"] },
-  { to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "branch_manager", "academic", "teacher", "sales"] },
-  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance"] },
-  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "branch_manager", "academic", "teacher", "student", "moderator"] },
-  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
-  { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance", "auditor"] },
-  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] },
-  { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
-  { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
-  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] },
-  { to: "/security", label: "nav.security", icon: ShieldHalf, roles: ["super_admin"] },
   {
-    to: "/hr/my",
+    to: "/hr",
     label: "nav.hr",
     icon: Briefcase,
-    roles: ESS_NAV_ROLES,
+    roles: [],
     children: [
+      { to: "/hr", label: "nav.hr", icon: Briefcase, roles: ["super_admin", "hr"] },
       { to: "/hr/my", label: "nav.hrDashboard", icon: LayoutDashboard, roles: ESS_NAV_ROLES },
       { to: "/hr/my/profile", label: "nav.myProfile", icon: UserCog, roles: ESS_NAV_ROLES },
       { to: "/hr/my/payroll", label: "nav.myPayroll", icon: Wallet, roles: ESS_NAV_ROLES },
@@ -97,6 +87,16 @@ const navItems: NavItem[] = [
       { to: "/hr/my/academic", label: "nav.myAcademic", icon: ShieldCheck, roles: ACADEMIC_SELF_ROLES },
     ],
   },
+  { to: "/activities", label: "nav.activities", icon: Sparkles, roles: ["super_admin", "branch_manager", "academic", "teacher", "sales"] },
+  { to: "/knowledge-base", label: "nav.knowledgeBase", icon: BookOpenText, roles: ["super_admin", "hr", "branch_manager", "teacher", "sales", "finance"] },
+  { to: "/chat", label: "nav.chat", icon: MessagesSquare, roles: ["super_admin", "branch_manager", "academic", "teacher", "student", "moderator"] },
+  { to: "/reports", label: "nav.reports", icon: BarChart3, roles: ["super_admin", "branch_manager", "sales", "academic", "finance", "hr", "teacher"] },
+  { to: "/inventory", label: "nav.inventory", icon: Package, roles: ["super_admin", "branch_manager", "sales", "finance", "auditor"] },
+  { to: "/notifications", label: "nav.notifications", icon: Bell, roles: [] },
+  { to: "/users", label: "nav.users", icon: UserCog, roles: ["super_admin", "branch_manager", "hr"] },
+  { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
+  { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] },
+  { to: "/security", label: "nav.security", icon: ShieldHalf, roles: ["super_admin"] },
 ];
 
 export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
@@ -106,10 +106,10 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
   const roles = user?.roles ?? (user?.role ? [user.role] : []);
   const isSuper = roles.includes("super_admin");
 
-  const [hrOpen, setHrOpen] = useState(() => location.pathname.startsWith("/hr/my"));
+  const [hrOpen, setHrOpen] = useState(() => location.pathname === "/hr" || location.pathname.startsWith("/hr/my"));
 
   useEffect(() => {
-    if (location.pathname.startsWith("/hr/my")) {
+    if (location.pathname === "/hr" || location.pathname.startsWith("/hr/my")) {
       setHrOpen(true);
     }
   }, [location.pathname]);
@@ -163,16 +163,19 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
           if (item.children && item.children.length > 0) {
             const children = item.children.filter(isItemVisible);
             if (children.length === 0) return null;
-            const inSection = location.pathname.startsWith("/hr/my");
-            const parentActive = inSection || hrOpen;
+            const inHrSection = location.pathname === "/hr" || location.pathname.startsWith("/hr/my");
+            const parentActive = inHrSection;
             return (
               <div key={item.to} className="mb-1">
                 <button
-                  onClick={() => setHrOpen((p) => !p)}
+                  onClick={() => {
+                    setHrOpen((p) => !p);
+                    if (isMobile) onClose();
+                  }}
                   aria-expanded={hrOpen}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors justify-between",
-                    isMobile ? "px-3" : "px-0",
+                    "flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors",
+                    isMobile ? "px-3" : open ? "justify-start px-3" : "justify-center px-0",
                     parentActive
                       ? "bg-primary text-primary-foreground shadow-sm"
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -182,9 +185,16 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
                   <span className={cn("truncate", !isMobile && "hidden group-hover:block")}>
                     {t(item.label)}
                   </span>
-                  <ChevronDown className={cn("h-4 w-4 shrink-0", hrOpen ? "rotate-180" : "")} />
+                  <ChevronDown
+                    className={cn("h-5 w-5 shrink-0 transition-transform duration-200", hrOpen ? "rotate-180" : "")}
+                  />
                 </button>
-                {hrOpen && (
+                <div
+                  className={cn(
+                    "overflow-hidden transition-all duration-300 ease-in-out",
+                    hrOpen ? "max-h-[40rem] opacity-100 pointer-events-auto" : "max-h-0 opacity-0 pointer-events-none"
+                  )}
+                >
                   <div className="space-y-0.5">
                     {children.map((child) => {
                       const childActive = location.pathname === child.to;
@@ -209,7 +219,7 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
                       );
                     })}
                   </div>
-                )}
+                </div>
               </div>
             );
           }

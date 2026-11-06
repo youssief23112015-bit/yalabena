@@ -9,6 +9,38 @@ export default function HrLayout(){
     {to:"/hr/my",label:"My HR",roles:ESS_NAV_ROLES},
     {to:"/hr/payroll",label:"Payroll",roles:["super_admin","hr","finance"]},
   ];
-  return <div className="space-y-6"><div className="flex flex-wrap gap-2 border-b pb-2">{tabs.filter(tab=>hasAnyRole(roles,tab.roles)).map(tab=><NavLink key={tab.to} to={tab.to} end={tab.to==="/hr"} className={({isActive})=>`rounded-md px-3 py-2 text-sm ${isActive?"bg-primary text-primary-foreground":"hover:bg-accent"}`}>{tab.label}</NavLink>)}</div><Outlet/></div>
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-2 border-b pb-2">
+        {tabs
+          .filter((tab) => {
+            // My HR is employee self-service only; admins manage others, not themselves.
+            if (tab.to === "/hr/my") {
+              return (
+                !roles.includes("super_admin") &&
+                !roles.includes("hr") &&
+                hasAnyRole(roles, tab.roles)
+              );
+            }
+            return hasAnyRole(roles, tab.roles);
+          })
+          .map(
+            (tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                end={tab.to === "/hr"}
+                className={({ isActive }) =>
+                  `rounded-md px-3 py-2 text-sm ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ),
+          )}
+      </div>
+      <Outlet />
+    </div>
+  );
 }
 
