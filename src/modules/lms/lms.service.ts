@@ -130,6 +130,56 @@ export class LmsService {
   }
 
   /**
+   * Data-level authorization for LMS curriculum endpoints.
+   * - super_admin / academic: full access to every group.
+   * - teacher: only groups they instruct (teacher_id or substitute_teacher_id).
+   * - student / other: no additional restriction here (enrollment scoping is
+   *   enforced upstream by findGroupsForUser / EnrollmentGuard).
+   */
+  async assertGroupAccess(
+    userId: string,
+    roles: string[] = [],
+    groupId: string,
+  ): Promise<void> {
+    const normalizedRoles = (roles || []).map((r) => String(r).toLowerCase());
+
+    const isAdminOrStaff = normalizedRoles.some((role) =>
+      ['super_admin', 'admin', 'academic'].includes(role),
+    );
+    if (isAdminOrStaff) return;
+
+    if (normalizedRoles.includes('teacher')) {
+      const group = await this.groupRepo.findOne({ where: { id: groupId } });
+      if (!group) throw new NotFoundException('Group not found');
+      if (
+        group.teacher_id !== userId &&
+        group.substitute_teacher_id !== userId
+      ) {
+        throw new ForbiddenException(
+          'You are not assigned to teach this group',
+        );
+      }
+      return;
+    }
+
+    return;
+  }
+
+  private unlinkResourceFile(resource: LmsResource): void {
+    if (resource.file_url) {
+      const filePath = join(
+        process.cwd(),
+        resource.file_url.replace(/^\//, ''),
+      );
+      try {
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch {
+        // Best-effort cleanup; never fail a delete because of a missing file.
+      }
+    }
+  }
+
+  /**
    * "My Courses" for the LMS dashboard (Business Rule 3). Students receive
    * the groups of their ACTIVE enrollments enriched with full course specs
    * (level, duration, syllabus, price), instructor, branch and schedule;
@@ -185,7 +235,12 @@ export class LmsService {
     return this.moduleRepo.save(module);
   }
 
-  async findModules(groupId: string): Promise<LmsModuleEntity[]> {
+  async findModules(
+    groupId: string,
+    userId: string,
+    roles: string[] = [],
+  ): Promise<LmsModuleEntity[]> {
+    await this.assertGroupAccess(userId, roles, groupId);
     return this.moduleRepo.find({
       where: { group_id: groupId },
       relations: ['lessons', 'lessons.resources'],
@@ -200,9 +255,23 @@ export class LmsService {
     return this.moduleRepo.save(module);
   }
 
-  async deleteModule(id: string): Promise<void> {
-    const module = await this.moduleRepo.findOne({ where: { id } });
+  async deleteModule(
+    id: string,
+    userId: string,
+    roles: string[] = [],
+  ): Promise<void> {
+    const module = await this.moduleRepo.findOne({
+      where: { id },
+      relations: ['lessons', 'lessons.resources'],
+    });
     if (!module) throw new NotFoundException('Module not found');
+    await this.assertGroupAccess(userId, roles, module.group_id);
+    // Clean up physical files of every nested resource before removing rows.
+    for (const lesson of module.lessons ?? []) {
+      for (const res of lesson.resources ?? []) {
+        this.unlinkResourceFile(res);
+      }
+    }
     await this.moduleRepo.remove(module);
   }
 
@@ -232,7 +301,14 @@ export class LmsService {
     return this.lessonRepo.save(lesson);
   }
 
-  async findLessons(moduleId: string): Promise<LmsLesson[]> {
+  async findLessons(
+    moduleId: string,
+    userId: string,
+    roles: string[] = [],
+  ): Promise<LmsLesson[]> {
+    const module = await this.moduleRepo.findOne({ where: { id: moduleId } });
+    if (!module) throw new NotFoundException('Module not found');
+    await this.assertGroupAccess(userId, roles, module.group_id);
     return this.lessonRepo.find({
       where: { module_id: moduleId },
       relations: ['resources'],
@@ -252,9 +328,21 @@ export class LmsService {
     return this.lessonRepo.save(lesson);
   }
 
-  async deleteLesson(id: string): Promise<void> {
-    const lesson = await this.lessonRepo.findOne({ where: { id } });
+  async deleteLesson(
+    id: string,
+    userId: string,
+    roles: string[] = [],
+  ): Promise<void> {
+    const lesson = await this.lessonRepo.findOne({
+      where: { id },
+      relations: ['module', 'resources'],
+    });
     if (!lesson) throw new NotFoundException('Lesson not found');
+    await this.assertGroupAccess(userId, roles, lesson.module.group_id);
+    // Clean up physical files of the lesson's resources before removing rows.
+    for (const res of lesson.resources ?? []) {
+      this.unlinkResourceFile(res);
+    }
     await this.lessonRepo.remove(lesson);
   }
 
@@ -272,17 +360,19 @@ export class LmsService {
     return this.resourceRepo.save(resource);
   }
 
-  async deleteResource(id: string, userId: string): Promise<void> {
-    const resource = await this.resourceRepo.findOne({ where: { id } });
+  async deleteResource(
+    id: string,
+    userId: string,
+    roles: string[] = [],
+  ): Promise<void> {
+    const resource = await this.resourceRepo.findOne({
+      where: { id },
+      relations: ['lesson', 'lesson.module'],
+    });
     if (!resource) throw new NotFoundException('Resource not found');
-    // Delete physical file from disk if it exists.
-    // file_url is stored as a URL path (e.g. /lms/uploads/lms/abc.pdf).
-    if (resource.file_url) {
-      const filePath = join(process.cwd(), resource.file_url.replace(/^\//, ''));
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    }
+    await this.assertGroupAccess(userId, roles, resource.lesson.module.group_id);
+    // Delete the physical file from disk if it exists, then the DB record.
+    this.unlinkResourceFile(resource);
     await this.resourceRepo.delete(id);
   }
 

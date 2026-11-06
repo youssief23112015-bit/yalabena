@@ -98,8 +98,13 @@ export class LmsController {
   @Get('groups/:groupId/modules')
   @Roles('super_admin', 'academic', 'teacher', 'student')
   @ApiOperation({ summary: 'List modules for group (Nested Path)' })
-  findModulesByGroupPath(@Param('groupId') groupId: string) {
-    return this.lmsService.findModules(groupId);
+  findModulesByGroupPath(
+    @Param('groupId') groupId: string,
+    @CurrentUser() user: any,
+  ) {
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    return this.lmsService.findModules(groupId, userId, roles);
   }
 
   @Get('groups/:groupId/assignments')
@@ -151,9 +156,12 @@ export class LmsController {
   findModules(
     @Query('group_id') groupIdParam1?: string,
     @Query('groupId') groupIdParam2?: string,
+    @CurrentUser() user?: any,
   ) {
     const groupId = groupIdParam1 || groupIdParam2;
-    return this.lmsService.findModules(groupId || '');
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    return this.lmsService.findModules(groupId || '', userId, roles);
   }
 
   @Put('modules/reorder')
@@ -178,8 +186,10 @@ export class LmsController {
   @Delete('modules/:id')
   @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Delete module' })
-  deleteModule(@Param('id', ParseUUIDPipe) id: string) {
-    return this.lmsService.deleteModule(id);
+  deleteModule(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    return this.lmsService.deleteModule(id, userId, roles);
   }
 
   // ═══════════════════════════════════════════════════
@@ -200,9 +210,12 @@ export class LmsController {
   findLessons(
     @Query('module_id') moduleId1?: string,
     @Query('moduleId') moduleId2?: string,
+    @CurrentUser() user?: any,
   ) {
     const moduleId = moduleId1 || moduleId2;
-    return this.lmsService.findLessons(moduleId || '');
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    return this.lmsService.findLessons(moduleId || '', userId, roles);
   }
 
   @Put('lessons/:id')
@@ -219,8 +232,10 @@ export class LmsController {
   @Delete('lessons/:id')
   @Roles('super_admin', 'academic', 'teacher')
   @ApiOperation({ summary: 'Delete lesson' })
-  deleteLesson(@Param('id', ParseUUIDPipe) id: string) {
-    return this.lmsService.deleteLesson(id);
+  deleteLesson(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: any) {
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    return this.lmsService.deleteLesson(id, userId, roles);
   }
 
   @Patch('lessons/:id/toggle-completion')
@@ -318,7 +333,9 @@ export class LmsController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: any,
   ) {
-    await this.lmsService.deleteResource(id, user?.userId ?? user?.id);
+    const userId = user?.id ?? user?.userId;
+    const roles = user?.roles ?? [];
+    await this.lmsService.deleteResource(id, userId, roles);
     return { message: 'Resource deleted' };
   }
 

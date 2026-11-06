@@ -581,6 +581,48 @@ export default function LmsPage() {
     }
   };
 
+  const handleDeleteModule = async (moduleId: string) => {
+    if (
+      !window.confirm(
+        'هل أنت متأكد من حذف هذا القسم وكل الدروس والمرفقات المرتبطة به؟',
+      )
+    )
+      return;
+    try {
+      await apiFetch(`/lms/modules/${moduleId}`, {
+        method: 'DELETE',
+      });
+      setModules((prev) =>
+        ensureArray<Module>(prev).filter((m) => m.id !== moduleId),
+      );
+    } catch (err: any) {
+      alert('تعذر حذف القسم: ' + err.message);
+    }
+  };
+
+  const handleDeleteLesson = async (moduleId: string, lessonId: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا الدرس؟')) return;
+    try {
+      await apiFetch(`/lms/lessons/${lessonId}`, {
+        method: 'DELETE',
+      });
+      setModules((prev) =>
+        ensureArray<Module>(prev).map((m) =>
+          m.id === moduleId
+            ? {
+                ...m,
+                lessons: ensureArray<Lesson>(m.lessons).filter(
+                  (l) => l.id !== lessonId,
+                ),
+              }
+            : m,
+        ),
+      );
+    } catch (err: any) {
+      alert('تعذر حذف الدرس: ' + err.message);
+    }
+  };
+
   const handleAddLesson = async () => {
     if (!addLessonModuleId || !newLessonTitle.trim()) return;
     try {
@@ -1033,6 +1075,20 @@ export default function LmsPage() {
                               <Plus className="h-3.5 w-3.5" /> Add Lesson
                             </button>
                           )}
+                          {isTeacherOrAdmin && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                void handleDeleteModule(module.id);
+                              }}
+                              className="text-destructive hover:text-destructive/90 ml-2"
+                              title="Delete module"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
 
                         {isExpanded && (
@@ -1054,6 +1110,23 @@ export default function LmsPage() {
                                       <span className={`font-medium text-sm ${lesson.completed ? 'line-through text-muted-foreground' : ''}`}>
                                         {lesson.title}
                                       </span>
+                                      {isTeacherOrAdmin && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            void handleDeleteLesson(
+                                              module.id,
+                                              lesson.id,
+                                            );
+                                          }}
+                                          className="text-destructive hover:text-destructive/90"
+                                          title="Delete lesson"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </button>
+                                      )}
                                     </div>
                                     <div className="flex items-center gap-3">
                                       <span className="text-xs text-muted-foreground">{lesson.durationMinutes} min</span>
