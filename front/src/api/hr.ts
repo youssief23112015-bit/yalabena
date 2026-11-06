@@ -3,6 +3,9 @@ import type {
   Employee, EmployeeDocument, TeacherAvailability, LeaveRequest,
   PayrollPeriod, PayrollEntry, CreateEmployeeInput,
   EmployeeStatus, EmployeeType, LeaveStatus, LeaveType, DocumentType,
+  MyGroup, MyStudent, MySession, MyTeachingHours, MyPayrollEntry, MyDocument,
+  MyLead, MySalesTarget, TeacherEvaluation, AcademicData,
+  UpdateMyProfileInput, AddMyDocumentInput, MyPayrollQuery,
 } from "@/types/hr";
 
 export const hrApi = {
@@ -121,5 +124,64 @@ export const hrApi = {
   exportPayroll: async (id: string) => {
     const response = await apiClient.get<string>(`/hr/payroll-periods/${id}/export`, { responseType: "text" });
     return response.data;
+  },
+
+  // ─── Employee Self-Service ───
+
+  myProfile: async () => {
+    const { data } = await apiClient.get<Employee>("/hr/me/profile");
+    return data;
+  },
+  updateMyProfile: async (input: UpdateMyProfileInput) => {
+    const { data } = await apiClient.patch<Employee>("/hr/me/profile", input);
+    return data;
+  },
+  myGroups: async () => {
+    const { data } = await apiClient.get<MyGroup[]>("/hr/me/groups");
+    return data;
+  },
+  myStudents: async () => {
+    const { data } = await apiClient.get<MyStudent[]>("/hr/me/students");
+    return data;
+  },
+  mySessions: async (query?: Record<string, string | number | boolean>) => {
+    const { data } = await apiClient.get<MySession[]>("/hr/me/sessions", { params: query });
+    return data;
+  },
+  myTeachingHours: async (period_id?: string) => {
+    const { data } = await apiClient.get<MyTeachingHours>("/hr/me/teaching-hours", { params: period_id ? { period_id } : undefined });
+    return data;
+  },
+  myLms: async () => {
+    const { data } = await apiClient.get<any[]>("/hr/me/lms");
+    return data;
+  },
+  myEvaluations: async () => {
+    const { data } = await apiClient.get<TeacherEvaluation[]>("/hr/me/evaluations");
+    return data;
+  },
+  myPayroll: async (query?: MyPayrollQuery) => {
+    const { data } = await apiClient.get<MyPayrollEntry[]>("/hr/me/payroll", { params: query });
+    return data;
+  },
+  myDocuments: async () => {
+    const { data } = await apiClient.get<MyDocument[]>("/hr/me/documents");
+    return data;
+  },
+  addMyDocument: async (input: AddMyDocumentInput) => {
+    const { data } = await apiClient.post<MyDocument>("/hr/me/documents", input);
+    return data;
+  },
+  myLeads: async () => {
+    const { data } = await apiClient.get<MyLead[]>("/hr/me/leads");
+    return data;
+  },
+  mySalesTargets: async () => {
+    const { data } = await apiClient.get<MySalesTarget[]>("/hr/me/sales-targets");
+    return data;
+  },
+  myAcademic: async () => {
+    const { data } = await apiClient.get<AcademicData>("/hr/me/academic");
+    return data;
   },
 };

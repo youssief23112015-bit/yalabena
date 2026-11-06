@@ -21,6 +21,7 @@
     "myCertificates": "My Certificates",
     "lms": "LMS",
     "hr": "HR",
+    "hrDashboard": "HR Dashboard",
     "activities": "Activities",
     "knowledgeBase": "Knowledge Base",
     "chat": "Chat",
@@ -32,7 +33,19 @@
     "roles": "Roles",
     "audit": "Audit Log",
     "security": "Security",
-    "settings": "Settings"
+    "settings": "Settings",
+    "myProfile": "My Profile",
+    "myPayroll": "My Payroll",
+    "myDocuments": "My Documents",
+    "myGroups": "My Groups",
+    "myStudents": "My Students",
+    "mySessions": "My Sessions",
+    "myTeachingHours": "Teaching Hours",
+    "myLms": "My LMS",
+    "myEvaluations": "Evaluations",
+    "myLeads": "My Leads",
+    "mySalesTargets": "Sales Targets",
+    "myAcademic": "Academic"
   },
   "notifications": {
     "title": "Notifications",

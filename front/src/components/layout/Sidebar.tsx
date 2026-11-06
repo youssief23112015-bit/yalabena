@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { TEACHER_SELF_ROLES, SALES_SELF_ROLES, ACADEMIC_SELF_ROLES, ESS_NAV_ROLES } from "@/lib/rbac";
 import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard,
@@ -28,6 +30,7 @@ import {
   LogOut,
   X,
   Calendar,
+  ChevronDown,
   HelpCircle
 } from "lucide-react";
 
@@ -43,6 +46,7 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   roles: string[];
+  children?: NavItem[];
 }
 
 const navItems: NavItem[] = [
@@ -72,6 +76,27 @@ const navItems: NavItem[] = [
   { to: "/roles", label: "nav.roles", icon: ShieldCheck, roles: ["super_admin"] },
   { to: "/audit", label: "nav.audit", icon: ScrollText, roles: ["super_admin", "auditor"] },
   { to: "/security", label: "nav.security", icon: ShieldHalf, roles: ["super_admin"] },
+  {
+    to: "/hr/my",
+    label: "nav.hr",
+    icon: Briefcase,
+    roles: ESS_NAV_ROLES,
+    children: [
+      { to: "/hr/my", label: "nav.hrDashboard", icon: LayoutDashboard, roles: ESS_NAV_ROLES },
+      { to: "/hr/my/profile", label: "nav.myProfile", icon: UserCog, roles: ESS_NAV_ROLES },
+      { to: "/hr/my/payroll", label: "nav.myPayroll", icon: Wallet, roles: ESS_NAV_ROLES },
+      { to: "/hr/my/documents", label: "nav.myDocuments", icon: BookOpen, roles: ESS_NAV_ROLES },
+      { to: "/hr/my/groups", label: "nav.myGroups", icon: GraduationCap, roles: TEACHER_SELF_ROLES },
+      { to: "/hr/my/students", label: "nav.myStudents", icon: BookOpenText, roles: TEACHER_SELF_ROLES },
+      { to: "/hr/my/sessions", label: "nav.mySessions", icon: Clock, roles: TEACHER_SELF_ROLES },
+      { to: "/hr/my/teaching-hours", label: "nav.myTeachingHours", icon: BarChart3, roles: ["teacher"] },
+      { to: "/hr/my/lms", label: "nav.myLms", icon: BookMarked, roles: TEACHER_SELF_ROLES },
+      { to: "/hr/my/evaluations", label: "nav.myEvaluations", icon: Award, roles: TEACHER_SELF_ROLES },
+      { to: "/hr/my/leads", label: "nav.myLeads", icon: Users, roles: SALES_SELF_ROLES },
+      { to: "/hr/my/sales-targets", label: "nav.mySalesTargets", icon: BarChart3, roles: SALES_SELF_ROLES },
+      { to: "/hr/my/academic", label: "nav.myAcademic", icon: ShieldCheck, roles: ACADEMIC_SELF_ROLES },
+    ],
+  },
 ];
 
 export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
@@ -80,21 +105,33 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const roles = user?.roles ?? (user?.role ? [user.role] : []);
   const isSuper = roles.includes("super_admin");
-  const visible = navItems.filter(
-    (i) => i.roles.length === 0 || isSuper || i.roles.some((r) => roles.includes(r)),
-  );
 
-  /**
-   * The HR landing page differs per role: managers land on the employee
-   * directory, teachers on their own HR self-service and finance on payroll —
-   * otherwise those roles were pushed straight into a 403 from /hr.
-   */
+  const [hrOpen, setHrOpen] = useState(() => location.pathname.startsWith("/hr/my"));
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/hr/my")) {
+      setHrOpen(true);
+    }
+  }, [location.pathname]);
+
+  const isItemVisible = (item: NavItem): boolean => {
+    if (item.roles.length === 0) return true;
+    if (item.to.startsWith("/hr/my") && (roles.includes("super_admin") || roles.includes("hr"))) {
+      return false;
+    }
+    return isSuper || item.roles.some((r) => roles.includes(r));
+  };
+
+  const visible = navItems.filter(isItemVisible);
+
   const resolveTarget = (to: string): string => {
     if (to !== "/hr") return to;
     if (roles.some((r) => ["super_admin", "hr", "branch_manager"].includes(r))) return "/hr";
     if (roles.includes("teacher")) return "/hr/my";
+    if (roles.includes("academic")) return "/hr/my/academic";
+    if (roles.includes("sales")) return "/hr/my/leads";
     if (roles.includes("finance")) return "/hr/payroll";
-    return "/hr";
+    return "/hr/my";
   };
 
   return (
@@ -106,7 +143,6 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
           : cn("w-16 hover:w-64", !open && "w-0 overflow-hidden border-r-0")
       )}
     >
-      {/* Brand */}
       <div className={cn("flex h-16 items-center border-b border-border/60", isMobile ? "justify-between px-4" : "justify-center px-2 group-hover:justify-between group-hover:px-4")}>
         <div className="flex items-center gap-2.5 min-w-0">
           <img src="/logo.svg" alt="SpeakUp Academy" className="h-8 w-8 shrink-0 rounded-lg shadow-sm" />
@@ -122,13 +158,65 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
         )}
       </div>
 
-      {/* Nav items */}
       <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {visible.map((item) => {
+          if (item.children && item.children.length > 0) {
+            const children = item.children.filter(isItemVisible);
+            if (children.length === 0) return null;
+            const inSection = location.pathname.startsWith("/hr/my");
+            const parentActive = inSection || hrOpen;
+            return (
+              <div key={item.to} className="mb-1">
+                <button
+                  onClick={() => setHrOpen((p) => !p)}
+                  aria-expanded={hrOpen}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-lg py-2.5 text-sm font-medium transition-colors justify-between",
+                    isMobile ? "px-3" : "px-0",
+                    parentActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className={cn("truncate", !isMobile && "hidden group-hover:block")}>
+                    {t(item.label)}
+                  </span>
+                  <ChevronDown className={cn("h-4 w-4 shrink-0", hrOpen ? "rotate-180" : "")} />
+                </button>
+                {hrOpen && (
+                  <div className="space-y-0.5">
+                    {children.map((child) => {
+                      const childActive = location.pathname === child.to;
+                      return (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          end
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg py-1.5 text-sm text-muted-foreground transition-colors",
+                            isMobile ? "px-3" : "pl-6 pr-2",
+                            childActive
+                              ? "bg-primary text-primary-foreground font-medium"
+                              : "hover:bg-accent hover:text-accent-foreground"
+                          )}
+                        >
+                          {child.icon && <child.icon className="h-4 w-4 shrink-0" />}
+                          <span className={cn("truncate", !isMobile && "hidden group-hover:block")}>
+                            {t(child.label)}
+                          </span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           const Icon = item.icon;
           const target = resolveTarget(item.to);
-          const isActive =
-            location.pathname === target || location.pathname.startsWith(`${target}/`);
+          const isActive = location.pathname === target || location.pathname.startsWith(`${target}/`);
           return (
             <NavLink
               key={item.to}
@@ -152,7 +240,6 @@ export function Sidebar({ open, onClose, isMobile, onLogout }: SidebarProps) {
         })}
       </nav>
 
-      {/* Logout */}
       <div className="border-t border-border/60 p-2">
         <button
           onClick={onLogout}

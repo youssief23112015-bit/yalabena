@@ -17,6 +17,7 @@ const matrix: Record<string, string[]> = {
     'kb:view', 'reports:view', 'reports:export', 'branches:view',
     'users:read', 'users:create', 'users:edit',
     'chat:view', 'chat:send', 'system:view',
+    'hr:self:view', 'hr:self:edit',
   ],
 
   sales: [
@@ -25,12 +26,14 @@ const matrix: Record<string, string[]> = {
     'placement:view', 'groups:view', 'attendance:view', 'lms:view',
     'inventory:view', 'inventory:issue', 'activities:view', 'kb:view',
     'chat:view', 'chat:send',
+    'hr:self:view', 'hr:self:edit',
   ],
 
   finance: [
     'finance:view', 'finance:create', 'finance:edit', 'finance:approve', 'finance:export',
     'certificates:view', 'crm:view', 'inventory:view', 'reports:view', 'reports:export',
     'kb:view', 'chat:view',
+    'hr:self:view', 'hr:self:edit',
   ],
 
   academic: [
@@ -40,12 +43,14 @@ const matrix: Record<string, string[]> = {
     'lms:view', 'lms:create', 'lms:edit', 'lms:delete', 'lms:grade',
     'certificates:view', 'certificates:create', 'certificates:edit', 'certificates:revoke',
     'reports:view', 'reports:export', 'kb:view', 'chat:view', 'chat:send',
+    'hr:self:view', 'hr:self:edit',
   ],
 
   teacher: [
     'attendance:view', 'attendance:create', 'attendance:edit',
     'lms:view', 'lms:create', 'lms:edit', 'lms:grade',
     'groups:view', 'chat:view', 'chat:send', 'kb:view', 'reports:view',
+    'hr:self:view', 'hr:self:edit',
   ],
 
   student: [
@@ -58,6 +63,7 @@ const matrix: Record<string, string[]> = {
 
   hr: [
     'hr:view', 'hr:create', 'hr:edit', 'hr:approve', 'hr:process_payroll',
+    'hr:self:view', 'hr:self:edit',
     'kb:view', 'kb:create', 'kb:edit', 'kb:delete', 'reports:view', 'chat:view',
   ],
 

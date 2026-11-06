@@ -2,7 +2,7 @@ import {
   Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Employee } from '../../shared/entities/employee.entity';
 import { EmployeeDocument } from '../../shared/entities/employee-document.entity';
 import { TeacherAvailability } from '../../shared/entities/teacher-availability.entity';
@@ -16,10 +16,23 @@ import { PayrollEntryStatus } from '../../common/enums/payroll-entry-status.enum
 import { PayrollStatus } from '../../common/enums/payroll-status.enum';
 import { EmployeeStatus } from '../../common/enums/employee-status.enum';
 import { EmployeeType } from '../../common/enums/employee-type.enum';
+import { UserStatus } from '../../common/enums/user-status.enum';
 import {
   exactHours, inclusiveDays, payrollTotal, presentEmployee, presentLeave, presentPayrollEntry,
   rangesOverlap, round2, toMinutes,
 } from './hr.helpers';
+import { SessionsService } from '../sessions/sessions.service';
+import { Group } from '../../shared/entities/group.entity';
+import { Student } from '../../shared/entities/student.entity';
+import { GroupStudent } from '../../shared/entities/group-student.entity';
+import { Enrollment } from '../../shared/entities/enrollment.entity';
+import { Lead } from '../../shared/entities/lead.entity';
+import { SalesTarget } from '../../shared/entities/sales-target.entity';
+import { TeacherEvaluation } from '../../shared/entities/teacher-evaluation.entity';
+import { LmsModule as LmsModuleEntity } from '../../shared/entities/lms-module.entity';
+import { LmsLesson } from '../../shared/entities/lms-lesson.entity';
+import { LmsResource } from '../../shared/entities/lms-resource.entity';
+import { LmsLessonProgress } from '../../shared/entities/lms-lesson-progress.entity';
 
 /** The authenticated user (JwtStrategy.validate()). */
 export interface HrActor {
@@ -43,6 +56,18 @@ export class HrService {
     @InjectRepository(PayrollEntry) private entryRepo: Repository<PayrollEntry>,
     @InjectRepository(Session) private sessionRepo: Repository<Session>,
     @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(Group) private groupRepo: Repository<Group>,
+    @InjectRepository(Student) private studentRepo: Repository<Student>,
+    @InjectRepository(GroupStudent) private groupStudentRepo: Repository<GroupStudent>,
+    @InjectRepository(Enrollment) private enrollmentRepo: Repository<Enrollment>,
+    @InjectRepository(Lead) private leadRepo: Repository<Lead>,
+    @InjectRepository(SalesTarget) private salesTargetRepo: Repository<SalesTarget>,
+    @InjectRepository(TeacherEvaluation) private evalRepo: Repository<TeacherEvaluation>,
+    @InjectRepository(LmsModuleEntity) private lmsModuleRepo: Repository<LmsModuleEntity>,
+    @InjectRepository(LmsLesson) private lmsLessonRepo: Repository<LmsLesson>,
+    @InjectRepository(LmsResource) private lmsResourceRepo: Repository<LmsResource>,
+    @InjectRepository(LmsLessonProgress) private lmsProgressRepo: Repository<LmsLessonProgress>,
+    private sessionsService: SessionsService,
   ) {}
 
   // ---------- helpers ----------
@@ -64,6 +89,13 @@ export class HrService {
     // Branchless architecture: users are not branch-scoped
   }
 
+  /** Enforce that the actor is the employee owner or an HR/admin. */
+  private async assertEmployeeOwnership(emp: Employee, actor: HrActor) {
+    if (has(actor, HR_ADMIN)) return;
+    if (emp.user_id === actor.userId) return;
+    throw new ForbiddenException('You can only access your own employee record');
+  }
+
   private rethrowUnique(err: any, msg: string): never {
     if (err?.code === '23505') throw new ConflictException(msg);
     throw err;
@@ -71,9 +103,9 @@ export class HrService {
 
   // ---------- self ----------
 
-  async getEmployeeByUserId(userId: string) {
-    const employee = await this.empRepo.findOne({ where: { user_id: userId }, relations: ['user'] });
-    if (!employee) throw new NotFoundException('Employee record not found for current user');
+  async getEmployeeByUserId(userId: string, actor?: HrActor) {
+    const employee = await this.resolveMyEmployee(userId, actor);
+    if (!employee) return null;
     return presentEmployee(employee, true); // it is the caller's own record
   }
 
@@ -149,12 +181,14 @@ export class HrService {
     return presentEmployee(emp, this.canSeeCompensation(actor));
   }
 
-  async updateEmployee(id: string, dto: any) {
+  async updateEmployee(id: string, dto: any, actor?: HrActor) {
     const emp = await this.empRepo.findOne({ where: { id } });
     if (!emp) throw new NotFoundException('Employee not found');
     if (emp.status === EmployeeStatus.TERMINATED) {
       throw new BadRequestException('A terminated employee record cannot be edited');
     }
+    await this.assertEmployeeInScope(emp, actor);
+    if (actor) await this.assertEmployeeOwnership(emp, actor);
 
     // Explicit whitelist - never Object.assign(dto): user_id, id, termination_* stay protected.
     const allowed = [
@@ -176,25 +210,29 @@ export class HrService {
     }
 
     await this.empRepo.save(emp).catch((e) => this.rethrowUnique(e, 'Duplicate employee number'));
-    return this.findOneEmployee(id, { userId: '', roles: ['hr'] });
+    return this.findOneEmployee(id, actor);
   }
 
-  async terminateEmployee(id: string, reason: string, termination_date?: string) {
+  async terminateEmployee(id: string, reason: string, termination_date?: string, actor?: HrActor) {
     const emp = await this.empRepo.findOne({ where: { id } });
     if (!emp) throw new NotFoundException('Employee not found');
     if (emp.status === EmployeeStatus.TERMINATED) throw new BadRequestException('Employee is already terminated');
+    await this.assertEmployeeInScope(emp, actor);
+    if (actor) await this.assertEmployeeOwnership(emp, actor);
     emp.status = EmployeeStatus.TERMINATED;
     emp.termination_reason = reason;
     emp.termination_date = (termination_date ? termination_date.slice(0, 10) : new Date().toISOString().slice(0, 10)) as any;
     await this.empRepo.save(emp);
-    return this.findOneEmployee(id, { userId: '', roles: ['hr'] });
+    return this.findOneEmployee(id, actor);
   }
 
   // ---------- Documents ----------
 
-  async addDocument(dto: any) {
+  async addDocument(dto: any, actor?: HrActor) {
     const emp = await this.empRepo.findOne({ where: { id: dto.employee_id } });
     if (!emp) throw new NotFoundException('Employee not found');
+    await this.assertEmployeeInScope(emp, actor);
+    if (actor) await this.assertEmployeeOwnership(emp, actor);
     return this.docRepo.save(
       this.docRepo.create({
         employee_id: dto.employee_id,
@@ -213,9 +251,17 @@ export class HrService {
     return this.docRepo.find({ where: { employee_id: employeeId }, order: { created_at: 'DESC' } });
   }
 
-  async removeDocument(id: string) {
+  async removeDocument(id: string, actor?: HrActor) {
     const doc = await this.docRepo.findOne({ where: { id } });
     if (!doc) throw new NotFoundException('Document not found');
+    const emp = await this.empRepo.findOne({ where: { id: doc.employee_id } });
+    if (!emp) throw new NotFoundException('Employee not found');
+    await this.assertEmployeeInScope(emp, actor);
+    if (actor) await this.assertEmployeeOwnership(emp, actor);
+    // Non-admin/HR actors can only remove their own documents.
+    if (!has(actor, HR_ADMIN) && emp.user_id !== actor?.userId) {
+      throw new ForbiddenException('You can only remove your own documents');
+    }
     await this.docRepo.remove(doc);
     return { deleted: true };
   }
@@ -305,8 +351,9 @@ export class HrService {
 
   // ---------- Leave Requests ----------
 
-  async findMyLeaves(userId: string) {
-    const employee = await this.ownEmployee(userId);
+  async findMyLeaves(userId: string, actor?: HrActor) {
+    const employee = await this.resolveMyEmployee(userId, actor);
+    if (!employee) return [];
     return this.findLeaves({ employee_id: employee.id }, { userId, roles: ['hr'] });
   }
 
@@ -415,7 +462,10 @@ export class HrService {
 
   // ---------- Payroll ----------
 
-  async createPeriod(dto: any) {
+  async createPeriod(dto: any, actor?: HrActor) {
+    if (actor && !has(actor, COMPENSATION_ROLES)) {
+      throw new ForbiddenException('Only HR/finance can create payroll periods');
+    }
     const start = String(dto.start_date).slice(0, 10);
     const end = String(dto.end_date).slice(0, 10);
     if (end < start) throw new BadRequestException('end_date cannot be before start_date');
@@ -524,11 +574,13 @@ export class HrService {
     return { filename: `payroll_${safeName}.csv`, csv };
   }
 
-  async createPayrollEntry(dto: any) {
+  async createPayrollEntry(dto: any, actor?: HrActor) {
     await this.openPeriodOrThrow(dto.payroll_period_id);
     const emp = await this.empRepo.findOne({ where: { id: dto.employee_id } });
     if (!emp) throw new NotFoundException('Employee not found');
     if (emp.status === EmployeeStatus.TERMINATED) throw new BadRequestException('Employee is terminated');
+    await this.assertEmployeeInScope(emp, actor);
+    if (actor) await this.assertEmployeeOwnership(emp, actor);
     if (await this.entryRepo.findOne({ where: { payroll_period_id: dto.payroll_period_id, employee_id: emp.id } })) {
       throw new ConflictException('A payroll entry already exists for this employee in this period');
     }
@@ -569,5 +621,482 @@ export class HrService {
       order: { created_at: 'ASC' },
     });
     return rows.map(presentPayrollEntry);
+  }
+
+  // =========================================================================
+  // Employee Self-Service
+  // =========================================================================
+
+  /** Resolve the authenticated user's employee record. Returns null for admin roles without an employee record. */
+  private async resolveMyEmployee(userId: string, actor?: HrActor): Promise<Employee | null> {
+    let emp = await this.empRepo.findOne({ where: { user_id: userId }, relations: ['user'] });
+    if (emp) return emp;
+
+    // Admins (super_admin / hr) may not have an employee record — return null instead of throwing.
+    if (actor && has(actor, HR_ADMIN)) return null;
+
+    // Auto-resolve: create a basic employee record for active staff/teachers who are missing one,
+    // so self-service endpoints (/hr/me, /hr/my-leaves, ...) resolve instead of 403/404.
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new NotFoundException('Employee record not found for current user');
+    }
+
+    emp = this.empRepo.create({
+      user_id: user.id,
+      user,
+      employee_type: this.defaultEmployeeType(actor?.roles ?? []),
+      job_title: this.defaultJobTitle(actor?.roles ?? []),
+      department: null,
+      contract_start: new Date(),
+      status: EmployeeStatus.ACTIVE,
+    });
+
+    try {
+      return await this.empRepo.save(emp);
+    } catch (e: any) {
+      // Concurrency: another request created the record for this user in the meantime.
+      if (e?.code === '23505') {
+        const existing = await this.empRepo.findOne({ where: { user_id: userId }, relations: ['user'] });
+        if (existing) return existing;
+      }
+      throw e;
+    }
+  }
+
+  private defaultEmployeeType(roles: string[]): EmployeeType {
+    return roles.includes('teacher') ? EmployeeType.HOURLY : EmployeeType.FULL_TIME;
+  }
+
+  private defaultJobTitle(roles: string[]): string {
+    if (roles.includes('teacher')) return 'Teacher';
+    if (roles.includes('academic')) return 'Academic Staff';
+    if (roles.includes('sales')) return 'Sales';
+    if (roles.includes('branch_manager')) return 'Branch Manager';
+    if (roles.includes('finance')) return 'Finance';
+    return 'Staff';
+  }
+
+  /** GET /hr/me/profile — own employee record (no compensation unless authorized). */
+  async getMyProfile(userId: string, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return { id: null, user_id: userId, job_title: null, department: null, status: null, employee_number: null, employee_type: null, contract_start: null };
+    return presentEmployee(emp, false);
+  }
+
+  /** PATCH /hr/me/profile — update own permitted fields only. */
+  async updateMyProfile(userId: string, dto: any, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) throw new ForbiddenException('Self-service profile updates require an employee record');
+    // Non-compensation, non-identifier fields only.
+    const allowed = ['job_title', 'department'];
+    for (const k of allowed) if (dto[k] !== undefined) (emp as any)[k] = dto[k];
+    await this.empRepo.save(emp);
+
+    // Phone lives on the User entity.
+    if (dto.phone !== undefined) {
+      await this.userRepo.update(emp.user_id, { phone: dto.phone });
+    }
+
+    const updated = await this.empRepo.findOne({ where: { id: emp.id }, relations: ['user'] });
+    return presentEmployee(updated!, false);
+  }
+
+  /** GET /hr/me/groups — groups the teacher is assigned to teach. */
+  async getMyGroups(userId: string, roles: string[] = [], actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    const isTeacher = roles.includes('teacher');
+    const isAcademic = roles.includes('academic');
+    const isSuperAdmin = roles.includes('super_admin');
+
+    let groups: Group[];
+    if (isSuperAdmin || isAcademic) {
+      groups = await this.groupRepo.find({
+        relations: ['course', 'teacher', 'schedules'],
+        order: { created_at: 'DESC' },
+      });
+    } else if (isTeacher) {
+      groups = await this.groupRepo.find({
+        where: { teacher_id: emp.user_id },
+        relations: ['course', 'teacher', 'schedules'],
+        order: { created_at: 'DESC' },
+      });
+    } else {
+      groups = [];
+    }
+
+    return groups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      course: g.course,
+      teacher: g.teacher,
+      schedules: g.schedules,
+      status: g.status,
+      start_date: g.start_date,
+      end_date: g.end_date,
+      mode: g.mode,
+      is_teacher: g.teacher_id === emp.user_id,
+    }));
+  }
+
+  /** GET /hr/me/students — students in the teacher's assigned groups. */
+  async getMyStudents(userId: string, roles: string[] = [], actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    const isTeacher = roles.includes('teacher');
+    const isAcademic = roles.includes('academic');
+    const isSuperAdmin = roles.includes('super_admin');
+
+    if (!isTeacher && !isAcademic && !isSuperAdmin) return [];
+
+    // Groups the user teaches (teacher) or all groups (academic/super_admin).
+    const groupWhere = isTeacher ? { teacher_id: emp.user_id } : {};
+    const groups = await this.groupRepo.find({ where: groupWhere });
+    const groupIds = groups.map((g) => g.id);
+    if (groupIds.length === 0) return [];
+
+    // Roster: active group_students ∪ ACTIVE enrollments.
+    const rosterRows: { student_id: string }[] = await this.groupRepo.query(
+      `SELECT student_id FROM group_students WHERE group_id = ANY($1::uuid[]) AND status = 'active'
+       UNION
+       SELECT student_id FROM enrollments WHERE group_id = ANY($2::uuid[]) AND LOWER(CAST(status AS TEXT)) = 'active'`,
+      [groupIds, groupIds],
+    );
+    const studentIds = [...new Set(rosterRows.map((r) => r.student_id))];
+    if (studentIds.length === 0) return [];
+
+    const students = await this.studentRepo.find({
+      where: { id: In(studentIds) },
+      relations: ['user'],
+      order: { created_at: 'ASC' },
+    });
+
+    return students.map((s) => ({
+      id: s.id,
+      student_number: s.student_number,
+      current_level: s.current_level,
+      status: s.status,
+      user: s.user,
+      enrolled_at: s.created_at,
+    }));
+  }
+
+  /** GET /hr/me/sessions — teaching sessions for the authenticated teacher. */
+  async getMySessions(userId: string, roles: string[] = [], query: any = {}, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    const isTeacher = roles.includes('teacher');
+    const isAcademic = roles.includes('academic');
+    const isSuperAdmin = roles.includes('super_admin');
+
+    if (!isTeacher && !isAcademic && !isSuperAdmin) return [];
+
+    const sessions = await this.sessionsService.findAll(
+      undefined,
+      { id: emp.user_id, userId: emp.user_id, roles },
+    );
+
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+
+    return sessions
+      .filter((s) => {
+        if (query.upcoming === 'true') return String(s.date) >= today && !s.cancelled_at;
+        if (query.completed === 'true') return String(s.date) < today && !s.cancelled_at;
+        return !s.cancelled_at;
+      })
+      .map((s) => ({
+        id: s.id,
+        group_id: s.group_id,
+        date: s.date,
+        start_time: s.start_time,
+        end_time: s.end_time,
+        mode: s.mode,
+        topic: s.topic,
+        zoom_join_url: s.zoom_join_url,
+        cancelled_at: s.cancelled_at,
+        attendance_locked: s.attendance_locked,
+        is_upcoming: String(s.date) >= today && !s.cancelled_at,
+        is_completed: String(s.date) < today && !s.cancelled_at,
+      }));
+  }
+
+  /** GET /hr/me/teaching-hours — own teaching hours from payroll entries. */
+  async getMyTeachingHours(userId: string, period_id?: string, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return { employee_id: null, total_hours: 0, total_amount: 0, total_classes: 0, periods: [] };
+    const where: any = { employee_id: emp.id };
+    if (period_id) where.payroll_period_id = period_id;
+
+    const entries = await this.entryRepo.find({
+      where,
+      relations: ['payroll_period'],
+      order: { created_at: 'DESC' },
+    });
+
+    const totalHours = entries.reduce((sum, e) => sum + Number(e.hours_worked ?? 0), 0);
+    const totalAmount = entries.reduce((sum, e) => sum + Number(e.total_amount ?? 0), 0);
+    const totalClasses = entries.reduce((sum, e) => sum + Number(e.classes_taught ?? 0), 0);
+
+    return {
+      employee_id: emp.id,
+      total_hours: round2(totalHours),
+      total_amount: round2(totalAmount),
+      total_classes: totalClasses,
+      periods: entries.map((e) => ({
+        period_id: e.payroll_period_id,
+        period_name: e.payroll_period?.name,
+        hours_worked: e.hours_worked,
+        classes_taught: e.classes_taught,
+        total_amount: e.total_amount,
+        status: e.status,
+      })),
+    };
+  }
+
+  /** GET /hr/me/lms — LMS modules/lessons/resources for the teacher's groups. */
+  async getMyLmsInfo(userId: string, roles: string[] = [], actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    const isTeacher = roles.includes('teacher');
+    const isAcademic = roles.includes('academic');
+    const isSuperAdmin = roles.includes('super_admin');
+
+    if (!isTeacher && !isAcademic && !isSuperAdmin) return [];
+
+    const groups = await this.groupRepo.find({
+      where: isTeacher ? { teacher_id: emp.user_id } : {},
+      relations: ['course'],
+    });
+
+    const result: any[] = [];
+    for (const g of groups) {
+      const modules = await this.lmsModuleRepo.find({
+        where: { group_id: g.id },
+        relations: ['lessons', 'lessons.resources'],
+        order: { order: 'ASC' },
+      });
+      result.push({
+        group_id: g.id,
+        group_name: g.name,
+        course: g.course,
+        modules: modules.map((m) => ({
+          id: m.id,
+          name: m.name,
+          description: m.description,
+          order: m.order,
+          is_published: m.is_published,
+          lessons: (m.lessons ?? []).map((l) => ({
+            id: l.id,
+            name: l.name,
+            type: l.type,
+            duration_minutes: l.duration_minutes,
+            order: l.order,
+            is_published: l.is_published,
+            resources: (l.resources ?? []).map((r) => ({
+              id: r.id,
+              name: r.name,
+              type: r.type,
+              file_url: r.file_url,
+              external_url: r.external_url,
+              access_control: r.access_control,
+            })),
+          })),
+        })),
+      });
+    }
+    return result;
+  }
+
+  /** GET /hr/me/evaluations — teacher evaluations for the authenticated teacher. */
+  async getMyEvaluations(userId: string, roles: string[] = [], actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    const isTeacher = roles.includes('teacher');
+    const isAcademic = roles.includes('academic');
+    const isSuperAdmin = roles.includes('super_admin');
+
+    if (!isTeacher && !isAcademic && !isSuperAdmin) return [];
+
+    const evaluations = await this.evalRepo.find({
+      where: isTeacher ? { teacher_id: emp.user_id } : {},
+      relations: ['group', 'student', 'teacher'],
+      order: { created_at: 'DESC' },
+    });
+
+    return evaluations.map((e) => ({
+      id: e.id,
+      group_id: e.group_id,
+      student_id: e.student_id,
+      teacher_id: e.teacher_id,
+      term: e.term,
+      overall_comment: e.overall_comment,
+      is_shared_with_student: e.is_shared_with_student,
+      created_at: e.created_at,
+      updated_at: e.updated_at,
+    }));
+  }
+
+  /** GET /hr/me/payroll — own payroll entries across periods. */
+  async getMyPayrollEntries(userId: string, query: any = {}, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    const where: any = { employee_id: emp.id };
+    if (query.period_id) where.payroll_period_id = query.period_id;
+
+    const entries = await this.entryRepo.find({
+      where,
+      relations: ['payroll_period', 'employee', 'employee.user'],
+      order: { created_at: 'DESC' },
+    });
+
+    return entries.map((e) => ({
+      id: e.id,
+      employee_id: e.employee_id,
+      period_id: e.payroll_period_id,
+      period_name: e.payroll_period?.name,
+      period_start: e.payroll_period?.start_date,
+      period_end: e.payroll_period?.end_date,
+      base_amount: e.base_amount,
+      hours_worked: e.hours_worked,
+      classes_taught: e.classes_taught,
+      bonus: e.bonus,
+      deductions: e.deductions,
+      hourly_rate: e.hourly_rate,
+      total_amount: e.total_amount,
+      status: e.status,
+      notes: e.notes,
+    }));
+  }
+
+  /** GET /hr/me/documents — own employee documents. */
+  async getMyDocuments(userId: string, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return [];
+    return this.docRepo.find({
+      where: { employee_id: emp.id },
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  /** POST /hr/me/documents — add own document. */
+  async addMyDocument(userId: string, dto: any, actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) throw new ForbiddenException('Self-service documents require an employee record');
+    return this.docRepo.save(
+      this.docRepo.create({
+        employee_id: emp.id,
+        name: dto.name.trim(),
+        file_url: dto.file_url,
+        document_type: dto.document_type,
+        expiry_date: dto.expiry_date ?? null,
+      } as any),
+    );
+  }
+
+  /** GET /hr/me/leads — sales leads assigned to the authenticated user. */
+  async getMyLeads(userId: string, roles: string[] = []) {
+    const isSales = roles.includes('sales');
+    const isSuperAdmin = roles.includes('super_admin');
+    const isBranchManager = roles.includes('branch_manager');
+
+    if (!isSales && !isSuperAdmin && !isBranchManager) return [];
+
+    const leads = await this.leadRepo.find({
+      where: { assigned_to: userId },
+      relations: ['assigned_agent'],
+      order: { created_at: 'DESC' },
+    });
+
+    return leads.map((l) => ({
+      id: l.id,
+      first_name: l.first_name,
+      last_name: l.last_name,
+      phone: l.phone,
+      email: l.email,
+      status: l.status,
+      source: l.source,
+      level_interest: l.level_interest,
+      placement_score: l.placement_score,
+      placement_level: l.placement_level,
+      converted_to_student_id: l.converted_to_student_id,
+      converted_at: l.converted_at,
+      assigned_to: l.assigned_to,
+      created_at: l.created_at,
+      updated_at: l.updated_at,
+    }));
+  }
+
+  /** GET /hr/me/sales-targets — sales targets for the authenticated user. */
+  async getMySalesTargets(userId: string, roles: string[] = []) {
+    const isSales = roles.includes('sales');
+    const isSuperAdmin = roles.includes('super_admin');
+    const isBranchManager = roles.includes('branch_manager');
+
+    if (!isSales && !isSuperAdmin && !isBranchManager) return [];
+
+    const targets = await this.salesTargetRepo.find({
+      where: { agent_id: userId },
+      order: { year: 'DESC', month: 'DESC' },
+    });
+
+    return targets.map((t) => ({
+      id: t.id,
+      month: t.month,
+      year: t.year,
+      target_amount: t.target_amount,
+      target_conversions: t.target_conversions,
+      achieved_amount: t.achieved_amount,
+      achieved_conversions: t.achieved_conversions,
+      conversion_rate: t.target_conversions > 0
+        ? round2((t.achieved_conversions / t.target_conversions) * 100)
+        : 0,
+      amount_achievement: t.target_amount > 0
+        ? round2((t.achieved_amount / t.target_amount) * 100)
+        : 0,
+    }));
+  }
+
+  /** GET /hr/me/academic — academic responsibilities for the authenticated user. */
+  async getMyAcademicData(userId: string, roles: string[] = [], actor?: HrActor) {
+    const emp = await this.resolveMyEmployee(userId, actor);
+    if (!emp) return { groups: [], evaluations: [] };
+    const isAcademic = roles.includes('academic');
+    const isSuperAdmin = roles.includes('super_admin');
+
+    if (!isAcademic && !isSuperAdmin) return { groups: [], evaluations: [] };
+
+    // Academic responsibilities: groups they oversee, evaluations, sessions.
+    const groups = await this.groupRepo.find({
+      relations: ['course', 'teacher', 'schedules'],
+      order: { created_at: 'DESC' },
+    });
+
+    const evaluations = await this.evalRepo.find({
+      relations: ['group', 'student', 'teacher'],
+      order: { created_at: 'DESC' },
+    });
+
+    return {
+      groups: groups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        course: g.course,
+        teacher: g.teacher,
+        schedules: g.schedules,
+        status: g.status,
+      })),
+      evaluations: evaluations.map((e) => ({
+        id: e.id,
+        group_id: e.group_id,
+        student_id: e.student_id,
+        teacher_id: e.teacher_id,
+        term: e.term,
+        overall_comment: e.overall_comment,
+        is_shared_with_student: e.is_shared_with_student,
+        created_at: e.created_at,
+      })),
+    };
   }
 }

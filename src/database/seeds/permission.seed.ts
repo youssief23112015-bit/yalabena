@@ -53,6 +53,8 @@ export async function seedPermissions(dataSource: DataSource) {
     { module: 'hr', action: 'edit', description: 'Edit employee records' },
     { module: 'hr', action: 'approve', description: 'Approve leave requests' },
     { module: 'hr', action: 'process_payroll', description: 'Process payroll' },
+    { module: 'hr', action: 'self:view', description: 'View own employee record and self-service data' },
+    { module: 'hr', action: 'self:edit', description: 'Edit own permitted employee profile fields' },
     { module: 'activities', action: 'view', description: 'View activities' },
     { module: 'activities', action: 'create', description: 'Create activities' },
     { module: 'activities', action: 'edit', description: 'Edit activities' },

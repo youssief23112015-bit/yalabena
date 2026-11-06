@@ -106,3 +106,151 @@ export interface CreateEmployeeInput {
   salary?: number;
   hourly_rate?: number;
 }
+
+// ─── Self-Service Interfaces ───
+
+export interface UpdateMyProfileInput {
+  job_title?: string;
+  department?: string;
+  phone?: string;
+}
+
+export interface AddMyDocumentInput {
+  name?: string;
+  file_url?: string;
+  document_type?: DocumentType;
+  expiry_date?: string;
+}
+
+export interface MyPayrollQuery {
+  period_id?: string;
+}
+
+export interface MyGroup {
+  id: string;
+  name: string;
+  course?: Course;
+  teacher?: User;
+  schedules?: GroupSchedule[];
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  mode?: string;
+  is_teacher: boolean;
+}
+
+export interface MyStudent {
+  id: string;
+  student_number?: string;
+  current_level?: string;
+  status?: string;
+  user?: User;
+  enrolled_at?: string;
+}
+
+export interface MySession {
+  id: string;
+  group_id: string;
+  date: string;
+  start_time?: string;
+  end_time?: string;
+  mode?: string;
+  topic?: string;
+  zoom_join_url?: string | null;
+  cancelled_at?: string | null;
+  attendance_locked?: boolean;
+  is_upcoming: boolean;
+  is_completed: boolean;
+}
+
+export interface MyTeachingHoursPeriod {
+  period_id: string;
+  period_name?: string;
+  hours_worked: number;
+  classes_taught: number;
+  total_amount: number;
+  status: string;
+}
+
+export interface MyTeachingHours {
+  employee_id: string;
+  total_hours: number;
+  total_amount: number;
+  total_classes: number;
+  periods: MyTeachingHoursPeriod[];
+}
+
+export interface MyPayrollEntry {
+  id: string;
+  employee_id: string;
+  period_id: string;
+  period_name?: string;
+  period_start?: string;
+  period_end?: string;
+  base_amount: number;
+  hours_worked: number;
+  classes_taught: number;
+  bonus: number;
+  deductions: number;
+  hourly_rate?: number | null;
+  total_amount: number;
+  status: string;
+  notes?: string | null;
+}
+
+export interface MyDocument {
+  id: string;
+  employee_id: string;
+  name: string;
+  file_url: string;
+  document_type: DocumentType;
+  expiry_date?: string | null;
+  created_at?: string;
+}
+
+export interface MyLead {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email?: string;
+  status: string;
+  source?: string;
+  level_interest?: string;
+  placement_score?: number | null;
+  placement_level?: string | null;
+  converted_to_student_id?: string;
+  converted_at?: string | null;
+  assigned_to?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MySalesTarget {
+  id: string;
+  month: number;
+  year: number;
+  target_amount: number;
+  target_conversions: number;
+  achieved_amount: number;
+  achieved_conversions: number;
+  conversion_rate: number;
+  amount_achievement: number;
+}
+
+export interface TeacherEvaluation {
+  id: string;
+  group_id?: string;
+  student_id?: string;
+  teacher_id?: string;
+  term?: string;
+  overall_comment?: string | null;
+  is_shared_with_student: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AcademicData {
+  groups: MyGroup[];
+  evaluations: TeacherEvaluation[];
+}

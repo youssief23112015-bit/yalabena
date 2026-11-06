@@ -3,8 +3,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 import { RequireRoles } from '@/components/common/RequireRoles';
+import { ForbidRoles } from '@/components/common/ForbidRoles';
 import { AppShell } from '@/components/layout/AppShell';
 import { Toaster } from '@/components/ui/toaster';
+import { HR_ADMIN_ROLES, HR_SELF_VIEW_ROLES, TEACHER_SELF_ROLES, SALES_SELF_ROLES, ACADEMIC_SELF_ROLES, ESS_NAV_ROLES } from '@/lib/rbac';
 
 import LoginPage from '@/pages/Login';
 import RegisterPage from '@/pages/Register';
@@ -57,6 +59,19 @@ import EmployeeDetailsPage from '@/pages/hr/EmployeeDetailsPage';
 import LeavesPage from '@/pages/hr/LeavesPage';
 import MyHrPage from '@/pages/hr/MyHrPage';
 import PayrollPage from '@/pages/hr/PayrollPage';
+import SelfHrPage from '@/pages/hr/SelfHrPage';
+import ProfilePage from '@/pages/hr/ProfilePage';
+import MyGroupsPage from '@/pages/hr/MyGroupsPage';
+import MyStudentsPage from '@/pages/hr/MyStudentsPage';
+import MySessionsPage from '@/pages/hr/MySessionsPage';
+import MyTeachingHoursPage from '@/pages/hr/MyTeachingHoursPage';
+import MyLmsPage from '@/pages/hr/MyLmsPage';
+import MyEvaluationsPage from '@/pages/hr/MyEvaluationsPage';
+import MyPayrollPage from '@/pages/hr/MyPayrollPage';
+import MyDocumentsPage from '@/pages/hr/MyDocumentsPage';
+import MyLeadsPage from '@/pages/hr/MyLeadsPage';
+import MySalesTargetsPage from '@/pages/hr/MySalesTargetsPage';
+import MyAcademicPage from '@/pages/hr/MyAcademicPage';
 
 // استيراد صفحات الـ Activities الجديدة
 import ActivitiesListPage from '@/pages/activities/ActivitiesListPage';
@@ -303,12 +318,33 @@ function App() {
 
             <Route
               path="/hr"
-              element={roleGate(['super_admin', 'hr', 'branch_manager', 'teacher', 'finance'], <HrLayout />)}
+              element={roleGate(HR_SELF_VIEW_ROLES, <HrLayout />)}
             >
               <Route index element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeesPage />)} />
               <Route path="employees/:id" element={roleGate(['super_admin', 'hr', 'branch_manager'], <EmployeeDetailsPage />)} />
               <Route path="leaves" element={roleGate(['super_admin', 'hr', 'branch_manager'], <LeavesPage />)} />
-              <Route path="my" element={roleGate(['super_admin', 'hr', 'teacher'], <MyHrPage />)} />
+              <Route
+                path="my"
+                element={
+                  <ForbidRoles roles={HR_ADMIN_ROLES}>
+                    {roleGate(ESS_NAV_ROLES, <SelfHrPage />)}
+                  </ForbidRoles>
+                }
+              >
+                <Route index element={<MyHrPage />} />
+                <Route path="profile" element={roleGate(ESS_NAV_ROLES, <ProfilePage />)} />
+                <Route path="groups" element={roleGate(["teacher", "academic"], <MyGroupsPage />)} />
+                <Route path="students" element={roleGate(["teacher", "academic"], <MyStudentsPage />)} />
+                <Route path="sessions" element={roleGate(["teacher", "academic"], <MySessionsPage />)} />
+                <Route path="teaching-hours" element={roleGate(["teacher"], <MyTeachingHoursPage />)} />
+                <Route path="lms" element={roleGate(["teacher", "academic"], <MyLmsPage />)} />
+                <Route path="evaluations" element={roleGate(["teacher", "academic"], <MyEvaluationsPage />)} />
+                <Route path="payroll" element={roleGate(ESS_NAV_ROLES, <MyPayrollPage />)} />
+                <Route path="documents" element={roleGate(ESS_NAV_ROLES, <MyDocumentsPage />)} />
+                <Route path="leads" element={roleGate(SALES_SELF_ROLES, <MyLeadsPage />)} />
+                <Route path="sales-targets" element={roleGate(SALES_SELF_ROLES, <MySalesTargetsPage />)} />
+                <Route path="academic" element={roleGate(ACADEMIC_SELF_ROLES, <MyAcademicPage />)} />
+              </Route>
               <Route path="payroll" element={roleGate(['super_admin', 'hr', 'finance'], <PayrollPage />)} />
             </Route>
 
