@@ -14,7 +14,8 @@ import type {
 
 const qk = {
   modules: (groupId: string) => ["modules", groupId] as const,
-  assignments: (groupId: string) => ["assignments", groupId] as const,
+  assignments: (groupId: string, studentId?: string) =>
+    ["assignments", groupId, studentId] as const,
   quizzes: (groupId: string) => ["quizzes", groupId] as const,
   questionBank: (filters: object) => ["question-bank", filters] as const,
   gradebook: (groupId: string) => ["gradebook", groupId] as const,
@@ -32,11 +33,15 @@ export function useModules(groupId: string) {
 }
 
 // ── Assignments ───────────────────────────────────────────────
-export function useAssignments(groupId: string) {
+export function useAssignments(groupId: string, studentId?: string) {
   return useQuery({
-    queryKey: qk.assignments(groupId),
+    queryKey: qk.assignments(groupId, studentId),
     queryFn: async () =>
-      (await api.get<Assignment[]>("/lms/assignments", { params: { group_id: groupId } })).data,
+      (
+        await api.get<any>("/lms/assignments", {
+          params: { group_id: groupId, ...(studentId ? { studentId } : {}) },
+        })
+      ).data,
     enabled: !!groupId,
   });
 }
@@ -186,5 +191,20 @@ export function useCreateGradebookEntry() {
       qc.invalidateQueries({ queryKey: ["gradebook"] });
       qc.invalidateQueries({ queryKey: ["weighted-grade"] });
     },
+  });
+}
+
+export function useCreateQuiz() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: {
+      group_id: string;
+      title: string;
+      description?: string;
+      time_limit_minutes?: number;
+      passing_score?: number;
+      max_attempts?: number;
+    }) => (await api.post("/lms/quizzes", dto)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quizzes"] }),
   });
 }

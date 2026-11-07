@@ -523,11 +523,26 @@ export class LmsService {
     return this.assignmentRepo.save(assignment);
   }
 
-  async findAssignments(groupId: string): Promise<Assignment[]> {
-    return this.assignmentRepo.find({
+  async findAssignments(
+    groupId: string,
+    studentId?: string,
+  ): Promise<Assignment[]> {
+    const assignments = await this.assignmentRepo.find({
       where: { group_id: groupId },
       order: { created_at: 'DESC' },
+      relations: studentId ? ['submissions'] : undefined,
     });
+
+    if (!studentId) {
+      return assignments;
+    }
+
+    return assignments.map((assignment) => ({
+      ...assignment,
+      submissions: (assignment.submissions ?? []).filter(
+        (s) => s.student_id === studentId,
+      ),
+    }));
   }
 
   async updateAssignment(

@@ -110,8 +110,11 @@ export class LmsController {
   @Get('groups/:groupId/assignments')
   @Roles('super_admin', 'academic', 'teacher', 'student')
   @ApiOperation({ summary: 'List assignments for group (Nested Path)' })
-  findAssignmentsByGroupPath(@Param('groupId') groupId: string) {
-    return this.lmsService.findAssignments(groupId);
+  findAssignmentsByGroupPath(
+    @Param('groupId') groupId: string,
+    @Query('studentId') studentId?: string,
+  ) {
+    return this.lmsService.findAssignments(groupId, studentId);
   }
 
   @Get('groups/:groupId/quizzes')
@@ -394,9 +397,10 @@ export class LmsController {
   findAssignments(
     @Query('group_id') groupId1?: string,
     @Query('groupId') groupId2?: string,
+    @Query('studentId') studentId?: string,
   ) {
     const groupId = groupId1 || groupId2;
-    return this.lmsService.findAssignments(groupId || '');
+    return this.lmsService.findAssignments(groupId || '', studentId);
   }
 
   @Put('assignments/:id')

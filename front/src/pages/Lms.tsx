@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { unwrapApiResponse } from '@/lib/apiFetch';
 import { downloadProtected, api } from '@/lib/axios';
 import { Link } from 'react-router-dom';
+import { useAssignments, useQuizzes, useCreateQuiz, useStartAttempt, useSubmitAttempt } from '@/hooks/use-lms';
+import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import {
   BookOpen,
@@ -32,9 +34,10 @@ import {
   Users,
   Sparkles,
   HelpCircle,
-  FileSpreadsheet,
   Layers,
   Trash2,
+  MoreHorizontal,
+  Send,
 } from 'lucide-react';
 
 // ==========================================
@@ -239,6 +242,24 @@ const mapBackendModuleToView = (m: any): Module => ({
   lessons: ensureArray<Lesson>(m?.lessons).map(mapBackendLessonToView),
 });
 
+const mapBackendQuestionToView = (q: any): Question => ({
+  id: q.id,
+  text: q.question_text ?? q.text,
+  type: (() => {
+    switch (String(q.type ?? '').toUpperCase()) {
+      case 'MCQ':
+        return 'mcq';
+      case 'TRUE_FALSE':
+        return 'true_false';
+      default:
+        return 'short_answer';
+    }
+  })(),
+  options: q.options,
+  correctAnswer: q.correct_answer,
+  points: Number(q.points ?? 0),
+});
+
 async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const getToken = (): string | null => {
     return useAuthStore.getState().getAccessToken();
@@ -289,15 +310,99 @@ export default function LmsPage() {
     ['super_admin', 'academic',  'teacher'].includes(r)
   );
 
+  // Student id used to eager-load the current student's submission per assignment
+  // so the frontend can compute Pending / Submitted / Graded / Overdue status.
+  const studentId = isTeacherOrAdmin ? undefined : (user as any)?.id || undefined;
+
   // Active UI States
   const [activeTab, setActiveTab] = useState<'overview' | 'content' | 'assignments' | 'quizzes' | 'gradebook' | 'evaluations'>('overview');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
+  // TanStack Query: group assignments for the selected cohort.
+  const assignmentsQuery = useAssignments(selectedGroupId, studentId);
+  const rawAssignments = useMemo(() => {
+    const d = (assignmentsQuery.data ?? {}) as any;
+    return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+  }, [assignmentsQuery.data]);
+
+  // TanStack Query: group quizzes for the selected cohort.
+  const quizzesQuery = useQuizzes(selectedGroupId);
+  const rawQuizzes = useMemo(() => {
+    const d = (quizzesQuery.data ?? {}) as any;
+    return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
+  }, [quizzesQuery.data]);
+
+  // Quiz mutations (teacher create / student start-submit-results).
+  const createQuizMutation = useCreateQuiz();
+  const startAttemptMutation = useStartAttempt();
+  const submitAttemptMutation = useSubmitAttempt();
+
+  // View model: backend snake_case Assignment (+ optional submissions) → camelCase.
+  const viewAssignments = useMemo(() => {
+    const now = new Date();
+    return rawAssignments.map((a: any) => {
+      const subs = Array.isArray(a?.submissions) ? a.submissions : [];
+      const mySub = subs[0];
+      const isGraded = mySub?.status === 'graded';
+      const isSubmitted = Boolean(mySub && !isGraded);
+      const due = a.due_at ? new Date(a.due_at) : null;
+      const overdue = Boolean(due && due < now && !isGraded);
+      let status: 'pending' | 'submitted' | 'graded' | 'overdue' = 'pending';
+      if (isGraded) status = 'graded';
+      else if (isSubmitted) status = 'submitted';
+      else if (overdue) status = 'overdue';
+      return {
+        id: a.id,
+        title: a.title,
+        description: a.description || '',
+        dueDate: a.due_at || '',
+        maxScore: Number(a.max_grade ?? 100),
+        submitted: Boolean(mySub),
+        submissionDate: mySub?.submitted_at || '',
+        submittedText: mySub?.content || '',
+        score: mySub?.grade ?? undefined,
+        feedback: mySub?.feedback || '',
+        status,
+        submissionId: mySub?.id || '',
+        submissionStatus: mySub?.status || '',
+        allowLate: Boolean(a.allow_late_submission),
+      };
+    });
+  }, [rawAssignments]);
+
+  // Per-session quiz results for the current student (completes the
+  // Available → Completed status without a dedicated list-attempts endpoint).
+  const [quizResults, setQuizResults] = useState<Record<
+    string,
+    { score: number; percentage: number; isPassed: boolean }
+  >>({});
+
+  // View model: backend Quiz → camelCase with computed status.
+  const viewQuizzes = useMemo(() => {
+    return rawQuizzes.map((q: any) => {
+      const questions = ensureArray<Question>(q?.questions).map(
+        mapBackendQuestionToView,
+      );
+      const totalPoints = questions.reduce((sum, qq) => sum + (qq.points || 0), 0);
+      const result = quizResults[q.id];
+      return {
+        id: q.id,
+        title: q.title ?? q.name,
+        description: q.description || '',
+        timeLimitMinutes: q.time_limit_minutes ?? q.timeLimitMinutes ?? 0,
+        totalPoints,
+        questionsCount: questions.length,
+        status: result ? 'completed' : ('available' as const),
+        score: result?.score ?? q.score ?? undefined,
+        questions,
+      };
+    });
+  }, [rawQuizzes, quizResults]);
+
+
   // Data States (All dynamic from Backend)
   const [groups, setGroups] = useState<EnrolledGroup[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [gradeItems, setGradeItems] = useState<GradeItem[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationSurvey[]>([]);
 
@@ -311,9 +416,40 @@ export default function LmsPage() {
   const [activeQuiz, setActiveQuiz] = useState<Quiz | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, string>>({});
   const [quizScoreResult, setQuizScoreResult] = useState<number | null>(null);
+  const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
+  const [quizMode, setQuizMode] = useState<'take' | 'view'>('take');
+  const [quizStartTime, setQuizStartTime] = useState<number | null>(null);
 
   const [submittingAssignment, setSubmittingAssignment] = useState<Assignment | null>(null);
   const [submissionTextInput, setSubmissionTextInput] = useState('');
+
+  // Submissions / grading modal (teacher view)
+  const [submissionsModal, setSubmissionsModal] = useState<{
+    assignmentId: string;
+    assignmentTitle: string;
+  } | null>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [gradingSubmissionId, setGradingSubmissionId] = useState<string | null>(null);
+  const [gradeScore, setGradeScore] = useState('');
+  const [gradeFeedback, setGradeFeedback] = useState('');
+
+  // Create Assignment modal (teacher view)
+  const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false);
+  const [newAssignmentTitle, setNewAssignmentTitle] = useState('');
+  const [newAssignmentDescription, setNewAssignmentDescription] = useState('');
+  const [newAssignmentMaxScore, setNewAssignmentMaxScore] = useState(100);
+  const [newAssignmentDueAt, setNewAssignmentDueAt] = useState('');
+  const [isCreatingAssignment, setIsCreatingAssignment] = useState(false);
+
+  // Create Quiz modal (teacher view)
+  const [isCreateQuizOpen, setIsCreateQuizOpen] = useState(false);
+  const [newQuizTitle, setNewQuizTitle] = useState('');
+  const [newQuizDescription, setNewQuizDescription] = useState('');
+  const [newQuizTimeLimit, setNewQuizTimeLimit] = useState(30);
+  const [newQuizPassingScore, setNewQuizPassingScore] = useState(60);
+  const [newQuizMaxAttempts, setNewQuizMaxAttempts] = useState(1);
+  const [isCreatingQuiz, setIsCreatingQuiz] = useState(false);
 
   // Add Module modal state
   const [showAddModuleModal, setShowAddModuleModal] = useState(false);
@@ -376,24 +512,20 @@ export default function LmsPage() {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all dynamic tabs in parallel
-      const [rawModules, rawAssignments, rawQuizzes, rawGrades, rawEvals] = await Promise.all([
+      // Fetch all dynamic tabs in parallel (assignments & quizzes are loaded via
+      // TanStack Query's useAssignments / useQuizzes so those tabs stay in sync
+      // with submissions and attempts without refetching on every group change).
+      const [rawModules, rawGrades, rawEvals] = await Promise.all([
         apiFetch<any>(`/lms/groups/${groupId}/modules`),
-        apiFetch<any>(`/lms/groups/${groupId}/assignments`),
-        apiFetch<any>(`/lms/groups/${groupId}/quizzes`),
         apiFetch<any>(`/lms/groups/${groupId}/grades`),
         apiFetch<any>(`/lms/groups/${groupId}/evaluations`),
       ]);
 
       const modulesRes = ensureArray<Module>(rawModules).map(mapBackendModuleToView);
-      const assignmentsRes = ensureArray<Assignment>(rawAssignments);
-      const quizzesRes = ensureArray<Quiz>(rawQuizzes);
       const gradeItemsRes = ensureArray<GradeItem>(rawGrades);
       const evaluationsRes = ensureArray<EvaluationSurvey>(rawEvals);
 
       setModules(modulesRes);
-      setAssignments(assignmentsRes);
-      setQuizzes(quizzesRes);
       setGradeItems(gradeItemsRes);
       setEvaluations(evaluationsRes);
 
@@ -403,8 +535,6 @@ export default function LmsPage() {
       }
     } catch (err: any) {
       setModules([]);
-      setAssignments([]);
-      setQuizzes([]);
       setGradeItems([]);
       setEvaluations([]);
       setError(err.message || 'حدث خطأ أثناء جلب بيانات الدورة من السيرفر');
@@ -666,25 +796,98 @@ export default function LmsPage() {
     }
   };
 
+  const handleCreateAssignment = async () => {
+    if (!selectedGroupId || !newAssignmentTitle.trim()) return;
+
+    try {
+      setIsCreatingAssignment(true);
+      const dueAt = newAssignmentDueAt.trim() || undefined;
+      await apiFetch(`/lms/assignments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          group_id: selectedGroupId,
+          title: newAssignmentTitle.trim(),
+          instructions: newAssignmentDescription.trim() || '',
+          max_score: Number(newAssignmentMaxScore) || 100,
+          ...(dueAt ? { due_at: dueAt } : {}),
+          allow_late: false,
+        }),
+      });
+
+      setIsCreateAssignmentOpen(false);
+      setNewAssignmentTitle('');
+      setNewAssignmentDescription('');
+      setNewAssignmentMaxScore(100);
+      setNewAssignmentDueAt('');
+      await assignmentsQuery.refetch();
+    } catch (err: any) {
+      alert('حدث خطأ أثناء إنشاء الواجب: ' + err.message);
+    } finally {
+      setIsCreatingAssignment(false);
+    }
+  };
+
+  const handleCreateQuiz = async () => {
+    if (!selectedGroupId || !newQuizTitle.trim()) return;
+
+    try {
+      setIsCreatingQuiz(true);
+      await createQuizMutation.mutateAsync({
+        group_id: selectedGroupId,
+        title: newQuizTitle.trim(),
+        description: newQuizDescription.trim() || '',
+        time_limit_minutes: Number(newQuizTimeLimit) || 30,
+        passing_score: Number(newQuizPassingScore) || 60,
+        max_attempts: Number(newQuizMaxAttempts) || 1,
+      });
+
+      setIsCreateQuizOpen(false);
+      setNewQuizTitle('');
+      setNewQuizDescription('');
+      setNewQuizTimeLimit(30);
+      setNewQuizPassingScore(60);
+      setNewQuizMaxAttempts(1);
+      await quizzesQuery.refetch();
+    } catch (err: any) {
+      alert('حدث خطأ أثناء إنشاء الكويز: ' + err.message);
+    } finally {
+      setIsCreatingQuiz(false);
+    }
+  };
+
+  const handleStartQuiz = async (quiz: Quiz) => {
+    try {
+      setIsSubmitting(true);
+      const attempt = await startAttemptMutation.mutateAsync(quiz.id);
+      setCurrentAttemptId(attempt.id);
+      setActiveQuiz(quiz);
+      setQuizMode('take');
+      setQuizAnswers({});
+      setQuizScoreResult(null);
+      setQuizStartTime(Date.now());
+    } catch (err: any) {
+      alert('تعذر بدء الكويز: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleAssignmentSubmit = async () => {
     if (!submittingAssignment || !submissionTextInput.trim()) return;
 
     try {
       setIsSubmitting(true);
-      const updatedAssignment = await apiFetch<Assignment>(
-        `/lms/assignments/${submittingAssignment.id}/submit`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ textResponse: submissionTextInput }),
-        }
-      );
-
-      setAssignments((prev) =>
-        ensureArray<Assignment>(prev).map((a) => (a.id === submittingAssignment.id ? updatedAssignment : a))
-      );
+      await apiFetch(`/lms/submissions`, {
+        method: 'POST',
+        body: JSON.stringify({
+          assignment_id: submittingAssignment.id,
+          content: submissionTextInput.trim(),
+        }),
+      });
 
       setSubmittingAssignment(null);
       setSubmissionTextInput('');
+      await assignmentsQuery.refetch();
     } catch (err: any) {
       alert('حدث خطأ أثناء تسليم الواجب: ' + err.message);
     } finally {
@@ -692,27 +895,83 @@ export default function LmsPage() {
     }
   };
 
+  const openSubmissionsModal = (
+    assignmentId: string,
+    assignmentTitle: string
+  ) => {
+    setSubmissionsModal({ assignmentId, assignmentTitle });
+    setSubmissions([]);
+    setGradingSubmissionId(null);
+    setGradeScore('');
+    setGradeFeedback('');
+    loadSubmissions(assignmentId);
+  };
+
+  const loadSubmissions = async (assignmentId: string) => {
+    setIsLoadingSubmissions(true);
+    try {
+      const res = await apiFetch<any>(
+        `/lms/submissions?assignment_id=${assignmentId}`
+      );
+      const data = res?.data ?? res ?? [];
+      setSubmissions(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setSubmissions([]);
+      alert('تعذر تحميل التسليمات: ' + err.message);
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  const handleGradeSubmission = async () => {
+    if (!gradingSubmissionId || !gradeScore.trim()) return;
+    try {
+      setIsSubmitting(true);
+      await apiFetch(`/lms/submissions/${gradingSubmissionId}/grade`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          score: Number(gradeScore),
+          feedback: gradeFeedback.trim(),
+        }),
+      });
+      setGradingSubmissionId(null);
+      setGradeScore('');
+      setGradeFeedback('');
+      if (submissionsModal) {
+        await loadSubmissions(submissionsModal.assignmentId);
+      }
+      await assignmentsQuery.refetch();
+    } catch (err: any) {
+      alert('حدث خطأ أثناء تقييم التسليم: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleQuizSubmit = async () => {
-    if (!activeQuiz) return;
+    if (!activeQuiz || !currentAttemptId) return;
 
     try {
       setIsSubmitting(true);
-      const result = await apiFetch<{ score: number; passed: boolean }>(
-        `/lms/quizzes/${activeQuiz.id}/submit`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ answers: quizAnswers }),
-        }
-      );
+      const timeSpent = quizStartTime
+        ? Math.floor((Date.now() - quizStartTime) / 1000)
+        : 0;
+      const attempt = await submitAttemptMutation.mutateAsync({
+        attemptId: currentAttemptId,
+        answers: quizAnswers,
+        time_spent_seconds: timeSpent,
+      });
 
-      setQuizScoreResult(result.score);
-      setQuizzes((prev) =>
-        ensureArray<Quiz>(prev).map((q) =>
-          q.id === activeQuiz.id
-            ? { ...q, status: 'completed', score: result.score }
-            : q
-        )
-      );
+      const score = Number(attempt.score ?? 0);
+      setQuizScoreResult(score);
+      setQuizResults((prev) => ({
+        ...prev,
+        [activeQuiz.id]: {
+          score,
+          percentage: Number(attempt.percentage ?? 0),
+          isPassed: Boolean(attempt.is_passed),
+        },
+      }));
     } catch (err: any) {
       alert('خطأ أثناء إرسال الكويز: ' + err.message);
     } finally {
@@ -750,8 +1009,8 @@ export default function LmsPage() {
   // Safe Arrays for JSX Rendering
   const safeGroups = ensureArray<EnrolledGroup>(groups);
   const safeModules = ensureArray<Module>(modules);
-  const safeAssignments = ensureArray<Assignment>(assignments);
-  const safeQuizzes = ensureArray<Quiz>(quizzes);
+  const safeAssignments = viewAssignments;
+  const safeQuizzes = viewQuizzes;
   const safeGrades = ensureArray<GradeItem>(gradeItems);
   const safeEvaluations = ensureArray<EvaluationSurvey>(evaluations);
 
@@ -797,15 +1056,15 @@ export default function LmsPage() {
             )}
           </div>
           <h1 className="mt-2 text-2xl font-bold tracking-tight md:text-3xl">
-            {selectedGroup ? selectedGroup.courseTitle : 'No specific course'}
+            {selectedGroup?.courseTitle ?? 'No specific course'}
           </h1>
           {selectedGroup && (
             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
-              <span><strong>Group Code:</strong> {selectedGroup.code}</span>
+              <span><strong>Group Code:</strong> {selectedGroup?.code}</span>
               <span>•</span>
-              <span><strong>Instructor:</strong> {selectedGroup.teacherName}</span>
+              <span><strong>Instructor:</strong> {selectedGroup?.teacherName}</span>
               <span>•</span>
-              <span><strong>Schedule:</strong> {selectedGroup.schedule}</span>
+              <span><strong>Schedule:</strong> {selectedGroup?.schedule}</span>
             </p>
           )}
         </div>
@@ -891,12 +1150,12 @@ export default function LmsPage() {
           </div>
           <div className="mt-3 flex items-baseline justify-between">
             <span className="text-2xl font-bold">
-              {safeAssignments.filter((a) => !a.submitted).length + safeQuizzes.filter((q) => q.status === 'available').length}
+              {safeAssignments.filter((a: any) => !a.submitted).length}
             </span>
             <span className="text-xs text-amber-600 font-medium">Attention Required</span>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            {safeAssignments.filter((a) => !a.submitted).length} Homework, {safeQuizzes.filter((q) => q.status === 'available').length} Quizzes
+            {safeAssignments.filter((a: any) => !a.submitted).length} Homework
           </p>
         </div>
 
@@ -1212,61 +1471,143 @@ export default function LmsPage() {
           {/* TAB 3: ASSIGNMENTS */}
           {activeTab === 'assignments' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Group Assignments</h2>
-              {safeAssignments.length === 0 ? (
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Group Assignments</h2>
+                {isTeacherOrAdmin && (
+                  <button
+                    onClick={() => {
+                      setSubmittingAssignment(null);
+                      setSubmissionTextInput('');
+                      setNewAssignmentTitle('');
+                      setNewAssignmentDescription('');
+                      setNewAssignmentMaxScore(100);
+                      setNewAssignmentDueAt('');
+                      setIsCreateAssignmentOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Create Assignment
+                  </button>
+                )}
+              </div>
+
+              {assignmentsQuery.isLoading ? (
+                <div className="flex h-[60vh] w-full flex-col items-center justify-center space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading group assignments...</p>
+                </div>
+              ) : safeAssignments.length === 0 ? (
                 <div className="text-center py-12 rounded-xl border border-dashed border-border p-8">
                   <FileText className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-muted-foreground">No assignments pending for this course.</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    No assignments for this group yet.
+                  </p>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {safeAssignments.map((asg) => (
-                    <div key={asg.id} className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            asg.status === 'graded' ? 'bg-emerald-500/10 text-emerald-600' : asg.status === 'submitted' ? 'bg-blue-500/10 text-blue-600' : 'bg-amber-500/10 text-amber-600'
-                          }`}>
-                            {asg.status}
-                          </span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" /> Due: {asg.dueDate}
-                          </span>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {safeAssignments.map((asg: any) => {
+                    const overdue =
+                      asg.status === 'overdue' ||
+                      (asg.status === 'pending' &&
+                        asg.dueDate &&
+                        new Date(asg.dueDate) < new Date() &&
+                        !asg.allowLate);
+                    const statusVariant =
+                      asg.status === 'graded'
+                        ? 'success'
+                        : asg.status === 'submitted'
+                        ? 'info'
+                        : asg.status === 'overdue'
+                        ? 'destructive'
+                        : 'warning';
+                    return (
+                      <div
+                        key={asg.id}
+                        className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <Badge variant={statusVariant}>
+                              {asg.status.charAt(0).toUpperCase() + asg.status.slice(1)}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              Due:{' '}
+                              {asg.dueDate ? new Date(asg.dueDate).toLocaleDateString() : '—'}
+                              {overdue && !asg.submitted && (
+                                <span className="text-destructive font-semibold">
+                                  • Overdue
+                                </span>
+                              )}
+                            </span>
+                          </div>
+
+                          <h3 className="mt-3 font-semibold text-base">
+                            {asg.title}
+                          </h3>
+                          {asg.description && (
+                            <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                              {asg.description}
+                            </p>
+                          )}
+
+                          {asg.feedback && (
+                            <div className="mt-3 rounded-lg bg-emerald-500/5 p-3 text-xs border border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+                              <p className="font-semibold flex items-center gap-1">
+                                <MessageSquare className="h-3.5 w-3.5" /> Feedback ({asg.score ?? 0} / {asg.maxScore}):
+                              </p>
+                              <p className="mt-1">{asg.feedback}</p>
+                            </div>
+                          )}
+
+                          {asg.submissionDate && !isTeacherOrAdmin && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Submitted:{' '}
+                              {new Date(asg.submissionDate).toLocaleString()}
+                            </p>
+                          )}
                         </div>
 
-                        <h3 className="mt-3 font-semibold text-base">{asg.title}</h3>
-                        <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{asg.description}</p>
-
-                        {asg.feedback && (
-                          <div className="mt-3 rounded-lg bg-emerald-500/5 p-3 text-xs border border-emerald-500/20 text-emerald-800 dark:text-emerald-300">
-                            <p className="font-semibold flex items-center gap-1">
-                              <MessageSquare className="h-3.5 w-3.5" /> Feedback ({asg.score} / {asg.maxScore}):
-                            </p>
-                            <p className="mt-1">{asg.feedback}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-5 pt-4 border-t border-border flex items-center justify-between">
-                        <span className="text-xs font-semibold text-muted-foreground">Max Score: {asg.maxScore}</span>
-                        {!asg.submitted ? (
-                          <button
-                            onClick={() => {
-                              setSubmittingAssignment(asg);
-                              setSubmissionTextInput('');
-                            }}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors"
-                          >
-                            <Upload className="h-3.5 w-3.5" /> Submit Homework
-                          </button>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                            <CheckCircle2 className="h-4 w-4" /> Submitted
+                        <div className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            Max Score: {asg.maxScore}
                           </span>
-                        )}
+
+                          {isTeacherOrAdmin ? (
+                            <button
+                              onClick={() => openSubmissionsModal(asg.id, asg.title)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" /> Submissions
+                            </button>
+                          ) : asg.status === 'graded' ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                              <CheckCircle2 className="h-4 w-4" /> Graded
+                            </span>
+                          ) : asg.submitted ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
+                              <CheckCircle2 className="h-3.5 w-3.5" /> Submitted
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSubmittingAssignment(asg);
+                                setSubmissionTextInput(asg.submittedText || '');
+                              }}
+                              disabled={overdue && !asg.allowLate}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors ${
+                                overdue && !asg.allowLate
+                                  ? 'text-muted-foreground bg-muted/50 cursor-not-allowed'
+                                  : 'text-primary bg-primary/10 hover:bg-primary/20'
+                              }"
+                            >
+                              <Send className="h-3.5 w-3.5" /> Submit
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1275,52 +1616,127 @@ export default function LmsPage() {
           {/* TAB 4: QUIZZES */}
           {activeTab === 'quizzes' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Course Quizzes & Exams</h2>
-              {safeQuizzes.length === 0 ? (
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">Group Quizzes & Tests</h2>
+                {isTeacherOrAdmin && (
+                  <button
+                    onClick={() => {
+                      setNewQuizTitle('');
+                      setNewQuizDescription('');
+                      setNewQuizTimeLimit(30);
+                      setNewQuizPassingScore(60);
+                      setNewQuizMaxAttempts(1);
+                      setIsCreateQuizOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Create Quiz
+                  </button>
+                )}
+              </div>
+
+              {quizzesQuery.isLoading ? (
+                <div className="flex h-[60vh] w-full flex-col items-center justify-center space-y-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">
+                    Loading group quizzes...
+                  </p>
+                </div>
+              ) : safeQuizzes.length === 0 ? (
                 <div className="text-center py-12 rounded-xl border border-dashed border-border p-8">
                   <HelpCircle className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-muted-foreground">No quizzes currently active.</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    No quizzes for this group yet.
+                  </p>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {safeQuizzes.map((quiz) => (
-                    <div key={quiz.id} className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            quiz.status === 'completed' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-primary/10 text-primary'
-                          }`}>
-                            {quiz.status}
-                          </span>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5" /> {quiz.timeLimitMinutes} Mins
-                          </span>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {safeQuizzes.map((quiz: any) => {
+                    const result = quizResults[quiz.id];
+                    const statusVariant =
+                      quiz.status === 'completed'
+                        ? 'success'
+                        : 'warning';
+                    return (
+                      <div
+                        key={quiz.id}
+                        className="rounded-xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <Badge variant={statusVariant}>
+                              {quiz.status.charAt(0).toUpperCase() +
+                                quiz.status.slice(1)}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3.5 w-3.5" />
+                              {quiz.timeLimitMinutes} min
+                            </span>
+                          </div>
+
+                          <h3 className="mt-3 font-semibold text-base">
+                            {quiz.title}
+                          </h3>
+                          {quiz.description && (
+                            <p className="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                              {quiz.description}
+                            </p>
+                          )}
+
+                          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{quiz.questionsCount} Questions</span>
+                            <span>•</span>
+                            <span>{quiz.totalPoints} Points</span>
+                            {result && (
+                              <>
+                                <span>•</span>
+                                <span
+                                  className={`font-semibold ${
+                                    result.isPassed
+                                      ? 'text-emerald-600'
+                                      : 'text-amber-600'
+                                  }`}
+                                >
+                                  {result.score} / {quiz.totalPoints}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          {result && !isTeacherOrAdmin && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Completed {result.isPassed ? '(Passed)' : '(Pending review)'}
+                            </p>
+                          )}
                         </div>
 
-                        <h3 className="mt-3 font-semibold text-base">{quiz.title}</h3>
-                        <p className="mt-1 text-xs text-muted-foreground">{quiz.description}</p>
+                        <div className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          {isTeacherOrAdmin ? (
+                            <button
+                              onClick={() => {
+                                setQuizMode('view');
+                                setActiveQuiz(quiz);
+                              }}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <PlayCircle className="h-3.5 w-3.5" /> View
+                            </button>
+                          ) : result ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                              <CheckCircle2 className="h-4 w-4" /> Completed
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleStartQuiz(quiz)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-lg px-3 py-1.5 transition-colors text-primary bg-primary/10 hover:bg-primary/20"
+                            >
+                              <PlayCircle className="h-3.5 w-3.5" /> Take Quiz
+                            </button>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="mt-5 pt-4 border-t border-border flex items-center justify-between">
-                        {quiz.status === 'completed' ? (
-                          <div className="text-xs font-semibold text-emerald-600">
-                            Score Achieved: {quiz.score} / {quiz.totalPoints}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setActiveQuiz(quiz);
-                              setQuizAnswers({});
-                              setQuizScoreResult(null);
-                            }}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-primary hover:bg-primary/90 px-4 py-2 rounded-lg transition-colors"
-                          >
-                            <PlayCircle className="h-4 w-4" /> Start Assessment
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1412,6 +1828,190 @@ export default function LmsPage() {
         </>
       )}
 
+      {/* MODAL: CREATE ASSIGNMENT (teacher) */}
+      {isCreateAssignmentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Create Assignment</h3>
+              <button
+                onClick={() => setIsCreateAssignmentOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreateAssignment(); }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={newAssignmentTitle}
+                  onChange={(e) => setNewAssignmentTitle(e.target.value)}
+                  placeholder="Assignment title"
+                  required
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Description / Instructions
+                </label>
+                <textarea
+                  rows={3}
+                  value={newAssignmentDescription}
+                  onChange={(e) => setNewAssignmentDescription(e.target.value)}
+                  placeholder="Describe the assignment..."
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Max Score
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newAssignmentMaxScore}
+                    onChange={(e) => setNewAssignmentMaxScore(Number(e.target.value) || 100)}
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Due Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={newAssignmentDueAt}
+                    onChange={(e) => setNewAssignmentDueAt(e.target.value)}
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateAssignmentOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-input"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingAssignment || !newAssignmentTitle.trim()}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {isCreatingAssignment && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE QUIZ (teacher) */}
+      {isCreateQuizOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold">Create Quiz</h3>
+              <button
+                onClick={() => setIsCreateQuizOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={(e) => { e.preventDefault(); handleCreateQuiz(); }} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={newQuizTitle}
+                  onChange={(e) => setNewQuizTitle(e.target.value)}
+                  placeholder="Quiz title"
+                  required
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={newQuizDescription}
+                  onChange={(e) => setNewQuizDescription(e.target.value)}
+                  placeholder="Describe the quiz..."
+                  className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Time Limit (min)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newQuizTimeLimit}
+                    onChange={(e) => setNewQuizTimeLimit(Number(e.target.value) || 30)}
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Passing Score
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={newQuizPassingScore}
+                    onChange={(e) => setNewQuizPassingScore(Number(e.target.value) || 60)}
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">
+                    Max Attempts
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newQuizMaxAttempts}
+                    onChange={(e) => setNewQuizMaxAttempts(Number(e.target.value) || 1)}
+                    className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateQuizOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-input"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingQuiz || !newQuizTitle.trim()}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1"
+                >
+                  {isCreatingQuiz && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: SUBMIT ASSIGNMENT */}
       {submittingAssignment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -1445,38 +2045,249 @@ export default function LmsPage() {
         </div>
       )}
 
+      {/* MODAL: VIEW SUBMISSIONS & GRADE (teacher) */}
+      {submissionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-xl space-y-4 my-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold">Submissions</h3>
+                <p className="text-sm text-muted-foreground">
+                  {submissionsModal.assignmentTitle}
+                </p>
+              </div>
+              <button
+                onClick={() => setSubmissionsModal(null)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {isLoadingSubmissions ? (
+              <div className="flex h-40 items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : submissions.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground text-sm">
+                No submissions yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {submissions.map((sub) => {
+                  const graded = sub.status === 'graded';
+                  return (
+                    <div
+                      key={sub.id}
+                      className="rounded-lg border border-border p-4 flex items-center justify-between gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {sub.content || '(no text response)'}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {sub.file_name || sub.file_url || '—'}
+                          {sub.submitted_at && (
+                            <>
+                              {' '}
+                              • {new Date(sub.submitted_at).toLocaleString()}
+                            </>
+                          )}
+                          {sub.is_late && (
+                            <span className="text-destructive font-bold"> (late)</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            graded
+                              ? 'bg-emerald-500/10 text-emerald-600'
+                              : 'bg-blue-500/10 text-blue-600'
+                          }`}
+                        >
+                          {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+                        </span>
+                        {graded ? (
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            {sub.grade ?? 0} / {sub.max_score ?? 100}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setGradingSubmissionId(sub.id);
+                              setGradeScore(String(sub.grade ?? ''));
+                              setGradeFeedback(sub.feedback || '');
+                            }}
+                            disabled={gradingSubmissionId === sub.id && isSubmitting}
+                            className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-lg px-2.5 py-1 transition-colors"
+                          >
+                            Grade
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {gradingSubmissionId && (
+              <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-3">
+                <h4 className="text-sm font-semibold">Grade Submission</h4>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Score
+                    </label>
+                    <input
+                      type="number"
+                      value={gradeScore}
+                      onChange={(e) => setGradeScore(e.target.value)}
+                      min="0"
+                      className="w-full rounded-lg border border-input bg-background p-2 text-sm focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Feedback
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={gradeFeedback}
+                      onChange={(e) => setGradeFeedback(e.target.value)}
+                      className="w-full rounded-lg border border-input bg-background p-2 text-sm focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setGradingSubmissionId(null);
+                      setGradeScore('');
+                      setGradeFeedback('');
+                    }}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-input"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleGradeSubmission}
+                    disabled={isSubmitting || !gradeScore.trim()}
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {isSubmitting && gradingSubmissionId && (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    )}
+                    Save Grade
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* MODAL: QUIZ PLAYER */}
       {activeQuiz && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm overflow-y-auto">
           <div className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-2xl space-y-6 my-8">
             <div className="flex items-center justify-between border-b border-border pb-4">
-              <h3 className="text-lg font-bold">{activeQuiz.title}</h3>
+              <div>
+                <h3 className="text-lg font-bold">{activeQuiz.title}</h3>
+                <p className="text-xs text-muted-foreground">
+                  {activeQuiz.timeLimitMinutes} min • {activeQuiz.questionsCount} questions • {activeQuiz.totalPoints} pts
+                </p>
+              </div>
               <button onClick={() => setActiveQuiz(null)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {quizScoreResult === null ? (
+            {quizScoreResult !== null ? (
+              <div className="text-center py-8 space-y-4">
+                <Award className="h-12 w-12 text-emerald-500 mx-auto" />
+                <h4 className="text-xl font-bold">
+                  {quizMode === 'take' ? 'Quiz Submitted' : 'Quiz Results'}
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Score: {quizScoreResult} / {activeQuiz.totalPoints} Points
+                </p>
+                <button onClick={() => setActiveQuiz(null)} className="px-6 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground">
+                  Close
+                </button>
+              </div>
+            ) : quizMode === 'view' ? (
               <div className="space-y-6">
-                {ensureArray<Question>(activeQuiz.questions).map((q, idx) => (
+                <p className="text-xs text-muted-foreground">Instructor view — questions and correct answers.</p>
+                {ensureArray<Question>(activeQuiz?.questions).map((q, idx) => (
                   <div key={q.id} className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
                     <p className="font-semibold text-sm">
                       Question {idx + 1} ({q.points} pts): {q.text}
                     </p>
                     {q.options && (
                       <div className="space-y-2 pt-1">
-                       {ensureArray<string>(q.options).map((opt, optIdx) => (
-  <label key={`${q.id}-${opt}-${optIdx}`} className="flex items-center gap-2 text-xs p-2.5 rounded-md border border-border cursor-pointer hover:bg-muted/50">
+                        {ensureArray<string>(q.options).map((opt, optIdx) => (
+                          <div
+                            key={`${q.id}-${opt}-${optIdx}`}
+                            className={`flex items-center gap-2 text-xs p-2.5 rounded-md border ${
+                              String(opt) === String(q.correctAnswer)
+                                ? 'border-emerald-500 bg-emerald-500/5'
+                                : 'border-border hover:bg-muted/50'
+                            }`}
+                          >
+                            {String(opt) === String(q.correctAnswer) && (
+                              <Check className="h-3.5 w-3.5 text-emerald-600" />
+                            )}
+                            <span>{opt}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {q.type === 'short_answer' && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Correct answer: {String(q.correctAnswer ?? '—')}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {ensureArray<Question>(activeQuiz?.questions).map((q, idx) => (
+                  <div key={q.id} className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
+                    <p className="font-semibold text-sm">
+                      Question {idx + 1} ({q.points} pts): {q.text}
+                    </p>
+                    {q.options && (
+                      <div className="space-y-2 pt-1">
+                        {ensureArray<string>(q.options).map((opt, optIdx) => (
+                          <label key={`${q.id}-${opt}-${optIdx}`} className="flex items-center gap-2 text-xs p-2.5 rounded-md border border-border cursor-pointer hover:bg-muted/50">
                             <input
                               type="radio"
                               name={q.id}
                               value={opt}
                               checked={quizAnswers[q.id] === opt}
-                              onChange={() => setQuizAnswers({ ...quizAnswers, [q.id]: opt })}
+                              onChange={() =>
+                                setQuizAnswers({ ...quizAnswers, [q.id]: opt })
+                            }
                             />
                             <span>{opt}</span>
                           </label>
                         ))}
+                      </div>
+                    )}
+                    {q.type === 'short_answer' && (
+                      <div className="pt-1">
+                        <input
+                          type="text"
+                          value={quizAnswers[q.id] ?? ''}
+                          onChange={(e) =>
+                            setQuizAnswers({ ...quizAnswers, [q.id]: e.target.value })
+                          }
+                          placeholder="Type your answer..."
+                          className="w-full rounded-lg border border-input bg-background p-2 text-sm focus:ring-2 focus:ring-primary"
+                        />
                       </div>
                     )}
                   </div>
@@ -1490,15 +2301,6 @@ export default function LmsPage() {
                     {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Submit Answers
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-8 space-y-4">
-                <Award className="h-12 w-12 text-emerald-500 mx-auto" />
-                <h4 className="text-xl font-bold">Quiz Processed by Backend!</h4>
-                <p className="text-sm text-muted-foreground">Score: {quizScoreResult} Points</p>
-                <button onClick={() => setActiveQuiz(null)} className="px-6 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground">
-                  Close
-                </button>
               </div>
             )}
           </div>
