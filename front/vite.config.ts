@@ -32,6 +32,14 @@ export default defineConfig({
         secure: false,
         ws: true,
       },
+      // Proxy /lms paths too so apiFetch() calls using relative /lms/... URLs
+      // reach the NestJS backend instead of the Vite dev server.
+      '/lms': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
       // Socket.IO uses the /socket.io transport path even when the namespace is /chat.
       // Without this proxy, the dev server returns the SPA HTML instead of upgrading WS.
       '/socket.io': {

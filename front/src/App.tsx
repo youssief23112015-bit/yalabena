@@ -51,6 +51,7 @@ import VerifyCertificatePage from '@/pages/public/VerifyCertificatePage';
 import RegisterOnlinePage from '@/pages/public/RegisterOnlinePage';
 import InventoryPage from '@/pages/inventory/InventoryPage';
 import KnowledgeBasePage from '@/pages/KnowledgeBase';
+import SupportPage from '@/pages/SupportPage';
 import ReportsPage from '@/pages/Reports';
 import ActivityAttendancePage from '@/pages/activities/ActivityAttendancePage';
 import HrLayout from '@/pages/hr/HrLayout';
@@ -359,6 +360,38 @@ function App() {
               element={roleGate(
                 ['super_admin', 'hr', 'branch_manager', 'teacher', 'sales', 'finance'],
                 <KnowledgeBasePage />,
+              )}
+            />
+            <Route
+              path="/help"
+              element={roleGate(
+                [
+                  'super_admin',
+                  'hr',
+                  'branch_manager',
+                  'teacher',
+                  'sales',
+                  'finance',
+                  'academic',
+                  'student',
+                ],
+                <SupportPage />,
+              )}
+            />
+            <Route
+              path="/support"
+              element={roleGate(
+                [
+                  'super_admin',
+                  'hr',
+                  'branch_manager',
+                  'teacher',
+                  'sales',
+                  'finance',
+                  'academic',
+                  'student',
+                ],
+                <SupportPage />,
               )}
             />
             <Route

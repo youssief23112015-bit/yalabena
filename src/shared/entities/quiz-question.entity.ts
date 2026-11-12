@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import { Quiz } from './quiz.entity';
 import { TestQuestion } from './test-question.entity';
+import { QuizOption } from './quiz-option.entity';
 import { QuestionType } from '../../common/enums/question-type.enum';
 @Entity('quiz_questions')
 export class QuizQuestion {
@@ -44,4 +45,7 @@ export class QuizQuestion {
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
+
+  @OneToMany(() => QuizOption, (qo) => qo.question)
+  quizOptions: QuizOption[];
 }

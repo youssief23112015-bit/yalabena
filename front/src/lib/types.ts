@@ -93,6 +93,14 @@ export interface Submission {
   submitted_at: string;
 }
 
+export interface QuizOption {
+  id?: string;
+  quiz_question_id?: string;
+  option_text: string;
+  is_correct: boolean;
+  order?: number;
+}
+
 export interface QuizQuestion {
   id: string;
   quiz_id?: string | null;
@@ -101,6 +109,7 @@ export interface QuizQuestion {
   question_text: string;
   correct_answer: unknown;
   options?: string[];
+  quizOptions?: QuizOption[];
   topic_tag?: string;
   difficulty?: string;
 }

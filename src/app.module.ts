@@ -32,6 +32,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { SupportModule } from './modules/support/support.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { RateLimitGuard } from './common/guards/rate-limit.guard';
@@ -72,6 +73,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
     DashboardModule,
     ChatModule,
     AuditModule,
+    SupportModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

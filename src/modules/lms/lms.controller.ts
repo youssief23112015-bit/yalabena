@@ -49,6 +49,8 @@ import { SubmitAssignmentDto } from './dto/submit-assignment.dto';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
+import { CreateQuizQuestionDto } from './dto/create-quiz-question.dto';
+import { UpdateQuizQuestionDto } from './dto/update-quiz-question.dto';
 import { SubmitAttemptDto } from './dto/submit-attempt.dto';
 import { CreateGradebookCategoryDto } from './dto/create-gradebook-category.dto';
 import { CreateGradebookEntryDto } from './dto/create-gradebook-entry.dto';
@@ -480,6 +482,49 @@ export class LmsController {
   }
 
   // ═══════════════════════════════════════════════════
+  // ════════════════════════════════════════════════════
+  // QUIZ QUESTIONS (per-quiz CRUD)
+  // ════════════════════════════════════════════════════
+
+  @Post('quizzes/:quizId/questions')
+  @Roles('super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Add a question (with options) to a quiz' })
+  @ApiBody({ type: CreateQuizQuestionDto })
+  addQuizQuestion(
+    @Param('quizId', ParseUUIDPipe) quizId: string,
+    @Body() dto: CreateQuizQuestionDto,
+  ) {
+    return this.lmsService.addQuestionToQuiz(quizId, dto);
+  }
+
+  @Get('quizzes/:quizId/questions')
+  @Roles('super_admin', 'academic', 'teacher', 'student')
+  @ApiOperation({ summary: 'List all questions for a quiz' })
+  getQuizQuestions(@Param('quizId', ParseUUIDPipe) quizId: string) {
+    return this.lmsService.getQuestionsForQuiz(quizId);
+  }
+
+  @Put('quizzes/questions/:questionId')
+  @Roles('super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Update a quiz question and its options' })
+  @ApiBody({ type: UpdateQuizQuestionDto })
+  updateQuizQuestion(
+    @Param('questionId', ParseUUIDPipe) questionId: string,
+    @Body() dto: UpdateQuizQuestionDto,
+  ) {
+    return this.lmsService.updateQuizQuestion(questionId, dto);
+  }
+
+  @Delete('quizzes/questions/:questionId')
+  @Roles('super_admin', 'academic', 'teacher')
+  @ApiOperation({ summary: 'Delete a quiz question' })
+  async deleteQuizQuestion(
+    @Param('questionId', ParseUUIDPipe) questionId: string,
+  ) {
+    await this.lmsService.deleteQuizQuestion(questionId);
+    return { message: 'Question deleted' };
+  }
+
   // QUESTION BANK
   // ═══════════════════════════════════════════════════
 

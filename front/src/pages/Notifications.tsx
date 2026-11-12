@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { notificationsApi } from "@/api/notifications";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +26,7 @@ export default function NotificationsPage() {
   const user = useAuthStore((s) => s.user);
   const userRoles = user?.roles ?? (user?.role ? [user.role] : []);
   const canBroadcast = userRoles.some((role) => BROADCAST_ROLES.includes(role));
+  const navigate = useNavigate();
 
   const q = useQuery({
     queryKey: ["notifications-page", unreadOnly],
@@ -82,7 +84,18 @@ export default function NotificationsPage() {
                     <Button size="sm" variant="outline" onClick={() => readOne.mutate(n.id)}>Mark read</Button>
                   )}
                   {n.action_url && (
-                    <Button size="sm" variant="ghost" onClick={() => window.open(n.action_url!, "_blank", "noopener")}>Open</Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        if (!n.read_at && !readOne.isPending) {
+                          readOne.mutate(n.id);
+                        }
+                        navigate(n.action_url!);
+                      }}
+                    >
+                      Open
+                    </Button>
                   )}
                 </div>
               </div>

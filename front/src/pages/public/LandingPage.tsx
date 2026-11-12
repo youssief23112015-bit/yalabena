@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, Star, Users, Clock, Award, LogIn } from "lucide-react";
+import { ArrowRight, Star, Users, Clock, Award, LogIn, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,17 @@ export default function LandingPage() {
                   </Link>
                 </Button>
               )}
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="gap-2 font-semibold shadow-sm"
+              >
+                <Link to="/support">
+                  <HelpCircle className="h-4 w-4" />
+                  {t("nav.support", "Support")}
+                </Link>
+              </Button>
             </div>
           </div>
 

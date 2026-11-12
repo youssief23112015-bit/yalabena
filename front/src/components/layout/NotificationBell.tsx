@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import type { AppNotification, PaginatedNotifications } from "@/types";
 
 /** Bell with unread badge + dropdown; realtime updates via the notifications socket (SRS 4.18). */
@@ -18,6 +19,7 @@ export function NotificationBell() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const { data: unread = 0 } = useQuery({
     queryKey: ["notifications", "unread-count"],
@@ -29,7 +31,8 @@ export function NotificationBell() {
   const { data: page } = useQuery({
     queryKey: ["notifications", "list"],
     queryFn: () => notificationsApi.list({ limit: 10 }),
-    enabled: isAuthenticated && open,
+    enabled: isAuthenticated,
+    refetchInterval: 30_000,
   });
 
   // Realtime: bump unread count, refresh list, and toast on each push.
@@ -42,7 +45,15 @@ export function NotificationBell() {
       queryClient.setQueryData<PaginatedNotifications | undefined>(
         ["notifications", "list"],
         (old) =>
-          old ? { ...old, items: [n, ...old.items].slice(0, 10), unread_count: old.unread_count + 1 } : old,
+          old
+            ? { ...old, items: [n, ...old.items].slice(0, 10), unread_count: old.unread_count + 1 }
+            : {
+                items: [n],
+                total: 1,
+                page: 1,
+                limit: 10,
+                unread_count: 1,
+              },
       );
       toast({ title: n.title, description: n.body });
     };
@@ -72,7 +83,7 @@ export function NotificationBell() {
       await notificationsApi.markRead(n.id);
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     }
-    if (n.action_url) window.open(n.action_url, "_blank", "noopener");
+    if (n.action_url) navigate(n.action_url);
   };
 
   return (

@@ -9,3 +9,4 @@ export { dashboardApi } from "./dashboard";
 
 export { kbApi } from "./kb";
 export { reportsApi } from "./reports";
+export { supportApi } from "./support";

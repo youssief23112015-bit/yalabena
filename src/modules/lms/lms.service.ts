@@ -21,6 +21,7 @@ import { Quiz } from '../../shared/entities/quiz.entity';
 import { AssignmentType } from '../../common/enums/assignment-type.enum';
 
 import { QuizQuestion } from '../../shared/entities/quiz-question.entity';
+import { QuizOption } from '../../shared/entities/quiz-option.entity';
 import { QuizAttempt } from '../../shared/entities/quiz-attempt.entity';
 import { GradebookCategory } from '../../shared/entities/gradebook-category.entity';
 import { GradebookEntry } from '../../shared/entities/gradebook-entry.entity';
@@ -47,6 +48,8 @@ import { SubmitAssignmentDto } from './dto/submit-assignment.dto';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
 import { CreateQuizDto } from './dto/create-quiz.dto';
 import { CreateQuestionDto } from './dto/create-question.dto';
+import { CreateQuizQuestionDto } from './dto/create-quiz-question.dto';
+import { UpdateQuizQuestionDto } from './dto/update-quiz-question.dto';
 import { CreateGradebookCategoryDto } from './dto/create-gradebook-category.dto';
 import { CreateGradebookEntryDto } from './dto/create-gradebook-entry.dto';
 import { LmsLessonProgress } from '../../shared/entities/lms-lesson-progress.entity';
@@ -688,7 +691,120 @@ export class LmsService {
     });
   }
 
-  // ═══════════════════════════════════════════════════
+  async addQuestionToQuiz(
+    quizId: string,
+    dto: CreateQuizQuestionDto,
+  ): Promise<QuizQuestion> {
+    const quiz = await this.quizRepo.findOne({ where: { id: quizId } });
+    if (!quiz) throw new NotFoundException('Quiz not found');
+
+    // Normalize the question type to uppercase so it matches both the
+    // shared QuestionType enum and the uppercase values now present in the
+    // PostgreSQL quiz_questions_type_enum (see migration
+    // 1802000000000-AddQuizQuestionTypeEnumValues). This prevents
+    // `invalid input value for enum question_type: "TRUE_FALSE"` when the
+    // DB enum previously only knew lowercase labels.
+    const normalizedType =
+      typeof dto.type === 'string' && dto.type in QuestionType
+        ? (dto.type as QuestionType)
+        : QuestionType[dto.type as keyof typeof QuestionType];
+
+    const correctOpt = dto.options?.find((o) => o.is_correct);
+    const correctText =
+      correctOpt?.option_text ?? dto.options?.[0]?.option_text ?? '';
+
+    const question = this.questionRepo.create({
+      quiz_id: quizId,
+      question_text: dto.question_text,
+      type: normalizedType,
+      points: dto.points,
+      order: 1,
+      correct_answer: correctText,
+    });
+    const saved = await this.questionRepo.save(question);
+
+    // Backfill JSONB options column so auto-grading and student views keep working.
+    saved.options = dto.options.map((o) => o.option_text);
+    await this.questionRepo.save(saved);
+
+    const optionRepo = this.questionRepo.manager.getRepository(QuizOption);
+    const options = dto.options.map((o, i) =>
+      optionRepo.create({
+        quiz_question_id: saved.id,
+        option_text: o.option_text,
+        is_correct: Boolean(o.is_correct),
+        order: o.order ?? i,
+      }),
+    );
+    await optionRepo.save(options);
+
+    return (await this.questionRepo.findOne({
+      where: { id: saved.id },
+      relations: ['quizOptions'],
+    })) as QuizQuestion;
+  }
+
+  async getQuestionsForQuiz(quizId: string): Promise<QuizQuestion[]> {
+    return this.questionRepo.find({
+      where: { quiz_id: quizId },
+      relations: ['quizOptions'],
+      order: { order: 'ASC' },
+    });
+  }
+
+  async updateQuizQuestion(
+    questionId: string,
+    dto: UpdateQuizQuestionDto,
+  ): Promise<QuizQuestion> {
+    const question = await this.questionRepo.findOne({
+      where: { id: questionId },
+      relations: ['quizOptions'],
+    });
+    if (!question) throw new NotFoundException('Question not found');
+
+    if (dto.question_text !== undefined) {
+      question.question_text = dto.question_text;
+    }
+    if (dto.type !== undefined) {
+      question.type = dto.type;
+    }
+    if (dto.points !== undefined) {
+      question.points = dto.points;
+    }
+
+    if (dto.options !== undefined) {
+      const correctOpt = dto.options.find((o) => o.is_correct);
+      question.correct_answer =
+        correctOpt?.option_text ?? question.correct_answer;
+      question.options = dto.options.map((o) => o.option_text);
+
+      const optionRepo = this.questionRepo.manager.getRepository(QuizOption);
+      await optionRepo.delete({ quiz_question_id: questionId });
+      const options = dto.options.map((o, i) =>
+        optionRepo.create({
+          quiz_question_id: questionId,
+          option_text: o.option_text,
+          is_correct: Boolean(o.is_correct),
+          order: o.order ?? i,
+        }),
+      );
+      await optionRepo.save(options);
+    }
+
+    await this.questionRepo.save(question);
+
+    return (await this.questionRepo.findOne({
+      where: { id: questionId },
+      relations: ['quizOptions'],
+    })) as QuizQuestion;
+  }
+
+  async deleteQuizQuestion(questionId: string): Promise<void> {
+    const question = await this.questionRepo.findOne({ where: { id: questionId } });
+    if (!question) throw new NotFoundException('Question not found');
+    await this.questionRepo.remove(question);
+  }
+
   // QUESTION BANK (LMS-BE-09)
   // ═══════════════════════════════════════════════════
 

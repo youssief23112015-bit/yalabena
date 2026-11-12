@@ -1,8 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/store/authStore";
 
+// Match resolution order of src/api/client.ts: VITE_API_URL (absolute) takes priority
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "/api/v1";
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
+  baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
 

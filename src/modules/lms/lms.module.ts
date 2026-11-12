@@ -8,6 +8,7 @@ import { Assignment } from '../../shared/entities/assignment.entity';
 import { Submission } from '../../shared/entities/submission.entity';
 import { Quiz } from '../../shared/entities/quiz.entity';
 import { QuizQuestion } from '../../shared/entities/quiz-question.entity';
+import { QuizOption } from '../../shared/entities/quiz-option.entity';
 import { QuizAttempt } from '../../shared/entities/quiz-attempt.entity';
 import { GradebookCategory } from '../../shared/entities/gradebook-category.entity';
 import { GradebookEntry } from '../../shared/entities/gradebook-entry.entity';
@@ -32,6 +33,7 @@ import { EnrollmentGuard } from './guards/enrollment.guard';
       Submission,
       Quiz,
       QuizQuestion,
+      QuizOption,
       QuizAttempt,
       GradebookCategory,
       GradebookEntry,

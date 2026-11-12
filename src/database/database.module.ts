@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource, DataSourceOptions } from 'typeorm';
@@ -19,7 +19,8 @@ import { DataSource, DataSourceOptions } from 'typeorm';
         synchronize: false , //config.get('NODE_ENV') !== 'production',
         logging: config.get('NODE_ENV') === 'development',
         migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
-        migrationsRun: false,
+        migrationsRun: true,
+        migrationsTransactionMode: "none",
       }),
       dataSourceFactory: async (options: DataSourceOptions) => {
         return new DataSource(options).initialize();

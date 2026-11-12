@@ -65,6 +65,7 @@ const navItems: NavItem[] = [
   { to: "/certificates", label: "nav.certificates", icon: Award, roles: ["super_admin", "branch_manager", "academic", "finance", "teacher"] },
   { to: "/lms", label: "nav.lms", icon: BookMarked, roles: ["super_admin", "academic", "teacher", "student"] },
   { to: "/instructor/question-bank", label: "nav.questionBank", icon: HelpCircle, roles: ["academic", "teacher"] },
+  { to: "/help", label: "nav.helpCenter", icon: HelpCircle, roles: [] },
   {
     to: "/hr",
     label: "nav.hr",

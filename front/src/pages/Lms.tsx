@@ -2,9 +2,19 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { unwrapApiResponse } from '@/lib/apiFetch';
 import { downloadProtected, api } from '@/lib/axios';
 import { Link } from 'react-router-dom';
-import { useAssignments, useQuizzes, useCreateQuiz, useStartAttempt, useSubmitAttempt } from '@/hooks/use-lms';
+import { useAssignments, useQuizzes, useCreateQuiz, useStartAttempt, useSubmitAttempt, useQuizQuestions, useCreateQuizQuestion, useUpdateQuizQuestion, useDeleteQuizQuestion } from '@/hooks/use-lms';
 import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/authStore';
+import type { QuizQuestion, QuizOption } from '@/lib/types';
+import { toSafeArray } from '@/lib/utils';
 import {
   BookOpen,
   FileText,
@@ -37,6 +47,9 @@ import {
   Layers,
   Trash2,
   MoreHorizontal,
+  Edit2,
+  Save,
+  List,
   Send,
 } from 'lucide-react';
 
@@ -175,8 +188,12 @@ const mapGroupToView = (g: any): EnrolledGroup => ({
   progressPercent: 0,
 });
 
-// API Base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+// API Base URL — matches src/api/client.ts resolution order:
+// VITE_API_URL (absolute) > VITE_API_BASE_URL (relative, proxied by Vite) > default
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  '/api/v1';
 
 // Helper Function: Safe Array Extraction to prevent runtime crashes
 const ensureArray = <T,>(data: any): T[] => {
@@ -336,6 +353,49 @@ export default function LmsPage() {
   const createQuizMutation = useCreateQuiz();
   const startAttemptMutation = useStartAttempt();
   const submitAttemptMutation = useSubmitAttempt();
+
+  // Quiz Question Builder (instructor view)
+  const [builderQuizId, setBuilderQuizId] = useState<string | null>(null);
+  const [builderQuestions, setBuilderQuestions] = useState<QuizQuestion[]>([]);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<{
+    question_text: string;
+    type: 'MCQ' | 'TRUE_FALSE';
+    points: number;
+    options: Array<{ option_text: string; is_correct: boolean }>;
+  }>({
+    question_text: '',
+    type: 'MCQ',
+    points: 10,
+    options: [
+      { option_text: '', is_correct: false },
+      { option_text: '', is_correct: false },
+    ],
+  });
+
+  const resetDraft = () => {
+    setDraft({
+      question_text: '',
+      type: 'MCQ',
+      points: 10,
+      options: [
+        { option_text: '', is_correct: false },
+        { option_text: '', is_correct: false },
+      ],
+    });
+  };
+
+  // Quiz Question Builder hooks (instructor)
+  const questionsQuery = useQuizQuestions(builderQuizId ?? '');
+  const createQuestionMutation = useCreateQuizQuestion(builderQuizId ?? '');
+  const updateQuestionMutation = useUpdateQuizQuestion();
+  const deleteQuestionMutation = useDeleteQuizQuestion();
+
+  // Keep local builder list in sync with the backend questions for the
+  // currently viewed quiz.
+  useEffect(() => {
+    setBuilderQuestions(toSafeArray<QuizQuestion>(questionsQuery.data ?? []));
+  }, [questionsQuery.data]);
 
   // View model: backend snake_case Assignment (+ optional submissions) → camelCase.
   const viewAssignments = useMemo(() => {
@@ -852,6 +912,85 @@ export default function LmsPage() {
       alert('حدث خطأ أثناء إنشاء الكويز: ' + err.message);
     } finally {
       setIsCreatingQuiz(false);
+    }
+  };
+
+  const toggleCorrect = (index: number) => {
+    setDraft((d) => ({
+      ...d,
+      options: d.options.map((o, i) => ({
+        ...o,
+        is_correct: i === index,
+      })),
+    }));
+  };
+
+  const addOption = () => {
+    setDraft((d) => ({
+      ...d,
+      options: [...d.options, { option_text: '', is_correct: false }],
+    }));
+  };
+
+  const removeOption = (index: number) => {
+    setDraft((d) => ({
+      ...d,
+      options: d.options.filter((_, i) => i !== index),
+    }));
+  };
+
+  const editQuestion = (q: QuizQuestion) => {
+    setEditingQuestionId(q.id);
+    setDraft({
+      question_text: q.question_text,
+      type: q.type as 'MCQ' | 'TRUE_FALSE',
+      points: q.points,
+      options: ensureArray<QuizOption>(q.quizOptions).map((o) => ({
+        option_text: o.option_text,
+        is_correct: Boolean(o.is_correct),
+      })),
+    });
+  };
+
+  const handleSaveQuestion = async () => {
+    if (!builderQuizId) return;
+    if (!draft.question_text.trim()) return;
+    if (draft.options.some((o) => !o.option_text.trim())) {
+      alert('Please fill in all option texts.');
+      return;
+    }
+    const payload = {
+      question_text: draft.question_text.trim(),
+      type: draft.type,
+      points: Number(draft.points) || 1,
+      options: draft.options.map((o, i) => ({
+        option_text: o.option_text.trim(),
+        is_correct: o.is_correct,
+        order: i,
+      })),
+    };
+    try {
+      if (editingQuestionId) {
+        await updateQuestionMutation.mutateAsync({
+          questionId: editingQuestionId,
+          ...payload,
+        });
+      } else {
+        await createQuestionMutation.mutateAsync(payload);
+      }
+      setEditingQuestionId(null);
+      resetDraft();
+    } catch (err: any) {
+      alert('Failed to save question: ' + err.message);
+    }
+  };
+
+  const deleteQuestion = async (questionId: string) => {
+    if (!window.confirm('Are you sure you want to delete this question?')) return;
+    try {
+      await deleteQuestionMutation.mutateAsync(questionId);
+    } catch (err: any) {
+      alert('Failed to delete question: ' + err.message);
     }
   };
 
@@ -1716,6 +1855,9 @@ export default function LmsPage() {
                               onClick={() => {
                                 setQuizMode('view');
                                 setActiveQuiz(quiz);
+                                setBuilderQuizId(quiz.id);
+                                setEditingQuestionId(null);
+                                resetDraft();
                               }}
                               className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors"
                             >
@@ -2199,7 +2341,7 @@ export default function LmsPage() {
                   {activeQuiz.timeLimitMinutes} min • {activeQuiz.questionsCount} questions • {activeQuiz.totalPoints} pts
                 </p>
               </div>
-              <button onClick={() => setActiveQuiz(null)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => { setActiveQuiz(null); setBuilderQuizId(null); setEditingQuestionId(null); resetDraft(); }} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -2213,43 +2355,204 @@ export default function LmsPage() {
                 <p className="text-sm text-muted-foreground">
                   Score: {quizScoreResult} / {activeQuiz.totalPoints} Points
                 </p>
-                <button onClick={() => setActiveQuiz(null)} className="px-6 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground">
+                <button onClick={() => { setActiveQuiz(null); setBuilderQuizId(null); setEditingQuestionId(null); resetDraft(); }} className="px-6 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground">
                   Close
                 </button>
               </div>
             ) : quizMode === 'view' ? (
               <div className="space-y-6">
-                <p className="text-xs text-muted-foreground">Instructor view — questions and correct answers.</p>
-                {ensureArray<Question>(activeQuiz?.questions).map((q, idx) => (
-                  <div key={q.id} className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
-                    <p className="font-semibold text-sm">
-                      Question {idx + 1} ({q.points} pts): {q.text}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold">{activeQuiz.title}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {activeQuiz.description}
                     </p>
-                    {q.options && (
-                      <div className="space-y-2 pt-1">
-                        {ensureArray<string>(q.options).map((opt, optIdx) => (
-                          <div
-                            key={`${q.id}-${opt}-${optIdx}`}
-                            className={`flex items-center gap-2 text-xs p-2.5 rounded-md border ${
-                              String(opt) === String(q.correctAnswer)
-                                ? 'border-emerald-500 bg-emerald-500/5'
-                                : 'border-border hover:bg-muted/50'
+                    <p className="text-xs text-muted-foreground">
+                      {builderQuestions.length} questions • {activeQuiz.totalPoints} pts
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveQuiz(null);
+                      setBuilderQuizId(null);
+                      setEditingQuestionId(null);
+                      resetDraft();
+                    }}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Add / Edit Question form */}
+                <Card className="p-4">
+                  <CardHeader>
+                    <CardTitle>
+                      {editingQuestionId ? 'Edit Question' : 'Add Question'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-3">
+                    <Textarea
+                      value={draft.question_text}
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, question_text: e.target.value }))
+                      }
+                      placeholder="Question text…"
+                      rows={2}
+                      className="w-full rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                    />
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <select
+                        value={draft.type}
+                        onChange={(e) =>
+                          setDraft((d) => ({ ...d, type: e.target.value }))
+                        }
+                        className="rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="MCQ">Multiple Choice</option>
+                        <option value="TRUE_FALSE">True / False</option>
+                      </select>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={draft.points}
+                        onChange={(e) =>
+                          setDraft((d) => ({
+                            ...d,
+                            points: Number(e.target.value) || 1,
+                          }))
+                        }
+                        placeholder="Points"
+                        className="rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      {draft.options.map((opt, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Input
+                            value={opt.option_text}
+                            onChange={(e) =>
+                              setDraft((d) => {
+                                const next = [...d.options];
+                                next[i] = { ...next[i], option_text: e.target.value };
+                                return { ...d, options: next };
+                              })
+                            }
+                            placeholder="Option text"
+                            className="flex-1 rounded-lg border border-input bg-background p-2.5 text-sm focus:ring-2 focus:ring-primary"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => toggleCorrect(i)}
+                            className={`text-xs font-semibold rounded px-2 py-1.5 border ${
+                              opt.is_correct
+                                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-700'
+                                : 'border-input hover:bg-muted text-muted-foreground'
                             }`}
                           >
-                            {String(opt) === String(q.correctAnswer) && (
-                              <Check className="h-3.5 w-3.5 text-emerald-600" />
-                            )}
-                            <span>{opt}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {q.type === 'short_answer' && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Correct answer: {String(q.correctAnswer ?? '—')}
+                            {opt.is_correct ? 'Correct ✓' : 'Mark correct'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeOption(i)}
+                            disabled={draft.options.length <= 2}
+                            className="text-xs text-destructive hover:bg-destructive/10 rounded px-2 py-1.5"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={addOption}
+                        className="text-xs font-semibold text-primary hover:bg-primary/5 rounded px-2 py-1.5"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add option
+                      </button>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingQuestionId(null);
+                          resetDraft();
+                        }}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-input"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveQuestion}
+                        disabled={
+                          createQuestionMutation.isPending ||
+                          updateQuestionMutation.isPending
+                        }
+                        className="px-4 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        {editingQuestionId
+                          ? updateQuestionMutation.isPending
+                            ? 'Saving…'
+                            : 'Update'
+                          : createQuestionMutation.isPending
+                            ? 'Saving…'
+                            : 'Save Question'}
+                      </button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Questions list */}
+                {builderQuestions.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No questions yet. Add your first question above.
+                  </p>
+                )}
+                {builderQuestions.map((q) => (
+                  <Card key={q.id} className="p-3 border border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-sm">
+                        {q.question_text}
                       </p>
-                    )}
-                  </div>
+                      <span className="text-xs font-semibold text-muted-foreground">
+                        {q.points} pts
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">{q.type}</p>
+                    <div className="space-y-1">
+                      {ensureArray<QuizOption>(q.quizOptions).map((opt) => (
+                        <div
+                          key={opt.id}
+                          className={`flex items-center gap-2 text-xs p-2 rounded-md border ${
+                            opt.is_correct
+                              ? 'border-emerald-500 bg-emerald-500/5'
+                              : 'border-border hover:bg-muted/50'
+                          }`}
+                        >
+                          {opt.is_correct && (
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          )}
+                          <span>{opt.option_text}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        type="button"
+                        onClick={() => editQuestion(q)}
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        <Edit2 className="h-3.5 w-3.5 mr-1" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteQuestion(q.id)}
+                        className="text-xs text-destructive hover:bg-destructive/10 rounded px-2 py-1"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </Card>
                 ))}
               </div>
             ) : (

@@ -51,6 +51,6 @@ export class Course {
   @OneToMany(() => CourseMaterial, (cm) => cm.course)
   materials: CourseMaterial[];
 
-  @OneToMany(() => CoursePrerequisite, (cp) => cp.course)
+  @OneToMany(() => CoursePrerequisite, (cp) => cp.course, { cascade: true })
   prerequisites: CoursePrerequisite[];
 }

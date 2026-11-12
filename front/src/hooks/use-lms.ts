@@ -8,6 +8,7 @@ import type {
   Quiz,
   QuizAttempt,
   QuizQuestion,
+  QuizOption,
   Submission,
   WeightedGradeResult,
 } from "@/lib/types";
@@ -206,5 +207,68 @@ export function useCreateQuiz() {
       max_attempts?: number;
     }) => (await api.post("/lms/quizzes", dto)).data,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["quizzes"] }),
+  });
+}
+
+// ── Quiz Questions (Instructor) ───────────────────────────────
+export function useQuizQuestions(quizId: string) {
+  return useQuery({
+    queryKey: ["quiz-questions", quizId],
+    queryFn: async () =>
+      (await api.get<QuizQuestion[]>(`/lms/quizzes/${quizId}/questions`))
+        .data,
+    enabled: !!quizId,
+  });
+}
+
+export function useCreateQuizQuestion(quizId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: {
+      question_text: string;
+      type: string;
+      points: number;
+      options: Array<{ option_text: string; is_correct?: boolean; order?: number }>;
+    }) =>
+      (
+        await api.post<QuizQuestion>(`/lms/quizzes/${quizId}/questions`, dto)
+      ).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quiz-questions", quizId] }),
+  });
+}
+
+export function useUpdateQuizQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (dto: {
+      questionId: string;
+      question_text?: string;
+      type?: string;
+      points?: number;
+      options?: Array<{ option_text: string; is_correct?: boolean; order?: number }>;
+    }) =>
+      (
+        await api.put<QuizQuestion>(
+          `/lms/quizzes/questions/${dto.questionId}`,
+          {
+            question_text: dto.question_text,
+            type: dto.type,
+            points: dto.points,
+            options: dto.options,
+          },
+        )
+      ).data,
+    onSuccess: (_, variables) =>
+      qc.invalidateQueries({ queryKey: ["quiz-questions", variables.questionId] }),
+  });
+}
+
+export function useDeleteQuizQuestion() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (questionId: string) =>
+      (await api.delete(`/lms/quizzes/questions/${questionId}`)).data,
+    onSuccess: (_, questionId) =>
+      qc.invalidateQueries({ queryKey: ["quiz-questions", questionId] }),
   });
 }
