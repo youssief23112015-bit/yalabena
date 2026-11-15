@@ -1,2 +1,0 @@
-﻿src/components/chat/BroadcastModal.tsx(196,1): error TS1128: Declaration or statement expected.
-exit=2

@@ -1,0 +1,25 @@
+(node:35212) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+^C^Cm[Nest] 35212  - [39m11/15/2026, 3:10:38 AM [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3000[39m[38;5;3m +5ms[39m
+node:net:1948
+    const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+               ^
+
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+    at listenInCluster (node:net:2005:12)
+    at Server.listen (node:net:2110:7)
+    at ExpressAdapter.listen (C:\Users\youss\OneDrive\Desktop\speakup-main\node_modules\@nestjs\platform-express\adapters\express-adapter.js:95:32)
+    at C:\Users\youss\OneDrive\Desktop\speakup-main\node_modules\@nestjs\core\nest-application.js:183:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (C:\Users\youss\OneDrive\Desktop\speakup-main\node_modules\@nestjs\core\nest-application.js:173:16)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async bootstrap (C:\Users\youss\OneDrive\Desktop\speakup-main\src\main.ts:92:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
+
+Node.js v24.14.1

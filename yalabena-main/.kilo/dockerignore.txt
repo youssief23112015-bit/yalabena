@@ -1,2 +1,0 @@
-﻿.dockerignore = True
-front\.dockerignore = True

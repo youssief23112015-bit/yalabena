@@ -1,1 +1,0 @@
-﻿yalabena-main-app | [node dist/main] | /var/lib/docker/volumes/yalabena-main_uploads/_data->/app/uploads 

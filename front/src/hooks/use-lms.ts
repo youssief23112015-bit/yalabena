@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/axios";
+import { unwrapApiResponse } from "@/lib/apiFetch";
 import { toSafeArray } from "@/lib/utils";
 import type {
   Assignment,
@@ -21,6 +22,7 @@ const qk = {
   questionBank: (filters: object) => ["question-bank", filters] as const,
   gradebook: (groupId: string) => ["gradebook", groupId] as const,
   attemptResults: (attemptId: string) => ["attempt-results", attemptId] as const,
+  myAttempts: (groupId?: string) => ["my-attempts", groupId ?? ""] as const,
 };
 
 // ── Modules / Lessons ─────────────────────────────────────────
@@ -28,7 +30,9 @@ export function useModules(groupId: string) {
   return useQuery({
     queryKey: qk.modules(groupId),
     queryFn: async () =>
-      (await api.get<LmsModule[]>("/lms/modules", { params: { group_id: groupId } })).data,
+      unwrapApiResponse<LmsModule[]>(
+        (await api.get<LmsModule[]>("/lms/modules", { params: { group_id: groupId } })).data,
+      ),
     enabled: !!groupId,
   });
 }
@@ -38,11 +42,13 @@ export function useAssignments(groupId: string, studentId?: string) {
   return useQuery({
     queryKey: qk.assignments(groupId, studentId),
     queryFn: async () =>
-      (
-        await api.get<any>("/lms/assignments", {
-          params: { group_id: groupId, ...(studentId ? { studentId } : {}) },
-        })
-      ).data,
+      unwrapApiResponse<any[]>(
+        (
+          await api.get<any>("/lms/assignments", {
+            params: { group_id: groupId, ...(studentId ? { studentId } : {}) },
+          })
+        ).data,
+      ),
     enabled: !!groupId,
   });
 }
@@ -65,39 +71,73 @@ export function useQuizzes(groupId: string) {
   return useQuery({
     queryKey: qk.quizzes(groupId),
     queryFn: async () =>
-      (await api.get<Quiz[]>("/lms/quizzes", { params: { group_id: groupId } })).data,
+      unwrapApiResponse<Quiz[]>(
+        (await api.get<Quiz[]>("/lms/quizzes", { params: { group_id: groupId } })).data,
+      ),
     enabled: !!groupId,
+  });
+}
+
+/**
+ * The authenticated student's own quiz attempts.
+ * PostgreSQL is authoritative: this is how completed grades, submission dates
+ * and in-progress attempts are restored on refresh / after login, without
+ * ever exposing another student's results or answers.
+ */
+export function useMyAttempts(groupId?: string) {
+  return useQuery({
+    queryKey: qk.myAttempts(groupId),
+    queryFn: async () => {
+      const response = await api.get<any>("/lms/attempts/my", {
+        params: { group_id: groupId ?? undefined },
+      });
+      return unwrapApiResponse<QuizAttempt[]>(response.data);
+    },
+    enabled: true,
   });
 }
 
 export function useStartAttempt() {
   return useMutation({
-    mutationFn: async (quizId: string) =>
-      (await api.post<QuizAttempt>(`/lms/quizzes/${quizId}/start`)).data,
+    mutationFn: async (quizId: string) => {
+      const response = await api.post<QuizAttempt>(`/lms/quizzes/${quizId}/start`);
+      return unwrapApiResponse<QuizAttempt>(response.data);
+    },
   });
 }
 
 export function useSubmitAttempt() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (dto: {
       attemptId: string;
       answers: Record<string, unknown>;
       time_spent_seconds: number;
-    }) =>
-      (
-        await api.put<QuizAttempt>(`/lms/attempts/${dto.attemptId}/submit`, {
+    }) => {
+      const response = await api.put<QuizAttempt>(
+        `/lms/attempts/${dto.attemptId}/submit`,
+        {
           answers: dto.answers,
           time_spent_seconds: dto.time_spent_seconds,
-        })
-      ).data,
+        },
+      );
+      return unwrapApiResponse<QuizAttempt>(response.data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["quizzes"] });
+      qc.invalidateQueries({ queryKey: ["attempt-results"] });
+      qc.invalidateQueries({ queryKey: ["my-attempts"] });
+    },
   });
 }
 
 export function useAttemptResults(attemptId: string | null) {
   return useQuery({
     queryKey: qk.attemptResults(attemptId ?? ""),
-    queryFn: async () =>
-      (await api.get<Record<string, unknown>>(`/lms/attempts/${attemptId}/results`)).data,
+    queryFn: async () => {
+      const response = await api.get<Record<string, unknown>>(`/lms/attempts/${attemptId}/results`);
+      return unwrapApiResponse<Record<string, unknown>>(response.data);
+    },
     enabled: !!attemptId,
     refetchInterval: (query) =>
       (query.state.data as { score?: number | null })?.score == null ? false : false,
@@ -215,8 +255,9 @@ export function useQuizQuestions(quizId: string) {
   return useQuery({
     queryKey: ["quiz-questions", quizId],
     queryFn: async () =>
-      (await api.get<QuizQuestion[]>(`/lms/quizzes/${quizId}/questions`))
-        .data,
+      unwrapApiResponse<QuizQuestion[]>(
+        (await api.get<QuizQuestion[]>(`/lms/quizzes/${quizId}/questions`)).data,
+      ),
     enabled: !!quizId,
   });
 }

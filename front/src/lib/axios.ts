@@ -17,6 +17,12 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = useAuthStore.getState().getAccessToken();
+    console.log(
+      "[axios] outgoing",
+      config.method?.toUpperCase(),
+      config.url,
+      token ? `Bearer token present (${token.slice(0, 12)}...)` : "NO TOKEN",
+    );
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,8 +33,23 @@ api.interceptors.request.use(
 
 // Response Interceptor: clear all auth state on 401 (session expired / invalidated).
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    console.log(
+      "[axios] response",
+      res.status,
+      res.config.method?.toUpperCase(),
+      res.config.url,
+    );
+    return res;
+  },
   (error: AxiosError<{ message?: string }>) => {
+    console.log(
+      "[axios] error",
+      error.response?.status ?? "NETWORK_ERROR",
+      error.config?.method?.toUpperCase(),
+      error.config?.url,
+      error.message,
+    );
     if (error.response?.status === 401) {
       useAuthStore.getState().clearAuth();
       if (window.location.pathname !== "/login") {

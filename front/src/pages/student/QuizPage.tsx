@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useAttemptResults, useQuizzes, useStartAttempt, useSubmitAttempt } from "@/hooks/use-lms";
-// FIX: this app never mounts AuthProvider from lib/auth-context — using it here
-// threw "useAuth must be used within AuthProvider" as soon as the quiz page opened.
-// The zustand-backed hook below is the auth source of truth used everywhere else.
+import {
+  useAttemptResults,
+  useMyAttempts,
+  useQuizzes,
+  useStartAttempt,
+  useSubmitAttempt,
+} from "@/hooks/use-lms";
 import { useAuth } from "@/hooks/use-auth";
 import type { QuizAttempt, QuizQuestion } from "@/lib/types";
 import { QuestionRenderer } from "@/components/quiz/question-renderer";
@@ -11,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Flag, Send, Timer } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 type Phase =
   | { kind: "loading" }
@@ -30,18 +34,41 @@ export default function QuizPage() {
     () => quizzes.data?.find((q) => q.id === quizId),
     [quizzes.data, quizId],
   );
+  // The authenticated student's attempts for this group (PostgreSQL is
+  // authoritative). Used to resume an in-progress attempt instead of starting
+  // a duplicate one.
+  const attempts = useMyAttempts(groupId || undefined);
+  const myAttempts = Array.isArray(attempts.data) ? attempts.data : [];
 
   const startAttempt = useStartAttempt();
   const submitAttempt = useSubmitAttempt();
+  const { toast } = useToast();
 
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const startTimeRef = useRef(Date.now());
 
-  // Auto-start attempt when quiz data arrives
+  // Auto-start / resume attempt when quiz data arrives. Resumes an existing
+  // in-progress attempt instead of creating a duplicate, and never starts a
+  // new attempt once the configured maximum is reached.
   useEffect(() => {
     if (!quiz || !quizId || phase.kind !== "loading") return;
+
+    const inProgress = myAttempts.find(
+      (a) => a.quiz_id === quizId && a.status === "in_progress",
+    );
+
+    if (inProgress) {
+      setPhase({
+        kind: "taking",
+        attempt: inProgress as QuizAttempt,
+        quizQuestions: quiz.questions ?? [],
+        secondsLeft: (quiz.time_limit_minutes ?? 0) * 60,
+      });
+      return;
+    }
+
     startAttempt
       .mutateAsync(quizId)
       .then((attempt) =>
@@ -53,7 +80,45 @@ export default function QuizPage() {
         }),
       )
       .catch((e: Error) => setPhase({ kind: "error", message: e.message }));
-  }, [quiz, quizId, phase.kind]);
+  }, [quiz, quizId, myAttempts, phase.kind]);
+
+  const doSubmit = useCallback(async (timedOut = false) => {
+    if (phase.kind !== "taking") return;
+    const attemptId = phase.attempt.id;
+
+    console.log("[QuizPage] >>> doSubmit() ENTERED", { attemptId, timedOut });
+
+    if (!attemptId) {
+      const msg = "No active attempt found. Please start the quiz again.";
+      toast({ variant: "destructive", title: "Submit blocked", description: msg });
+      setPhase({ kind: "error", message: msg });
+      return;
+    }
+
+    const timeSpent = Math.round((Date.now() - startTimeRef.current) / 1000);
+
+    try {
+      const result = await submitAttempt.mutateAsync({
+        attemptId,
+        answers,
+        time_spent_seconds: timeSpent,
+      });
+      toast({
+        title: "Quiz submitted!",
+        description: `Score: ${result.score ?? 0} / ${result.percentage ?? 0}% — ${result.is_passed ? "Passed ✅" : "Not passed ❌"}`,
+      });
+      setPhase({ kind: "results", attempt: result });
+    } catch (e) {
+      console.error("[QuizPage] submit failed", e);
+      const message = (e as Error).message ?? "Failed to submit quiz";
+      toast({ variant: "destructive", title: "Submit failed", description: message });
+      if (timedOut) {
+        setPhase({ kind: "results", attempt: { ...phase.attempt, status: "EXPIRED" } as QuizAttempt });
+      } else {
+        setPhase({ kind: "error", message });
+      }
+    }
+  }, [phase, answers, submitAttempt, toast]);
 
   // Countdown timer; auto-submit on expiry
   useEffect(() => {
@@ -67,26 +132,7 @@ export default function QuizPage() {
       1000,
     );
     return () => clearTimeout(t);
-  }, [phase]);
-
-  const doSubmit = async (timedOut = false) => {
-    if (phase.kind !== "taking") return;
-    const attemptId = phase.attempt.id;
-    try {
-      const result = await submitAttempt.mutateAsync({
-        attemptId,
-        answers,
-        time_spent_seconds: Math.round((Date.now() - startTimeRef.current) / 1000),
-      });
-      setPhase({ kind: "results", attempt: result });
-    } catch (e) {
-      if (timedOut) {
-        setPhase({ kind: "results", attempt: { ...phase.attempt, status: "EXPIRED" } as QuizAttempt });
-      } else {
-        setPhase({ kind: "error", message: (e as Error).message });
-      }
-    }
-  };
+  }, [phase, doSubmit]);
 
   const results = useAttemptResults(
     phase.kind === "results" && phase.attempt.status === "GRADED" ? phase.attempt.id : null,
@@ -147,9 +193,22 @@ export default function QuizPage() {
   }
 
   // ── Taking screen ───────────────────────────────────────
-  const { quizQuestions, secondsLeft } = phase;
+  const { quizQuestions: rawQuizQuestions, secondsLeft } = phase;
+  // Deduplicate quiz questions by ID to prevent duplicate React keys when the
+  // backend returns the same question more than once in a quiz's questions array.
+  const quizQuestions = useMemo(() => {
+    const seen = new Set<string>();
+    return rawQuizQuestions.filter((q) => {
+      if (seen.has(q.id)) return false;
+      seen.add(q.id);
+      return true;
+    });
+  }, [rawQuizQuestions]);
   const question = quizQuestions[index];
-  const answeredCount = quizQuestions.filter((q) => answers[q.id] !== undefined).length;
+  const answeredCount = quizQuestions.filter((q) => {
+    const v = answers[q.id];
+    return v !== undefined && v !== null && v !== "";
+  }).length;
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
 
@@ -205,7 +264,7 @@ export default function QuizPage() {
           </Button>
         ) : (
           <Button
-            onClick={() => doSubmit()}
+            onClick={() => void doSubmit()}
             disabled={submitAttempt.isPending}
             className="bg-green-600 hover:bg-green-700"
           >

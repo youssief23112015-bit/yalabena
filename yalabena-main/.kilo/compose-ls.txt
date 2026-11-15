@@ -1,2 +1,0 @@
-﻿NAME                STATUS              CONFIG FILES
-yalabena-main       running(3)          C:\Users\WinDows\Desktop\yalabena-main\docker-compose.yml

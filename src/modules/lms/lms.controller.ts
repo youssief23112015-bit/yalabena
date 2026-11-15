@@ -581,8 +581,19 @@ export class LmsController {
   submitAttempt(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SubmitAttemptDto,
+    @CurrentUser() user: any,
   ) {
-    return this.lmsService.submitAttempt(id, dto.answers, dto.time_spent_seconds);
+    return this.lmsService.submitAttempt(id, user?.userId ?? user?.id, dto.answers, dto.time_spent_seconds);
+  }
+
+  @Get('attempts/my')
+  @Roles('student')
+  @ApiOperation({ summary: 'List the authenticated student\'s quiz attempts' })
+  getMyAttempts(
+    @CurrentUser() user: any,
+    @Query('group_id') groupId?: string,
+  ) {
+    return this.lmsService.getMyAttempts(user?.userId ?? user?.id, groupId);
   }
 
   @Put('quizzes/:id/release-mode')

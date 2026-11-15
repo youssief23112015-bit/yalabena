@@ -1,4 +1,0 @@
-﻿
-.kilo\build-front.txt:6:    + FullyQualifiedErrorId : NativeCommandError
-
-

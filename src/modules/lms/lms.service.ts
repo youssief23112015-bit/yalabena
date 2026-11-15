@@ -294,7 +294,7 @@ export class LmsService {
   ): Promise<void> {
     const module = await this.moduleRepo.findOne({
       where: { id },
-      relations: ['lessons', 'lessons.resources'],
+        relations: ['lessons', 'lessons.resources'],
     });
     if (!module) throw new NotFoundException('Module not found');
     await this.assertGroupAccess(userId, roles, module.group_id);
@@ -582,8 +582,9 @@ export class LmsService {
 
   async submitAssignment(
     dto: SubmitAssignmentDto,
-    studentId: string,
+    userId: string,
   ): Promise<Submission> {
+    const studentId = await this.resolveStudentId(userId);
     const assignment = await this.assignmentRepo.findOne({
       where: { id: dto.assignment_id },
     });
@@ -846,157 +847,188 @@ export class LmsService {
   // QUIZ ATTEMPTS (LMS-BE-10)
   // ═══════════════════════════════════════════════════
 
-  async startAttempt(quizId: string, studentId: string): Promise<QuizAttempt> {
-    const quiz = await this.quizRepo.findOne({ where: { id: quizId } });
-    if (!quiz) throw new NotFoundException('Quiz not found');
-
-    const attemptCount = await this.attemptRepo.count({
-      where: { quiz_id: quizId, student_id: studentId },
+  private async resolveStudentId(userId: string): Promise<string> {
+    const student = await this.studentRepo.findOne({
+      where: { user_id: userId },
     });
-    if (quiz.max_attempts && attemptCount >= quiz.max_attempts) {
-      throw new BadRequestException('Maximum attempts reached');
+    if (!student) {
+      throw new NotFoundException('Student profile not found');
     }
+    return student.id;
+  }
 
-    const attempt = this.attemptRepo.create({
-      quiz_id: quizId,
-      student_id: studentId,
-      attempt_number: attemptCount + 1,
-      started_at: new Date(),
-      status: AttemptStatus.IN_PROGRESS,
-      answers: {},
+  async startAttempt(quizId: string, userId: string): Promise<QuizAttempt> {
+    const studentId = await this.resolveStudentId(userId);
+
+    return this.quizRepo.manager.transaction(async (manager) => {
+      // Lock the quiz row so concurrent start requests for the same quiz
+      // serialize and cannot both read the same attempt count (which would
+      // otherwise create duplicate attempts beyond max_attempts).
+      const quiz = await manager.findOne(Quiz, {
+        where: { id: quizId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!quiz) throw new NotFoundException('Quiz not found');
+
+      const attemptCount = await manager.count(QuizAttempt, {
+        where: { quiz_id: quizId, student_id: studentId },
+      });
+      if (quiz.max_attempts && attemptCount >= quiz.max_attempts) {
+        throw new BadRequestException(
+          'You have already reached the maximum attempts for this quiz',
+        );
+      }
+
+      const attempt = manager.create(QuizAttempt, {
+        quiz_id: quizId,
+        student_id: studentId,
+        attempt_number: attemptCount + 1,
+        started_at: new Date(),
+        status: AttemptStatus.IN_PROGRESS,
+        answers: {},
+      });
+      return manager.save(attempt);
     });
-    return this.attemptRepo.save(attempt);
   }
 
   async submitAttempt(
     id: string,
+    userId: string,
     answers: Record<string, unknown>,
     timeSpentSeconds: number,
   ): Promise<QuizAttempt> {
-    const attempt = await this.attemptRepo.findOne({
-      where: { id },
-      relations: ['quiz', 'quiz.questions'],
-    });
-    if (!attempt) throw new NotFoundException('Attempt not found');
-    if (attempt.status !== AttemptStatus.IN_PROGRESS) {
-      throw new BadRequestException('Attempt already submitted');
-    }
+    // Resolve the authenticated user id to the student profile id so the
+    // lookup is scoped to the attempt's real owner (student_id column).
+    // Without this, the user id never matches any student_id and every
+    // submit returns 404 "Attempt not found" even for valid attempts.
+    const studentId = await this.resolveStudentId(userId);
 
-    const quiz = attempt.quiz;
-    if (!quiz) throw new NotFoundException('Quiz not found');
-    const questions = quiz.questions ?? [];
-
-    if (quiz.time_limit_minutes) {
-      const elapsedMs = Date.now() - attempt.started_at.getTime();
-      const limitMs = quiz.time_limit_minutes * 60 * 1000;
-      if (elapsedMs > limitMs + 5000) {
-        attempt.status = AttemptStatus.EXPIRED;
-        await this.attemptRepo.save(attempt);
-        throw new BadRequestException('Time limit exceeded. Attempt expired.');
-      }
-    }
-
-    let earnedPoints = 0;
-    let totalPoints = 0;
-    let needsManualReview = false;
-    const gradedAnswers: Record<string, unknown> = {};
-
-    for (const q of questions) {
-      totalPoints += q.points;
-      const userAnswer = answers[q.id];
-
-      if (userAnswer === undefined) {
-        gradedAnswers[q.id] = {
-          value: null,
-          correct: false,
-          points: 0,
-          flagged: false,
-        };
-        continue;
+    return this.attemptRepo.manager.transaction(async (manager) => {
+      const attempt = await manager.findOne(QuizAttempt, {
+        where: { id, student_id: studentId },
+        relations: ['quiz', 'quiz.questions'],
+      });
+      if (!attempt) throw new NotFoundException('Attempt not found');
+      if (attempt.status !== AttemptStatus.IN_PROGRESS) {
+        throw new BadRequestException('Attempt already submitted');
       }
 
-      switch (q.type) {
-        case QuestionType.SHORT_ANSWER:
-          needsManualReview = true;
+      const quiz = attempt.quiz;
+      if (!quiz) throw new NotFoundException('Quiz not found');
+      const questions = quiz.questions ?? [];
+
+      if (quiz.time_limit_minutes) {
+        const elapsedMs = Date.now() - attempt.started_at.getTime();
+        const limitMs = quiz.time_limit_minutes * 60 * 1000;
+        if (elapsedMs > limitMs + 5000) {
+          attempt.status = AttemptStatus.EXPIRED;
+          await manager.save(attempt);
+          throw new BadRequestException('Time limit exceeded. Attempt expired.');
+        }
+      }
+
+      let earnedPoints = 0;
+      let totalPoints = 0;
+      let needsManualReview = false;
+      const gradedAnswers: Record<string, unknown> = {};
+
+      for (const q of questions) {
+        totalPoints += q.points;
+        const userAnswer = answers[q.id];
+
+        if (userAnswer === undefined) {
           gradedAnswers[q.id] = {
-            value: userAnswer,
-            correct: null,
+            value: null,
+            correct: false,
             points: 0,
-            flagged: true,
-          };
-          break;
-
-        case QuestionType.MCQ:
-        case QuestionType.TRUE_FALSE: {
-          const correct =
-            String(userAnswer).toLowerCase() ===
-            String(q.correct_answer).toLowerCase();
-          if (correct) earnedPoints += q.points;
-          gradedAnswers[q.id] = {
-            value: userAnswer,
-            correct,
-            points: correct ? q.points : 0,
             flagged: false,
           };
-          break;
+          continue;
         }
 
-        case QuestionType.MATCHING: {
-          const expected = q.correct_answer as Record<string, string>;
-          const given = userAnswer as Record<string, string>;
-          const allMatch = Object.keys(expected).every(
-            (k) =>
-              String(given?.[k]).toLowerCase() ===
-              String(expected[k]).toLowerCase(),
-          );
-          if (allMatch) earnedPoints += q.points;
-          gradedAnswers[q.id] = {
-            value: userAnswer,
-            correct: allMatch,
-            points: allMatch ? q.points : 0,
-            flagged: false,
-          };
-          break;
-        }
+        switch (q.type) {
+          case QuestionType.SHORT_ANSWER:
+            needsManualReview = true;
+            gradedAnswers[q.id] = {
+              value: userAnswer,
+              correct: null,
+              points: 0,
+              flagged: true,
+            };
+            break;
 
-        case QuestionType.ORDERING: {
-          const expected = q.correct_answer as string[];
-          const given = userAnswer as string[];
-          const isOrdered =
-            Array.isArray(given) &&
-            given.length === expected.length &&
-            expected.every(
-              (val, idx) =>
-                String(val).toLowerCase() ===
-                String(given[idx]).toLowerCase(),
+          case QuestionType.MCQ:
+          case QuestionType.TRUE_FALSE: {
+            const correct =
+              String(userAnswer).toLowerCase() ===
+              String(q.correct_answer).toLowerCase();
+            if (correct) earnedPoints += q.points;
+            gradedAnswers[q.id] = {
+              value: userAnswer,
+              correct,
+              points: correct ? q.points : 0,
+              flagged: false,
+            };
+            break;
+          }
+
+          case QuestionType.MATCHING: {
+            const expected = q.correct_answer as Record<string, string>;
+            const given = userAnswer as Record<string, string>;
+            const allMatch = Object.keys(expected).every(
+              (k) =>
+                String(given?.[k]).toLowerCase() ===
+                String(expected[k]).toLowerCase(),
             );
-          if (isOrdered) earnedPoints += q.points;
-          gradedAnswers[q.id] = {
-            value: userAnswer,
-            correct: isOrdered,
-            points: isOrdered ? q.points : 0,
-            flagged: false,
-          };
-          break;
+            if (allMatch) earnedPoints += q.points;
+            gradedAnswers[q.id] = {
+              value: userAnswer,
+              correct: allMatch,
+              points: allMatch ? q.points : 0,
+              flagged: false,
+            };
+            break;
+          }
+
+          case QuestionType.ORDERING: {
+            const expected = q.correct_answer as string[];
+            const given = userAnswer as string[];
+            const isOrdered =
+              Array.isArray(given) &&
+              given.length === expected.length &&
+              expected.every(
+                (val, idx) =>
+                  String(val).toLowerCase() ===
+                  String(given[idx]).toLowerCase(),
+              );
+            if (isOrdered) earnedPoints += q.points;
+            gradedAnswers[q.id] = {
+              value: userAnswer,
+              correct: isOrdered,
+              points: isOrdered ? q.points : 0,
+              flagged: false,
+            };
+            break;
+          }
         }
       }
-    }
 
-    const autoPercentage =
-      totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+      const autoPercentage =
+        totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
 
-    attempt.answers = gradedAnswers;
-    attempt.score = earnedPoints;
-    attempt.percentage = parseFloat(autoPercentage.toFixed(2));
-    attempt.is_passed = autoPercentage >= (quiz.passing_score ?? 60);
-    attempt.submitted_at = new Date();
-    attempt.time_spent_seconds = timeSpentSeconds;
-    attempt.status = needsManualReview
-      ? AttemptStatus.PENDING_REVIEW
-      : AttemptStatus.GRADED;
-    attempt.needs_manual_review = needsManualReview;
+      attempt.answers = gradedAnswers;
+      attempt.score = earnedPoints;
+      attempt.percentage = parseFloat(autoPercentage.toFixed(2));
+      attempt.is_passed = autoPercentage >= (quiz.passing_score ?? 60);
+      attempt.submitted_at = new Date();
+      attempt.time_spent_seconds = timeSpentSeconds;
+      attempt.status = needsManualReview
+        ? AttemptStatus.PENDING_REVIEW
+        : AttemptStatus.GRADED;
+      attempt.needs_manual_review = needsManualReview;
 
-    return this.attemptRepo.save(attempt);
+      return manager.save(attempt);
+    });
   }
 
   // ═══════════════════════════════════════════════════
@@ -1018,8 +1050,9 @@ export class LmsService {
 
   async getAttemptResultsForStudent(
     attemptId: string,
-    studentId: string,
+    userId: string,
   ): Promise<Record<string, unknown>> {
+    const studentId = await this.resolveStudentId(userId);
     const attempt = await this.attemptRepo.findOne({
       where: { id: attemptId, student_id: studentId },
       relations: ['quiz', 'quiz.questions'],
@@ -1059,6 +1092,65 @@ export class LmsService {
     if (!attempt) throw new NotFoundException('Attempt not found');
     attempt.status = AttemptStatus.RELEASED;
     return this.attemptRepo.save(attempt);
+  }
+
+  // MY ATTEMPTS (LMS-BE-13) — authenticated student's own attempt history
+
+  async getMyAttempts(
+    userId: string,
+    groupId?: string,
+  ): Promise<Array<Record<string, unknown>>> {
+    const studentId = await this.resolveStudentId(userId);
+
+    const attempts = await this.attemptRepo.find({
+      where: { student_id: studentId },
+      relations: ['quiz', 'quiz.questions'],
+      order: { started_at: 'DESC' },
+    });
+
+    const result = await Promise.all(
+      attempts.map(async (attempt) => {
+        const quiz = attempt.quiz;
+        const questions = Array.isArray(quiz?.questions) ? quiz.questions : [];
+        const maxScore = questions.reduce(
+          (sum, q) => sum + (q.points ?? 0),
+          0,
+        );
+        const completed =
+          attempt.status === AttemptStatus.GRADED ||
+          attempt.status === AttemptStatus.RELEASED ||
+          attempt.status === AttemptStatus.SUBMITTED;
+        return {
+          id: attempt.id,
+          attempt_id: attempt.id,
+          quiz_id: attempt.quiz_id,
+          student_id: attempt.student_id,
+          attempt_number: attempt.attempt_number,
+          status: attempt.status,
+          score: attempt.score,
+          max_score: maxScore,
+          percentage: attempt.percentage,
+          is_passed: attempt.is_passed,
+          completed,
+          started_at: attempt.started_at,
+          submitted_at: attempt.submitted_at,
+          time_spent_seconds: attempt.time_spent_seconds,
+          needs_manual_review: attempt.needs_manual_review,
+          quiz: {
+            id: quiz?.id ?? null,
+            title: quiz?.title ?? null,
+            group_id: quiz?.group_id ?? null,
+          },
+        };
+      }),
+    );
+
+    return groupId
+      ? result.filter(
+          (a) => (a.quiz as Record<string, unknown> | null)?.group_id ===
+            groupId,
+        )
+      : result;
   }
 
   // ═══════════════════════════════════════════════════

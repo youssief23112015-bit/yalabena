@@ -1,1 +1,0 @@
-Fixed permissions seed to use ON CONFLICT DO NOTHING (no explicit target) because the current database lacks the uq_permissions_module_action constraint present in the supplied schema. Fixed IDs still protect repeat runs via the primary-key conflict.

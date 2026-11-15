@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { unwrapApiResponse } from '@/lib/apiFetch';
 import { downloadProtected, api } from '@/lib/axios';
+import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
-import { useAssignments, useQuizzes, useCreateQuiz, useStartAttempt, useSubmitAttempt, useQuizQuestions, useCreateQuizQuestion, useUpdateQuizQuestion, useDeleteQuizQuestion } from '@/hooks/use-lms';
+import { useAssignments, useQuizzes, useCreateQuiz, useStartAttempt, useSubmitAttempt, useMyAttempts, useQuizQuestions, useCreateQuizQuestion, useUpdateQuizQuestion, useDeleteQuizQuestion } from '@/hooks/use-lms';
 import { Badge } from '@/components/ui/badge';
 import {
   Card,
@@ -13,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/store/authStore';
-import type { QuizQuestion, QuizOption } from '@/lib/types';
+import type { QuizAttempt, QuizQuestion, QuizOption } from '@/lib/types';
 import { toSafeArray } from '@/lib/utils';
 import {
   BookOpen,
@@ -125,7 +126,10 @@ export interface Quiz {
 
 export interface GradeItem {
   id: string;
-  category: 'Attendance' | 'Assignments' | 'Midterm' | 'Final Exam';
+  // Backend returns the full gradebook category object
+  // { id, group_id, name, weight, order, created_by, created_at }
+  // for `category`, so it may be a string or an object. Render the name.
+  category: string | { id: string; name: string; weight: number; order: number; created_by?: string | null; created_at?: string | null };
   name: string;
   weight: number;
   score: number;
@@ -344,6 +348,10 @@ export default function LmsPage() {
 
   // TanStack Query: group quizzes for the selected cohort.
   const quizzesQuery = useQuizzes(selectedGroupId);
+  // The authenticated student's own attempts — PostgreSQL is authoritative for
+  // completed grades, submission dates and in-progress attempts (never local
+  // state, never another student's data).
+  const attemptsQuery = useMyAttempts(selectedGroupId || undefined);
   const rawQuizzes = useMemo(() => {
     const d = (quizzesQuery.data ?? {}) as any;
     return Array.isArray(d) ? d : Array.isArray(d?.data) ? d.data : [];
@@ -432,10 +440,29 @@ export default function LmsPage() {
 
   // Per-session quiz results for the current student (completes the
   // Available → Completed status without a dedicated list-attempts endpoint).
-  const [quizResults, setQuizResults] = useState<Record<
+  // Build the per-quiz attempt view model from the backend (authoritative).
+  // For each quiz we keep the latest completed attempt (for the grade) and the
+  // latest in-progress attempt (to resume). A student never sees another
+  // student's attempts because the endpoint scopes by the authenticated student.
+  const attempts = Array.isArray(attemptsQuery.data) ? attemptsQuery.data : [];
+  const attemptsByQuiz = new Map<
     string,
-    { score: number; percentage: number; isPassed: boolean }
-  >>({});
+    { completed: QuizAttempt | null; inProgress: QuizAttempt | null }
+  >();
+  for (const a of attempts) {
+    const existing = attemptsByQuiz.get(a.quiz_id) ?? {
+      completed: null,
+      inProgress: null,
+    };
+    const isCompleted =
+      a.status === 'graded' ||
+      a.status === 'released' ||
+      a.status === 'submitted';
+    if (isCompleted && !existing.completed) existing.completed = a;
+    if (!isCompleted && a.status === 'in_progress' && !existing.inProgress)
+      existing.inProgress = a;
+    attemptsByQuiz.set(a.quiz_id, existing);
+  }
 
   // View model: backend Quiz → camelCase with computed status.
   const viewQuizzes = useMemo(() => {
@@ -444,7 +471,14 @@ export default function LmsPage() {
         mapBackendQuestionToView,
       );
       const totalPoints = questions.reduce((sum, qq) => sum + (qq.points || 0), 0);
-      const result = quizResults[q.id];
+      const attempt = attemptsByQuiz.get(q.id);
+      const completed = attempt?.completed ?? null;
+      const inProgress = attempt?.inProgress ?? null;
+      const status = completed
+        ? 'completed'
+        : inProgress
+          ? 'in_progress'
+          : ('available' as const);
       return {
         id: q.id,
         title: q.title ?? q.name,
@@ -452,12 +486,16 @@ export default function LmsPage() {
         timeLimitMinutes: q.time_limit_minutes ?? q.timeLimitMinutes ?? 0,
         totalPoints,
         questionsCount: questions.length,
-        status: result ? 'completed' : ('available' as const),
-        score: result?.score ?? q.score ?? undefined,
+        status,
+        score: completed?.score ?? undefined,
+        percentage: completed?.percentage ?? undefined,
+        submittedAt: completed?.submitted_at ?? undefined,
+        isPassed: completed?.is_passed ?? undefined,
+        attemptId: inProgress?.id ?? completed?.id ?? undefined,
         questions,
       };
     });
-  }, [rawQuizzes, quizResults]);
+  }, [rawQuizzes, attempts]);
 
 
   // Data States (All dynamic from Backend)
@@ -479,6 +517,22 @@ export default function LmsPage() {
   const [currentAttemptId, setCurrentAttemptId] = useState<string | null>(null);
   const [quizMode, setQuizMode] = useState<'take' | 'view'>('take');
   const [quizStartTime, setQuizStartTime] = useState<number | null>(null);
+
+  const { toast } = useToast();
+  const [unansweredQuestionIds, setUnansweredQuestionIds] = useState<string[]>([]);
+  const isQuizSubmittingRef = useRef(false);
+
+  // Deduplicate quiz questions by ID to prevent duplicate React keys when the
+  // backend returns the same question more than once in a quiz's questions array.
+  const dedupedQuizQuestions = useMemo(() => {
+    if (!activeQuiz?.questions) return [];
+    const seen = new Set<string>();
+    return activeQuiz.questions.filter((q) => {
+      if (seen.has(q.id)) return false;
+      seen.add(q.id);
+      return true;
+    });
+  }, [activeQuiz?.questions]);
 
   const [submittingAssignment, setSubmittingAssignment] = useState<Assignment | null>(null);
   const [submissionTextInput, setSubmissionTextInput] = useState('');
@@ -996,6 +1050,21 @@ export default function LmsPage() {
 
   const handleStartQuiz = async (quiz: Quiz) => {
     try {
+      // Resume an existing in-progress attempt instead of creating a duplicate.
+      // PostgreSQL is authoritative: we never start a new attempt when one is
+      // already in progress for this student/quiz.
+      const existing = attemptsByQuiz.get(quiz.id);
+      const inProgress = existing?.inProgress ?? null;
+      if (inProgress) {
+        setCurrentAttemptId(inProgress.id);
+        setActiveQuiz(quiz);
+        setQuizMode('take');
+        setQuizAnswers({});
+        setQuizScoreResult(null);
+        setQuizStartTime(Date.now());
+        return;
+      }
+
       setIsSubmitting(true);
       const attempt = await startAttemptMutation.mutateAsync(quiz.id);
       setCurrentAttemptId(attempt.id);
@@ -1006,6 +1075,14 @@ export default function LmsPage() {
       setQuizStartTime(Date.now());
     } catch (err: any) {
       alert('تعذر بدء الكويز: ' + err.message);
+      // Clear any misleading stale attempt state so a failed start cannot
+      // leave the UI showing a submit button / score for a nonexistent attempt.
+      setCurrentAttemptId(null);
+      setActiveQuiz(null);
+      setQuizMode('take');
+      setQuizAnswers({});
+      setQuizScoreResult(null);
+      setQuizStartTime(null);
     } finally {
       setIsSubmitting(false);
     }
@@ -1088,32 +1165,34 @@ export default function LmsPage() {
   };
 
   const handleQuizSubmit = async () => {
-    if (!activeQuiz || !currentAttemptId) return;
-
+    if (!activeQuiz || !currentAttemptId) {
+      toast({ variant: "destructive", title: "Submit blocked", description: "No active quiz attempt. Please open the quiz and start it again." });
+      return;
+    }
+    const questions = dedupedQuizQuestions;
+    const unanswered = questions.filter((q) => quizAnswers[q.id] === undefined || quizAnswers[q.id] === null || quizAnswers[q.id] === "");
+    if (unanswered.length > 0) {
+      setUnansweredQuestionIds(unanswered.map((q) => q.id));
+      toast({ variant: "destructive", title: "Incomplete quiz", description: "Please answer the remaining " + unanswered.length + " question(s) before submitting." });
+      return;
+    }
+    setUnansweredQuestionIds([]);
+    if (isQuizSubmittingRef.current) return;
+    isQuizSubmittingRef.current = true;
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      const timeSpent = quizStartTime
-        ? Math.floor((Date.now() - quizStartTime) / 1000)
-        : 0;
-      const attempt = await submitAttemptMutation.mutateAsync({
-        attemptId: currentAttemptId,
-        answers: quizAnswers,
-        time_spent_seconds: timeSpent,
-      });
-
+      const timeSpent = quizStartTime ? Math.floor((Date.now() - quizStartTime) / 1000) : 0;
+      const attempt = await submitAttemptMutation.mutateAsync({ attemptId: currentAttemptId, answers: quizAnswers, time_spent_seconds: timeSpent });
       const score = Number(attempt.score ?? 0);
       setQuizScoreResult(score);
-      setQuizResults((prev) => ({
-        ...prev,
-        [activeQuiz.id]: {
-          score,
-          percentage: Number(attempt.percentage ?? 0),
-          isPassed: Boolean(attempt.is_passed),
-        },
-      }));
+      // Invalidate attempts so viewQuizzes restores the persisted grade from
+      // PostgreSQL (authoritative) instead of relying on local state.
+      await attemptsQuery.refetch();
+      toast({ title: "Quiz submitted!", description: "Score: " + score + " / " + (activeQuiz.totalPoints ?? 0) });
     } catch (err: any) {
-      alert('خطأ أثناء إرسال الكويز: ' + err.message);
+      toast({ variant: "destructive", title: "Submit failed", description: err.message ?? "Failed to submit quiz" });
     } finally {
+      isQuizSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -1791,11 +1870,17 @@ export default function LmsPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-3">
                   {safeQuizzes.map((quiz: any) => {
-                    const result = quizResults[quiz.id];
                     const statusVariant =
                       quiz.status === 'completed'
                         ? 'success'
-                        : 'warning';
+                        : quiz.status === 'in_progress'
+                          ? 'info'
+                          : 'warning';
+                    const completed = quiz.status === 'completed';
+                    const inProgress = quiz.status === 'in_progress';
+                    const submittedAt = quiz.submittedAt
+                      ? new Date(quiz.submittedAt).toLocaleString()
+                      : null;
                     return (
                       <div
                         key={quiz.id}
@@ -1826,25 +1911,25 @@ export default function LmsPage() {
                             <span>{quiz.questionsCount} Questions</span>
                             <span>•</span>
                             <span>{quiz.totalPoints} Points</span>
-                            {result && (
+                            {completed && quiz.score != null && (
                               <>
                                 <span>•</span>
                                 <span
                                   className={`font-semibold ${
-                                    result.isPassed
+                                    quiz.isPassed
                                       ? 'text-emerald-600'
                                       : 'text-amber-600'
                                   }`}
                                 >
-                                  {result.score} / {quiz.totalPoints}
+                                  {quiz.score} / {quiz.totalPoints}
                                 </span>
                               </>
                             )}
                           </div>
 
-                          {result && !isTeacherOrAdmin && (
+                          {completed && !isTeacherOrAdmin && (
                             <p className="mt-2 text-xs text-muted-foreground">
-                              Completed {result.isPassed ? '(Passed)' : '(Pending review)'}
+                              Completed {quiz.isPassed ? '(Passed)' : '(Pending review)'} {submittedAt ? ('• ' + submittedAt) : ''}
                             </p>
                           )}
                         </div>
@@ -1863,7 +1948,11 @@ export default function LmsPage() {
                             >
                               <PlayCircle className="h-3.5 w-3.5" /> View
                             </button>
-                          ) : result ? (
+                          ) : inProgress ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
+                              <CheckCircle2 className="h-4 w-4" /> Continue Quiz
+                            </span>
+                          ) : completed ? (
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600">
                               <CheckCircle2 className="h-4 w-4" /> Completed
                             </span>
@@ -1909,7 +1998,11 @@ export default function LmsPage() {
                       <tbody className="divide-y divide-border">
                         {safeGrades.map((item) => (
                           <tr key={item.id} className="hover:bg-muted/20">
-                            <td className="p-3.5 pl-5 font-semibold text-xs">{item.category}</td>
+                            <td className="p-3.5 pl-5 font-semibold text-xs">
+                              {typeof item.category === 'string'
+                                ? item.category
+                                : item.category.name}
+                            </td>
                             <td className="p-3.5 text-muted-foreground">{item.name}</td>
                             <td className="p-3.5 font-medium">{item.weight}%</td>
                             <td className="p-3.5 font-bold">{item.score} / {item.maxScore}</td>
@@ -2557,8 +2650,16 @@ export default function LmsPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {ensureArray<Question>(activeQuiz?.questions).map((q, idx) => (
-                  <div key={q.id} className="space-y-3 rounded-lg border border-border p-4 bg-muted/20">
+                {dedupedQuizQuestions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className={
+                      "space-y-3 rounded-lg border p-4 bg-muted/20" +
+                      (unansweredQuestionIds.includes(q.id)
+                        ? " border-destructive ring-1 ring-destructive"
+                        : " border-border")
+                    }
+                  >
                     <p className="font-semibold text-sm">
                       Question {idx + 1} ({q.points} pts): {q.text}
                     </p>
@@ -2598,10 +2699,10 @@ export default function LmsPage() {
                 <div className="flex justify-end pt-2">
                   <button
                     onClick={handleQuizSubmit}
-                    disabled={isSubmitting}
+                    disabled={submitAttemptMutation.isPending}
                     className="px-5 py-2.5 text-xs font-bold rounded-lg bg-primary text-primary-foreground flex items-center gap-2"
                   >
-                    {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Submit Answers
+                    {submitAttemptMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Submit Answers
                   </button>
                 </div>
               </div>

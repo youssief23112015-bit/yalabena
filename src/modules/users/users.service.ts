@@ -6,9 +6,12 @@ import { User } from '../../shared/entities/user.entity';
 import { Role } from '../../shared/entities/role.entity';
 import { UserRole } from '../../shared/entities/user-role.entity';
 import { Student } from '../../shared/entities/student.entity';
+import { Employee } from '../../shared/entities/employee.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserStatus } from '../../common/enums/user-status.enum';
 import { StudentStatus } from '../../common/enums/student-status.enum';
+import { EmployeeStatus } from '../../common/enums/employee-status.enum';
+import { EmployeeType } from '../../common/enums/employee-type.enum';
 
 export interface FindAllUsersFilter {
 }
@@ -88,6 +91,53 @@ export class UsersService {
     );
   }
 
+  /**
+   * Idempotent employee-profile sync: when a user is assigned the
+   * `employee` or `teacher` role, a matching `employees` row must exist so
+   * HR/payroll/scheduling queries can join via `user_id`. The row is created
+   * with safe defaults; HR completes the employment details (contract,
+   * salary, etc.) through the HR module.
+   */
+  private async ensureEmployeeProfile(
+    em: EntityManager,
+    userId: string,
+  ): Promise<void> {
+    const repo = em.getRepository(Employee);
+    const existing = await repo.findOne({ where: { user_id: userId } });
+    if (existing) return;
+    try {
+      await repo.save(
+        repo.create({
+          user_id: userId,
+          employee_type: EmployeeType.FULL_TIME,
+          job_title: 'Teacher',
+          department: null,
+          contract_start: new Date(),
+          status: EmployeeStatus.ACTIVE,
+        } as Partial<Employee>),
+      );
+    } catch (err) {
+      // user_id UNIQUE race: a concurrent writer inserted the row between
+      // our SELECT and INSERT — treat it as success.
+      const again = await repo.findOne({ where: { user_id: userId } });
+      if (!again) throw err;
+    }
+  }
+
+  /**
+   * Soft-deactivate counterpart of ensureEmployeeProfile: called when a
+   * user's role changes AWAY from employee/teacher.
+   */
+  private async deactivateEmployeeProfile(
+    em: EntityManager,
+    userId: string,
+  ): Promise<void> {
+    await em.getRepository(Employee).update(
+      { user_id: userId, status: EmployeeStatus.ACTIVE },
+      { status: EmployeeStatus.TERMINATED },
+    );
+  }
+
   async create(dto: CreateUserDto, creatorId: string) {
     const existingUser = await this.userRepo.findOne({ where: { email: dto.email } });
     if (existingUser) {
@@ -128,7 +178,10 @@ export class UsersService {
 
         if (role.slug === 'student') {
           await this.ensureStudentProfile(em, created.id);
-        }      }
+        } else if (role.slug === 'employee' || role.slug === 'teacher') {
+          await this.ensureEmployeeProfile(em, created.id);
+        }
+      }
 
       return created;
     });
@@ -175,10 +228,37 @@ export class UsersService {
         assigned_by: creatorId,
       });
 
-      if (role.slug === 'student') {
+      const isStudent = role.slug === 'student';
+      const isEmployee = role.slug === 'employee' || role.slug === 'teacher';
+
+      // Fetch the previous role to know what to deactivate
+      const prevUserRole = await em.getRepository(UserRole).findOne({
+        where: { user_id: id },
+      });
+      const prevRole = prevUserRole
+        ? await em.getRepository(Role).findOne({ where: { id: prevUserRole.role_id } })
+        : null;
+      const prevWasStudent = prevRole?.slug === 'student';
+      const prevWasEmployee = prevRole?.slug === 'employee' || prevRole?.slug === 'teacher';
+
+      if (isStudent) {
         await this.ensureStudentProfile(em, id);
+        if (prevWasEmployee) {
+          await this.deactivateEmployeeProfile(em, id);
+        }
+      } else if (isEmployee) {
+        await this.ensureEmployeeProfile(em, id);
+        if (prevWasStudent) {
+          await this.deactivateStudentProfile(em, id);
+        }
       } else {
-        await this.deactivateStudentProfile(em, id);
+        // Role is neither student nor employee/teacher: deactivate both profiles
+        if (prevWasStudent) {
+          await this.deactivateStudentProfile(em, id);
+        }
+        if (prevWasEmployee) {
+          await this.deactivateEmployeeProfile(em, id);
+        }
       }
     });
 

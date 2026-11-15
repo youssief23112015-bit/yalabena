@@ -4,6 +4,7 @@ import { User } from '../../shared/entities/user.entity';
 import { Role } from '../../shared/entities/role.entity'; // ✅ تمت الإضافة
 import { UserRole } from '../../shared/entities/user-role.entity'; // ✅ تمت الإضافة
 import { Student } from '../../shared/entities/student.entity';
+import { Employee } from '../../shared/entities/employee.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -14,6 +15,7 @@ import { UsersService } from './users.service';
       Role,        // ✅ مطلوب لـ UsersService
       UserRole,    // ✅ مطلوب لـ UsersService
       Student,     // auto-create the students row when the student role is assigned
+      Employee,    // auto-create the employees row when the employee/teacher role is assigned
     ]),
   ],
   controllers: [UsersController],
